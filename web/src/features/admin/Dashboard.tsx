@@ -42,11 +42,11 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="bg-slate-900 text-white border-slate-900">
-          <div className="text-xs text-slate-400">Total Pasang Hari Ini</div>
+        <Card color="slate">
+          <div className="text-xs text-slate-300">Total Pasang Hari Ini</div>
           <div className="mt-1 text-2xl font-bold">{formatAngka(totalPasang)}</div>
         </Card>
-        <Card className="bg-emerald-600 text-white border-emerald-600">
+        <Card color="emerald">
           <div className="text-xs text-emerald-100">Perkiraan Gaji</div>
           <div className="mt-1 text-2xl font-bold">{formatRupiah(totalGaji)}</div>
         </Card>

@@ -102,8 +102,8 @@ export default function Payroll() {
         </Card>
       ) : (
         <>
-          <Card className="bg-slate-900 text-white border-slate-900">
-            <div className="text-xs text-slate-400">Total Gaji Periode</div>
+          <Card color="slate">
+            <div className="text-xs text-slate-300">Total Gaji Periode</div>
             <div className="mt-1 text-2xl font-bold">{formatRupiah(grandTotal)}</div>
           </Card>
 

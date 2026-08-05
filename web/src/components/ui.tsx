@@ -25,9 +25,23 @@ export function BigButton({
   )
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = '',
+  color,
+}: {
+  children: ReactNode
+  className?: string
+  color?: 'default' | 'slate' | 'emerald'
+}) {
+  const colorClass =
+    color === 'slate'
+      ? 'bg-slate-900 text-white border-slate-900'
+      : color === 'emerald'
+        ? 'bg-emerald-600 text-white border-emerald-600'
+        : 'bg-white text-slate-900 border-slate-200'
   return (
-    <div className={`rounded-2xl bg-white p-4 shadow-sm border border-slate-200 ${className}`}>
+    <div className={`rounded-2xl p-4 shadow-sm border ${colorClass} ${className}`}>
       {children}
     </div>
   )
