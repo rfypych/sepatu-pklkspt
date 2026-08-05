@@ -54,6 +54,22 @@ create table public.master_ukuran (
 );
 
 -- ----------------------------------------------------------------------------
+-- 4b. MASTER PO (Surat Perintah Kerja / produksi order)
+--     Fleksibel: Si A bisa tambah/edit/hapus PO tanpa mengubah data produksi.
+--     Ganti nama PO pun aman karena produksi mereferensikan id_po (bukan teks).
+-- ----------------------------------------------------------------------------
+create table public.master_po (
+    id_po        uuid primary key default gen_random_uuid(),
+    no_po        text not null,               -- e.g. 'PO-2026-001'
+    nama_customer text,                       -- opsional
+    tanggal_mulai date,
+    tanggal_selesai date,
+    catatan      text,
+    status_aktif boolean not null default true,
+    created_at   timestamptz not null default now()
+);
+
+-- ----------------------------------------------------------------------------
 -- 5. PRODUKSI_HARIAN (header / satu baris pencatatan mandor)
 -- ----------------------------------------------------------------------------
 create table public.produksi_harian (
@@ -62,7 +78,7 @@ create table public.produksi_harian (
     shift       smallint not null check (shift in (1, 2)),
     id_pekerja  uuid not null references public.pekerja(id_pekerja),
     id_sepatu   uuid not null references public.tipe_sepatu(id_sepatu),
-    no_po       text,                        -- opsional, referensi saja
+    id_po       uuid references public.master_po(id_po) on delete set null, -- opsional
     catatan     text,
     created_by  uuid references public.users(id),
     created_at  timestamptz not null default now(),
@@ -89,6 +105,7 @@ create table public.produksi_detail (
 create index idx_produksi_tanggal  on public.produksi_harian (tanggal);
 create index idx_produksi_pekerja  on public.produksi_harian (id_pekerja);
 create index idx_produksi_sepatu   on public.produksi_harian (id_sepatu);
+create index idx_produksi_po       on public.produksi_harian (id_po);
 create index idx_detail_produksi   on public.produksi_detail (id_produksi);
 
 -- ============================================================================
@@ -184,6 +201,25 @@ group by 1, 2, 3, 4, 5;
 --        total_pasang, subtotal_gaji, created_at
 -- from public.v_total_per_produksi
 -- order by tanggal desc, shift;
+
+-- ============================================================================
+-- JAMINAN FLEKSIBILITAS (semua bisa diubah Si A tanpa bongkar kode)
+-- ============================================================================
+--  1. Ongkos kerja  -> tipe_sepatu.ongkos_kerja bisa diedit kapan saja.
+--     Perubahan hanya berlaku utk input baru (histori aman via
+--     produksi_detail.ongkos_kerja_saat_ini).
+--  2. Model sepatu  -> tambah/edit/nonaktifkan lewat tipe_sepatu.
+--     Jumlah item tidak statis (bukan cuma 4 model).
+--  3. Ukuran        -> master_ukuran bisa tambah (45, 46, ...) / nonaktifkan.
+--     Ukuran dihapus (soft) tidak menghapus data produksi lama karena
+--     produksi_detail menyimpan id_ukuran.
+--  4. Nama pekerja  -> pekerja.nama bisa diedit; aman karena produksi
+--     mereferensikan id_pekerja (uuid), bukan nama.
+--  5. PO            -> master_po bisa tambah/edit/hapus; produksi menyimpan
+--     id_po (uuid), jadi ganti no_po tidak mengubah data produksi.
+--  6. Shift & periode gaji -> konstanta bisnis (2 shift, 1-15 / 16-akhir);
+--     hanya berubah lewat perubahan kode/konfigurasi, bukan via UI.
+-- ============================================================================
 
 -- ============================================================================
 -- (Opsional) REALTIME / SUPABASE

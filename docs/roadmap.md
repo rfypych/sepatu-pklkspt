@@ -24,6 +24,7 @@ Urutan kerja dipecah supaya bisa **langsung dicoba Si A lebih awal** (fitur inpu
 - [ ] Kelola Pekerja (CRUD + aktif/nonaktif).
 - [ ] Kelola Model & Ongkos Kerja (CRUD + aktif/nonaktif).
 - [ ] Kelola Ukuran aktif (checkbox 36–44 + tambah ukuran baru).
+- [ ] Kelola PO (CRUD + aktif/nonaktif).
 - [ ] Kelola pengguna (buat akun mandor baru).
 
 ## Fase 4 — Dashboard & Payroll (2–3 hari)

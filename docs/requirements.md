@@ -27,6 +27,7 @@ UI: tombol besar, alur maju (wizard), kontras warna, tombol simpan sticky di baw
 - **Master Data Pekerja**: tambah, edit, nonaktifkan.
 - **Master Data Model & Ongkos**: tambah/edit model sepatu + ongkos kerja (Rp/pasang). Perubahan harga hanya berlaku untuk data baru.
 - **Master Data Ukuran**: checkbox untuk aktifkan ukuran (36–44), bisa tambah ukuran baru (45, dll) → otomatis muncul di form mandor.
+- **Master Data PO**: tambah/edit/hapus PO (no PO, customer, rentang tanggal). Form mandor memilih PO dari dropdown (opsional).
 - **Master Data Pengguna**: kelola akun admin & mandor.
 - **Dashboard Produksi**: total hari ini, live, filter pekerja/model/tanggal.
 - **Menu "Data Produksi" (Super Admin override)**: list semua data produksi, bisa **edit/hapus kapan saja** — untuk memperbaiki salah input mandor (misal 100 pasang kepencet 1000) walau sudah lewat hari yang sama.
@@ -38,8 +39,8 @@ UI: tombol besar, alur maju (wizard), kontras warna, tombol simpan sticky di baw
 ## 4. Aturan Bisnis (Rules)
 
 - 1 hari ada **2 shift** (Shift 1 & Shift 2).
-- Ukuran default: **36–44**.
-- Model awal: **Futsal, Brickmansion, Onrush, Superstars** — masing-masing punya ongkos kerja sendiri (data ongkos **belum tersedia**, nanti diisi via Master Data).
+- Ukuran default: **36–44** (bisa ditambah/dikurangi via Master Data Ukuran).
+- Model awal: **Futsal, Brickmansion, Onrush, Superstars** — jumlah item tidak statis, bisa tambah/edit via Master Data Model.
 - **Harga snapshot**: kolom `ongkos_kerja_saat_ini` di tabel detail menyimpan harga saat input, supaya perubahan harga master tidak mengubah gaji periode sebelumnya.
 - **Aturan edit data**:
   - **Mandor**: bebas edit/hapus data **yang tanggalnya hari ini** (Hari H). Data hari sebelumnya dikunci — mencegah mandor mengubah data lama yang sudah masuk rekap.
@@ -47,6 +48,17 @@ UI: tombol besar, alur maju (wizard), kontras warna, tombol simpan sticky di baw
 - Periode gaji ditentukan dari kolom `tanggal`:
   - Periode 1: `tanggal BETWEEN 1..15`
   - Periode 2: `tanggal BETWEEN 16..hari terakhir bulan`
+
+### 4b. Daftar Master Data yang Bisa Diubah Si A (Tanpa Bongkar Kode)
+
+| Data | Cara | Pengaruh ke data lama |
+| --- | --- | --- |
+| Ongkos kerja model | Edit `tipe_sepatu.ongkos_kerja` | Tidak berpengaruh — data lama pakai snapshot harga |
+| Nama model / tambah model baru | CRUD `tipe_sepatu` | Aman (referensi pakai id, bukan nama) |
+| Nama pekerja / tambah pekerja | CRUD `pekerja` | Aman (referensi pakai id) |
+| Ukuran aktif / tambah ukuran | CRUD `master_ukuran` | Aman (nonaktifkan tidak hapus data lama) |
+| PO / ganti no PO | CRUD `master_po` | Aman (referensi pakai id) |
+| Nonaktifkan data apa pun | `status_aktif = false` | Aman, tidak dihapus permanen |
 
 ## 5. Pertanyaan Terbuka (Butuh Konfirmasi Si A)
 

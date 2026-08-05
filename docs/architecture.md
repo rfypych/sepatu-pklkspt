@@ -56,7 +56,7 @@ Supabase mewajibkan kebijakan keamanan per tabel. Rencana awal:
 
 | Tabel | Mandor | Admin |
 | --- | --- | --- |
-| `pekerja`, `tipe_sepatu`, `master_ukuran` | `SELECT` (yang aktif) | `SELECT/INSERT/UPDATE/DELETE` |
+| `pekerja`, `tipe_sepatu`, `master_ukuran`, `master_po` | `SELECT` (yang aktif) | `SELECT/INSERT/UPDATE/DELETE` |
 | `produksi_harian`, `produksi_detail` | `INSERT` + `SELECT` (hanya milik sendiri `created_by`) + `UPDATE/DELETE` **hanya data yang tanggal = hari ini** & milik sendiri | `SELECT/UPDATE/DELETE` **semua data, kapan saja** (override mandor) |
 
 > Detail RLS akan disempurnakan saat implementasi.
