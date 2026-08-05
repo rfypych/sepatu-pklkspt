@@ -135,7 +135,7 @@ export default function DataProduksi() {
                   <div className="font-bold text-slate-900">{row.nama_pekerja}</div>
                   <div className="text-sm text-slate-500">
                     {row.nama_model} · {row.shift === 1 ? 'Shift 1' : 'Shift 2'}
-                    {row.no_po ? ` · PO ${row.no_po}` : ''}
+                    {row.no_po ? ` · ${row.no_po}` : ''}
                   </div>
                   <div className="text-xs text-slate-400">{formatTanggalPendek(row.tanggal)}</div>
                 </div>

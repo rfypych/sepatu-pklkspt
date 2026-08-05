@@ -86,8 +86,8 @@ Kebijakan diterapkan di backend (`server/src/routes/produksi.js`):
 | --- | --- | --- |
 | Master data (pekerja, model, ukuran, PO) | baca saja (yang aktif) | CRUD |
 | Simpan produksi | boleh (otomatis `created_by` = id mandor) | boleh |
-| Lihat produksi | hanya punya sendiri | semua |
-| Edit/hapus produksi | **hanya tanggal hari ini & miliknya** | **kapan saja** |
+| Lihat produksi | **semua data tanggal hari ini** (tanpa pemisahan) | semua |
+| Edit/hapus produksi | **hanya data tanggal hari ini** | **kapan saja** |
 
 ## 5. Catatan Penting
 

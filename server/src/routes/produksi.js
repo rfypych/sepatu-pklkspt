@@ -12,11 +12,10 @@ function canModify(req) {
   return { createdByOnly: true, today }
 }
 
-// Hari ini (mandor: hanya miliknya; admin: semua)
+// Hari ini (semua pengguna melihat data hari ini)
 router.get('/hari-ini', async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10)
-    const params = [today]
     let sql = `
       SELECT ph.*, p.nama AS nama_pekerja, ts.nama_model, po.no_po
       FROM produksi_harian ph
@@ -25,12 +24,8 @@ router.get('/hari-ini', async (req, res) => {
       LEFT JOIN master_po po ON po.id_po = ph.id_po
       WHERE ph.tanggal = ?
     `
-    if (req.user.role === 'mandor') {
-      sql += ' AND ph.created_by = ?'
-      params.push(req.user.id)
-    }
     sql += ' ORDER BY ph.created_at DESC'
-    const [rows] = await pool.query(sql, params)
+    const [rows] = await pool.query(sql, [today])
 
     for (const r of rows) {
       const [detail] = await pool.query(
@@ -130,11 +125,11 @@ router.put('/:id/detail', async (req, res) => {
     const [row] = await pool.query('SELECT * FROM produksi_harian WHERE id_produksi = ?', [id])
     if (!row[0]) return res.status(404).json({ error: 'Data tidak ditemukan' })
 
-    // batasan: mandor hanya tanggal hari ini & miliknya
+    // batasan: mandor hanya boleh mengubah data tanggal hari ini
     if (req.user.role === 'mandor') {
       const today = new Date().toISOString().slice(0, 10)
-      if (row[0].created_by !== req.user.id || row[0].tanggal !== today) {
-        return res.status(403).json({ error: 'Mandor hanya bisa mengubah data hari ini miliknya' })
+      if (row[0].tanggal !== today) {
+        return res.status(403).json({ error: 'Mandor hanya bisa mengubah data tanggal hari ini' })
       }
     }
 
@@ -168,8 +163,8 @@ router.delete('/:id', async (req, res) => {
 
     if (req.user.role === 'mandor') {
       const today = new Date().toISOString().slice(0, 10)
-      if (row[0].created_by !== req.user.id || row[0].tanggal !== today) {
-        return res.status(403).json({ error: 'Mandor hanya bisa menghapus data hari ini miliknya' })
+      if (row[0].tanggal !== today) {
+        return res.status(403).json({ error: 'Mandor hanya bisa menghapus data tanggal hari ini' })
       }
     }
     await pool.query('DELETE FROM produksi_harian WHERE id_produksi = ?', [id])
