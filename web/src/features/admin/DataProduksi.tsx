@@ -1,26 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getProduksiDenganDetail, hapusProduksi, replaceProduksiDetail } from '../../lib/api'
-import { supabase } from '../../lib/supabase'
-import type { MasterUkuran, Pekerja, ProduksiDetail, ProduksiHarian } from '../../lib/types'
+import {
+  getProduksi,
+  hapusProduksi,
+  replaceProduksiDetail,
+  getPekerjaSemua,
+  getUkuranAktif,
+  type ProduksiRow,
+} from '../../lib/api'
+import type { MasterUkuran, Pekerja } from '../../lib/types'
 import { formatRupiah, formatTanggalPendek } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, FieldLabel, SelectInput, Spinner } from '../../components/ui'
 
-interface Row extends ProduksiHarian {
-  nama_pekerja: string
-  nama_model: string
-  no_po: string | null
-  detail: ProduksiDetail[]
-}
-
 export default function DataProduksi() {
-  const [rows, setRows] = useState<Row[]>([])
+  const [rows, setRows] = useState<ProduksiRow[]>([])
   const [pekerjaList, setPekerjaList] = useState<Pekerja[]>([])
   const [ukuranList, setUkuranList] = useState<MasterUkuran[]>([])
   const [tanggal, setTanggal] = useState('')
   const [idPekerja, setIdPekerja] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [editId, setEditId] = useState<string | null>(null)
+  const [editId, setEditId] = useState<number | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
 
@@ -28,32 +27,14 @@ export default function DataProduksi() {
     setLoading(true)
     try {
       const [produksi, pekerja, ukuran] = await Promise.all([
-        getProduksiDenganDetail(tanggal || undefined, idPekerja || undefined),
-        supabase.from('pekerja').select('id_pekerja, nama').order('nama'),
-        supabase.from('master_ukuran').select('*').eq('status_aktif', true).order('urutan'),
+        getProduksi(tanggal || undefined, idPekerja || undefined),
+        getPekerjaSemua(),
+        getUkuranAktif(),
       ])
-      const pekerjaMap = Object.fromEntries((pekerja.data ?? []).map((p) => [p.id_pekerja, p.nama]))
-      const modelMap = Object.fromEntries(
-        (await supabase.from('tipe_sepatu').select('id_sepatu, nama_model')).data?.map((m) => [
-          m.id_sepatu,
-          m.nama_model,
-        ]) ?? [],
-      )
-      const poMap = Object.fromEntries(
-        (await supabase.from('master_po').select('id_po, no_po')).data?.map((p) => [p.id_po, p.no_po]) ??
-          [],
-      )
-      setPekerjaList((pekerja.data ?? []) as Pekerja[])
-      setUkuranList((ukuran.data ?? []) as MasterUkuran[])
-
-      const rows: Row[] = produksi.map((p) => ({
-        ...p.produksi,
-        nama_pekerja: pekerjaMap[p.produksi.id_pekerja] ?? '?',
-        nama_model: modelMap[p.produksi.id_sepatu] ?? '?',
-        no_po: p.produksi.id_po ? (poMap[p.produksi.id_po] ?? null) : null,
-        detail: p.detail,
-      }))
-      setRows(rows)
+      setRows(produksi)
+      setPekerjaList(pekerja)
+      setUkuranList(ukuran)
+      setError(null)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -65,23 +46,26 @@ export default function DataProduksi() {
     muat()
   }, [muat])
 
-  function totalPasang(row: Row) {
+  function totalPasang(row: ProduksiRow) {
     return row.detail.reduce((a, d) => a + d.qty, 0)
   }
-  function totalGaji(row: Row) {
+  function totalGaji(row: ProduksiRow) {
     return row.detail.reduce((a, d) => a + d.qty * d.ongkos_kerja_saat_ini, 0)
   }
 
-  function mulaiEdit(row: Row) {
+  function mulaiEdit(row: ProduksiRow) {
     setEditId(row.id_produksi)
-    setQty(Object.fromEntries(row.detail.map((d) => [d.id_ukuran, d.qty])))
+    setQty(Object.fromEntries(row.detail.map((d) => [String(d.id_ukuran), d.qty])))
   }
 
-  async function onSimpanEdit(idProduksi: string) {
+  async function onSimpanEdit(idProduksi: number) {
     setSaving(true)
     setError(null)
     try {
-      await replaceProduksiDetail(idProduksi, ukuranList.map((u) => ({ id_ukuran: u.id_ukuran, qty: qty[u.id_ukuran] ?? 0 })))
+      await replaceProduksiDetail(
+        idProduksi,
+        ukuranList.map((u) => ({ id_ukuran: String(u.id_ukuran), qty: qty[String(u.id_ukuran)] ?? 0 })),
+      )
       setEditId(null)
       await muat()
     } catch (e) {
@@ -91,7 +75,7 @@ export default function DataProduksi() {
     }
   }
 
-  async function onHapus(idProduksi: string) {
+  async function onHapus(idProduksi: number) {
     if (!window.confirm('Hapus data produksi ini? Rekap gaji akan ikut berubah.')) return
     try {
       await hapusProduksi(idProduksi)
@@ -111,7 +95,7 @@ export default function DataProduksi() {
       <Card className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <FieldLabel>Dari Tanggal</FieldLabel>
+            <FieldLabel>Tanggal</FieldLabel>
             <input
               type="date"
               value={tanggal}
@@ -170,11 +154,11 @@ export default function DataProduksi() {
                         type="number"
                         inputMode="numeric"
                         min={0}
-                        value={qty[u.id_ukuran] ?? 0}
+                        value={qty[String(u.id_ukuran)] ?? 0}
                         onChange={(e) =>
                           setQty((prev) => ({
                             ...prev,
-                            [u.id_ukuran]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                            [String(u.id_ukuran)]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
                           }))
                         }
                         className="w-24 rounded-xl border border-slate-300 px-3 py-2 text-center font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"

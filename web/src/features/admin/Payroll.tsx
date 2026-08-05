@@ -37,7 +37,7 @@ export default function Payroll() {
   }, [periode])
 
   // Kelompokkan per pekerja
-  const perPekerja = new Map<string, { nama: string; total_pasang: number; total_gaji: number }>()
+  const perPekerja = new Map<number, { nama: string; total_pasang: number; total_gaji: number }>()
   for (const r of rows) {
     const cur = perPekerja.get(r.id_pekerja) ?? { nama: r.nama_pekerja, total_pasang: 0, total_gaji: 0 }
     cur.total_pasang += r.total_pasang

@@ -2,6 +2,20 @@
 
 Sistem berbasis **web + mobile** untuk mencatat hasil produksi harian karyawan pabrik sepatu (sistem upah borongan / piece-rate) dan mengkalkulasi upah secara otomatis.
 
+**Stack**: React + Vite + TS (frontend) · Node.js + Express + JWT (backend) · MySQL 8 Laragon (database). Semua berjalan offline di lokal.
+
+## Cara Menjalankan (Laragon)
+
+1. Nyalakan MySQL di Laragon (user root, tanpa password).
+2. Siapkan database (sekali saja):
+   ```
+   mysql -u root < server/sql/schema.sql
+   mysql -u root < server/sql/seed.sql
+   ```
+3. Jalankan API → `cd server && npm install && npm run dev` (port 3000)
+4. Jalankan aplikasi → `cd web && npm install && npm run dev` (port 5173)
+5. Login uji: `admin/admin123` (admin) · `mandor/mandor123` (mandor)
+
 ## Masalah yang Diselesaikan
 
 - Mandor (gaptek) harus bisa input data harian dari HP dengan **cara sesederhana mungkin**.
@@ -31,13 +45,17 @@ Total Gaji Pekerja per Periode = Σ (qty per model × ongkos_kerja model)
 ## Struktur Dokumen
 
 ```
-README.md                     <- ini, gambaran umum
+README.md                     <- ini, gambaran umum + cara jalan
 docs/
   requirements.md             <- rincian kebutuhan & aturan bisnis
-  database-schema.sql         <- skema database + contoh query kalkulasi
-  architecture.md             <- tech stack, arsitektur, struktur folder
+  database-schema.sql         <- skema PostgreSQL (arsip desain awal)
+  architecture.md             <- tech stack & arsitektur (stack lokal sekarang)
   flows.md                    <- alur kerja (mandor, admin, alur data)
   roadmap.md                  <- milestone implementasi
+server/
+  sql/schema.sql              <- skema MySQL (yang dipakai)
+  sql/seed.sql                <- data awal + akun uji
+web/                          <- aplikasi React
 ```
 
 ## Lisensi / Status

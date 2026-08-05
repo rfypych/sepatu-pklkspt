@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { API_URL, getToken } from './config'
 import type {
   MasterPo,
   MasterUkuran,
@@ -10,238 +10,149 @@ import type {
   UserProfile,
 } from './types'
 
-export async function getProfile(userId: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', userId)
-    .single()
-  if (error) throw error
-  return data as UserProfile
-}
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
 
-export async function getPekerjaAktif(): Promise<Pekerja[]> {
-  const { data, error } = await supabase
-    .from('pekerja')
-    .select('*')
-    .eq('status_aktif', true)
-    .order('nama')
-  if (error) throw error
-  return (data ?? []) as Pekerja[]
-}
-
-export async function getPekerjaSemua(): Promise<Pekerja[]> {
-  const { data, error } = await supabase
-    .from('pekerja')
-    .select('*')
-    .order('nama')
-  if (error) throw error
-  return (data ?? []) as Pekerja[]
-}
-
-export async function getTipeSepatuAktif(): Promise<TipeSepatu[]> {
-  const { data, error } = await supabase
-    .from('tipe_sepatu')
-    .select('*')
-    .eq('status_aktif', true)
-    .order('nama_model')
-  if (error) throw error
-  return (data ?? []) as TipeSepatu[]
-}
-
-export async function getTipeSepatuSemua(): Promise<TipeSepatu[]> {
-  const { data, error } = await supabase
-    .from('tipe_sepatu')
-    .select('*')
-    .order('nama_model')
-  if (error) throw error
-  return (data ?? []) as TipeSepatu[]
-}
-
-export async function getUkuranAktif(): Promise<MasterUkuran[]> {
-  const { data, error } = await supabase
-    .from('master_ukuran')
-    .select('*')
-    .eq('status_aktif', true)
-    .order('urutan')
-  if (error) throw error
-  return (data ?? []) as MasterUkuran[]
-}
-
-export async function getUkuranSemua(): Promise<MasterUkuran[]> {
-  const { data, error } = await supabase
-    .from('master_ukuran')
-    .select('*')
-    .order('urutan')
-  if (error) throw error
-  return (data ?? []) as MasterUkuran[]
-}
-
-export async function getPoAktif(): Promise<MasterPo[]> {
-  const { data, error } = await supabase
-    .from('master_po')
-    .select('*')
-    .eq('status_aktif', true)
-    .order('no_po')
-  if (error) throw error
-  return (data ?? []) as MasterPo[]
-}
-
-export async function getPoSemua(): Promise<MasterPo[]> {
-  const { data, error } = await supabase
-    .from('master_po')
-    .select('*')
-    .order('no_po')
-  if (error) throw error
-  return (data ?? []) as MasterPo[]
-}
-
-async function getDetail(idProduksi: string): Promise<ProduksiDetail[]> {
-  const { data, error } = await supabase
-    .from('produksi_detail')
-    .select('*')
-    .eq('id_produksi', idProduksi)
-    .order('id_ukuran')
-  if (error) throw error
-  return (data ?? []) as ProduksiDetail[]
-}
-
-export async function getProduksiHariIni(): Promise<ProduksiHarian[]> {
-  const { data, error } = await supabase
-    .from('produksi_harian')
-    .select('*')
-    .eq('tanggal', new Date().toISOString().slice(0, 10))
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as ProduksiHarian[]
-}
-
-export async function getProduksiDenganDetail(
-  tanggal?: string,
-  idPekerja?: string,
-): Promise<{ produksi: ProduksiHarian; detail: ProduksiDetail[] }[]> {
-  let q = supabase
-    .from('produksi_harian')
-    .select('*')
-    .order('tanggal', { ascending: false })
-    .order('shift')
-
-  if (tanggal) q = q.eq('tanggal', tanggal)
-  if (idPekerja) q = q.eq('id_pekerja', idPekerja)
-
-  const { data, error } = await q
-  if (error) throw error
-  const rows = (data ?? []) as ProduksiHarian[]
-  const result: { produksi: ProduksiHarian; detail: ProduksiDetail[] }[] = []
-  for (const r of rows) {
-    result.push({ produksi: r, detail: await getDetail(r.id_produksi) })
+  const res = await fetch(`${API_URL}${path}`, { ...options, headers })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error((data as { error?: string }).error || `Gagal (${res.status})`)
   }
-  return result
+  return data as T
 }
 
+function get<T>(path: string) {
+  return request<T>(path)
+}
+function post<T>(path: string, body: unknown) {
+  return request<T>(path, { method: 'POST', body: JSON.stringify(body) })
+}
+function put<T>(path: string, body: unknown) {
+  return request<T>(path, { method: 'PUT', body: JSON.stringify(body) })
+}
+function del<T>(path: string) {
+  return request<T>(path, { method: 'DELETE' })
+}
+function patch<T>(path: string, body: unknown) {
+  return request<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
+}
+
+// MySQL mengembalikan kolom DECIMAL sebagai string; normalisasi ke number.
+const toNum = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? Number(v) : 0)
+
+// ---------------- AUTH ----------------
+export interface LoginResult {
+  token: string
+  user: UserProfile
+}
+export function apiLogin(username: string, password: string) {
+  return post<LoginResult>('/auth/login', { username, password })
+}
+export function apiMe() {
+  return get<{ user: UserProfile }>('/auth/me')
+}
+
+// ---------------- PEKERJA ----------------
+export const getPekerjaAktif = () => get<Pekerja[]>('/pekerja?aktif=true')
+export const getPekerjaSemua = () => get<Pekerja[]>('/pekerja')
+export const tambahPekerja = (nama: string) => post<Pekerja>('/pekerja', { nama })
+export const ubahPekerja = (id: number, body: { nama?: string; status_aktif?: boolean }) =>
+  patch<{ ok: boolean }>(`/pekerja/${id}`, body)
+
+// ---------------- TIPE SEPATU ----------------
+const normTipe = (m: TipeSepatu): TipeSepatu => ({ ...m, ongkos_kerja: toNum(m.ongkos_kerja) })
+export const getTipeSepatuAktif = async () => (await get<TipeSepatu[]>('/tipe-sepatu?aktif=true')).map(normTipe)
+export const getTipeSepatuSemua = async () => (await get<TipeSepatu[]>('/tipe-sepatu')).map(normTipe)
+export const tambahModel = (nama_model: string, ongkos_kerja: number) =>
+  post<TipeSepatu>('/tipe-sepatu', { nama_model, ongkos_kerja })
+export const ubahTipeSepatu = (id: number, body: { nama_model?: string; ongkos_kerja?: number; status_aktif?: boolean }) =>
+  patch<{ ok: boolean }>(`/tipe-sepatu/${id}`, body)
+
+// ---------------- UKURAN ----------------
+export const getUkuranAktif = () => get<MasterUkuran[]>('/ukuran?aktif=true')
+export const getUkuranSemua = () => get<MasterUkuran[]>('/ukuran')
+export const tambahUkuran = (label_ukuran: string) => post<MasterUkuran>('/ukuran', { label_ukuran })
+export const ubahUkuran = (id: number, status_aktif: boolean) =>
+  patch<{ ok: boolean }>(`/ukuran/${id}`, { status_aktif })
+
+// ---------------- PO ----------------
+export const getPoAktif = () => get<MasterPo[]>('/po?aktif=true')
+export const getPoSemua = () => get<MasterPo[]>('/po')
+export const tambahPo = (no_po: string, nama_customer: string) =>
+  post<MasterPo>('/po', { no_po, nama_customer })
+export const ubahPo = (id: number, status_aktif: boolean) =>
+  patch<{ ok: boolean }>(`/po/${id}`, { status_aktif })
+
+// ---------------- PRODUKSI ----------------
 export interface SimpanInput {
   tanggal: string
   shift: 1 | 2
-  id_pekerja: string
-  id_sepatu: string
-  id_po: string | null
+  id_pekerja: number
+  id_sepatu: number
+  id_po: number | null
   qtyPerUkuran: { id_ukuran: string; qty: number }[]
 }
 
-export async function simpanProduksi(input: SimpanInput, createdBy: string | null): Promise<string> {
-  const { data, error } = await supabase
-    .from('produksi_harian')
-    .insert({
-      tanggal: input.tanggal,
-      shift: input.shift,
-      id_pekerja: input.id_pekerja,
-      id_sepatu: input.id_sepatu,
-      id_po: input.id_po,
-      created_by: createdBy,
-    })
-    .select('id_produksi')
-    .single()
-  if (error) throw error
-
-  const idProduksi = data.id_produksi as string
-
-  // Snapshot ongkos dari master sepatu
-  const { data: sepatu } = await supabase
-    .from('tipe_sepatu')
-    .select('ongkos_kerja')
-    .eq('id_sepatu', input.id_sepatu)
-    .single()
-  const ongkos = (sepatu?.ongkos_kerja as number) ?? 0
-
-  const detail = input.qtyPerUkuran
-    .filter((d) => d.qty > 0)
-    .map((d) => ({
-      id_produksi: idProduksi,
-      id_ukuran: d.id_ukuran,
-      qty: d.qty,
-      ongkos_kerja_saat_ini: ongkos,
-    }))
-
-  if (detail.length > 0) {
-    const { error: err2 } = await supabase.from('produksi_detail').insert(detail)
-    if (err2) throw err2
-  }
-
-  return idProduksi
+export interface ProduksiRow extends ProduksiHarian {
+  nama_pekerja: string
+  nama_model: string
+  no_po: string | null
+  detail: ProduksiDetail[]
 }
 
-export async function hapusProduksi(idProduksi: string): Promise<void> {
-  const { error } = await supabase.from('produksi_harian').delete().eq('id_produksi', idProduksi)
-  if (error) throw error
-}
+const normDetail = (d: ProduksiDetail): ProduksiDetail => ({
+  ...d,
+  qty: toNum(d.qty),
+  ongkos_kerja_saat_ini: toNum(d.ongkos_kerja_saat_ini),
+})
+const normProduksi = (r: ProduksiRow): ProduksiRow => ({
+  ...r,
+  detail: (r.detail ?? []).map(normDetail),
+})
 
-export async function replaceProduksiDetail(
-  idProduksi: string,
+export const getProduksiHariIni = async () => (await get<ProduksiRow[]>('/produksi/hari-ini')).map(normProduksi)
+export const getProduksi = async (tanggal?: string, idPekerja?: string) => {
+  const params = new URLSearchParams()
+  if (tanggal) params.set('tanggal', tanggal)
+  if (idPekerja) params.set('pekerja', idPekerja)
+  const qs = params.toString()
+  return (await get<ProduksiRow[]>(`/produksi${qs ? `?${qs}` : ''}`)).map(normProduksi)
+}
+export const simpanProduksi = (
+  input: SimpanInput,
+) => post<{ id_produksi: number }>('/produksi', input)
+export const replaceProduksiDetail = (
+  id: number,
   qtyPerUkuran: { id_ukuran: string; qty: number }[],
-): Promise<void> {
-  const { data: lama } = await supabase
-    .from('produksi_detail')
-    .select('ongkos_kerja_saat_ini')
-    .eq('id_produksi', idProduksi)
-    .limit(1)
-  const ongkos = (lama?.[0]?.ongkos_kerja_saat_ini as number) ?? 0
+) => put<{ ok: boolean }>(`/produksi/${id}/detail`, { qtyPerUkuran })
+export const hapusProduksi = (id: number) => del<{ ok: boolean }>(`/produksi/${id}`)
 
-  const { error: delErr } = await supabase
-    .from('produksi_detail')
-    .delete()
-    .eq('id_produksi', idProduksi)
-  if (delErr) throw delErr
+// ---------------- PAYROLL ----------------
+export const getDaftarPeriode = () => get<string[]>('/payroll/periods')
+const normRekap = (r: RekapGajiRow): RekapGajiRow => ({
+  ...r,
+  total_pasang: toNum(r.total_pasang),
+  total_gaji: toNum(r.total_gaji),
+})
+export const getRekapGaji = async (periode: string) =>
+  (await get<RekapGajiRow[]>(`/payroll/rekap?${new URLSearchParams({ periode })}`)).map(normRekap)
 
-  const detail = qtyPerUkuran
-    .filter((d) => d.qty > 0)
-    .map((d) => ({
-      id_produksi: idProduksi,
-      id_ukuran: d.id_ukuran,
-      qty: d.qty,
-      ongkos_kerja_saat_ini: ongkos,
-    }))
-
-  if (detail.length > 0) {
-    const { error } = await supabase.from('produksi_detail').insert(detail)
-    if (error) throw error
-  }
+// ---------------- DASHBOARD ----------------
+export interface TotalPerProduksi {
+  id_produksi: number
+  tanggal: string
+  shift: 1 | 2
+  id_pekerja: number
+  nama_pekerja: string
+  nama_model: string
+  total_pasang: number
+  subtotal_gaji: number
 }
-
-export async function getRekapGaji(periode: string): Promise<RekapGajiRow[]> {
-  const { data, error } = await supabase
-    .from('v_rekap_gaji')
-    .select('*')
-    .eq('periode', periode)
-  if (error) throw error
-  return (data ?? []) as RekapGajiRow[]
-}
-
-export async function getDaftarPeriode(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('v_rekap_gaji')
-    .select('periode')
-    .order('periode', { ascending: false })
-  if (error) throw error
-  const unik = Array.from(new Set((data ?? []).map((r) => (r as { periode: string }).periode)))
-  return unik
-}
+const normTotal = (r: TotalPerProduksi): TotalPerProduksi => ({
+  ...r,
+  total_pasang: toNum(r.total_pasang),
+  subtotal_gaji: toNum(r.subtotal_gaji),
+})
+export const getDashboardToday = async () => (await get<TotalPerProduksi[]>('/dashboard/today')).map(normTotal)

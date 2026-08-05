@@ -1,31 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getDashboardToday, type TotalPerProduksi } from '../../lib/api'
 import { formatAngka, formatRupiah, tanggalHariIni } from '../../lib/constants'
 import { Card, ErrorBox, Spinner } from '../../components/ui'
 
-interface TotalRow {
-  tanggal: string
-  shift: 1 | 2
-  nama_pekerja: string
-  nama_model: string
-  total_pasang: number
-  subtotal_gaji: number
-}
-
 export default function Dashboard() {
-  const [rows, setRows] = useState<TotalRow[]>([])
+  const [rows, setRows] = useState<TotalPerProduksi[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const muat = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('v_total_per_produksi')
-        .select('*')
-        .eq('tanggal', tanggalHariIni())
-        .order('shift')
-      if (error) throw error
-      setRows((data ?? []) as TotalRow[])
+      const data = await getDashboardToday()
+      setRows(data)
+      setError(null)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -35,23 +23,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     muat()
-
-    const channel = supabase
-      .channel('dashboard-live')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'produksi_harian' },
-        () => muat(),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'produksi_detail' },
-        () => muat(),
-      )
-      .subscribe()
-
+    timer.current = setInterval(muat, 5000)
     return () => {
-      supabase.removeChannel(channel)
+      if (timer.current) clearInterval(timer.current)
     }
   }, [muat])
 
@@ -62,7 +36,9 @@ export default function Dashboard() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-bold text-slate-900">Dashboard Produksi</h1>
-        <p className="text-sm text-slate-500">Update otomatis (real-time) · {tanggalHariIni()}</p>
+        <p className="text-sm text-slate-500">
+          Update otomatis tiap 5 detik · {tanggalHariIni()}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -87,8 +63,8 @@ export default function Dashboard() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {rows.map((r, i) => (
-            <Card key={i}>
+          {rows.map((r) => (
+            <Card key={r.id_produksi}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-bold text-slate-900">{r.nama_pekerja}</div>

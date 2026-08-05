@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { supabase } from '../../lib/supabase'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
+import {
+  getPekerjaSemua,
+  getTipeSepatuSemua,
+  getUkuranSemua,
+  getPoSemua,
+  tambahPekerja,
+  ubahPekerja,
+  tambahModel,
+  ubahTipeSepatu,
+  tambahUkuran,
+  ubahUkuran,
+  tambahPo,
+  ubahPo,
+} from '../../lib/api'
 import { formatRupiah } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, FieldLabel, Spinner, TextInput } from '../../components/ui'
 
@@ -48,43 +61,51 @@ export default function Master() {
   )
 }
 
-function useList<T>(query: () => PromiseLike<{ data: T[] | null; error: unknown }>) {
+function useList<T>(load: () => Promise<T[]>, setError: (m: string | null) => void) {
   const [list, setList] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
-  const load = useCallback(async () => {
-    const { data, error } = await query()
-    if (!error) setList((data ?? []) as T[])
-    setLoading(false)
-  }, [query])
+  const reload = useCallback(async () => {
+    try {
+      setList(await load())
+      setError(null)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }, [load, setError])
+
   useEffect(() => {
-    load()
-  }, [load])
-  return { list, setList, loading, reload: load }
+    reload()
+  }, [reload])
+
+  return { list, setList, loading, reload }
 }
 
 function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
-  const { list, setList, loading, reload } = useList<Pekerja>(() =>
-    supabase.from('pekerja').select('*').order('nama'),
-  )
+  const { list, setList, loading, reload } = useList(getPekerjaSemua, setError)
   const [nama, setNama] = useState('')
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
     if (!nama.trim()) return
-    const { error } = await supabase.from('pekerja').insert({ nama: nama.trim() })
-    if (error) return setError(error.message)
-    setNama('')
-    reload()
+    try {
+      await tambahPekerja(nama.trim())
+      setNama('')
+      await reload()
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
   async function toggle(p: Pekerja) {
-    const { error } = await supabase
-      .from('pekerja')
-      .update({ status_aktif: !p.status_aktif })
-      .eq('id_pekerja', p.id_pekerja)
-    if (error) return setError(error.message)
-    setList((prev) =>
-      prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: !x.status_aktif } : x)),
-    )
+    try {
+      await ubahPekerja(p.id_pekerja, { status_aktif: !Boolean(p.status_aktif) })
+      setList((prev) =>
+        prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: !x.status_aktif } : x)),
+      )
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   if (loading) return <Spinner />
@@ -124,40 +145,39 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
 }
 
 function TabModel({ setError }: { setError: (m: string | null) => void }) {
-  const { list, setList, loading, reload } = useList<TipeSepatu>(() =>
-    supabase.from('tipe_sepatu').select('*').order('nama_model'),
-  )
+  const { list, setList, loading, reload } = useList(getTipeSepatuSemua, setError)
   const [nama, setNama] = useState('')
   const [ongkos, setOngkos] = useState('')
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
     if (!nama.trim()) return
-    const { error } = await supabase
-      .from('tipe_sepatu')
-      .insert({ nama_model: nama.trim(), ongkos_kerja: Number(ongkos) || 0 })
-    if (error) return setError(error.message)
-    setNama('')
-    setOngkos('')
-    reload()
+    try {
+      await tambahModel(nama.trim(), Number(ongkos) || 0)
+      setNama('')
+      setOngkos('')
+      await reload()
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
   async function simpanHarga(m: TipeSepatu) {
-    const { error } = await supabase
-      .from('tipe_sepatu')
-      .update({ ongkos_kerja: m.ongkos_kerja })
-      .eq('id_sepatu', m.id_sepatu)
-    if (error) return setError(error.message)
-    setError('Harga disimpan. Berlaku untuk data baru (periode lama tidak berubah).')
+    try {
+      await ubahTipeSepatu(m.id_sepatu, { ongkos_kerja: m.ongkos_kerja })
+      setError('Harga disimpan. Berlaku untuk data baru (periode lama tidak berubah).')
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
   async function toggle(m: TipeSepatu) {
-    const { error } = await supabase
-      .from('tipe_sepatu')
-      .update({ status_aktif: !m.status_aktif })
-      .eq('id_sepatu', m.id_sepatu)
-    if (error) return setError(error.message)
-    setList((prev) =>
-      prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: !x.status_aktif } : x)),
-    )
+    try {
+      await ubahTipeSepatu(m.id_sepatu, { status_aktif: !Boolean(m.status_aktif) })
+      setList((prev) =>
+        prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: !x.status_aktif } : x)),
+      )
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   if (loading) return <Spinner />
@@ -223,31 +243,29 @@ function TabModel({ setError }: { setError: (m: string | null) => void }) {
 }
 
 function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
-  const { list, setList, loading, reload } = useList<MasterUkuran>(() =>
-    supabase.from('master_ukuran').select('*').order('urutan'),
-  )
+  const { list, setList, loading, reload } = useList(getUkuranSemua, setError)
   const [label, setLabel] = useState('')
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
     if (!label.trim()) return
-    const maxUrutan = list.reduce((a, u) => Math.max(a, u.urutan), 0)
-    const { error } = await supabase
-      .from('master_ukuran')
-      .insert({ label_ukuran: label.trim(), urutan: maxUrutan + 1 })
-    if (error) return setError(error.message)
-    setLabel('')
-    reload()
+    try {
+      await tambahUkuran(label.trim())
+      setLabel('')
+      await reload()
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
   async function toggle(u: MasterUkuran) {
-    const { error } = await supabase
-      .from('master_ukuran')
-      .update({ status_aktif: !u.status_aktif })
-      .eq('id_ukuran', u.id_ukuran)
-    if (error) return setError(error.message)
-    setList((prev) =>
-      prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: !x.status_aktif } : x)),
-    )
+    try {
+      await ubahUkuran(u.id_ukuran, !Boolean(u.status_aktif))
+      setList((prev) =>
+        prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: !x.status_aktif } : x)),
+      )
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   if (loading) return <Spinner />
@@ -287,32 +305,31 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
 }
 
 function TabPo({ setError }: { setError: (m: string | null) => void }) {
-  const { list, setList, loading, reload } = useList<MasterPo>(() =>
-    supabase.from('master_po').select('*').order('no_po'),
-  )
+  const { list, setList, loading, reload } = useList(getPoSemua, setError)
   const [noPo, setNoPo] = useState('')
   const [customer, setCustomer] = useState('')
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
     if (!noPo.trim()) return
-    const { error } = await supabase
-      .from('master_po')
-      .insert({ no_po: noPo.trim(), nama_customer: customer.trim() || null })
-    if (error) return setError(error.message)
-    setNoPo('')
-    setCustomer('')
-    reload()
+    try {
+      await tambahPo(noPo.trim(), customer.trim())
+      setNoPo('')
+      setCustomer('')
+      await reload()
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
   async function toggle(p: MasterPo) {
-    const { error } = await supabase
-      .from('master_po')
-      .update({ status_aktif: !p.status_aktif })
-      .eq('id_po', p.id_po)
-    if (error) return setError(error.message)
-    setList((prev) =>
-      prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: !x.status_aktif } : x)),
-    )
+    try {
+      await ubahPo(p.id_po, !Boolean(p.status_aktif))
+      setList((prev) =>
+        prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: !x.status_aktif } : x)),
+      )
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   if (loading) return <Spinner />

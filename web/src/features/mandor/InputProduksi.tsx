@@ -9,13 +9,11 @@ import {
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
 import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
-import { useAuth } from '../../context/AuthContext'
 import { BigButton, Card, ErrorBox, Spinner } from '../../components/ui'
 
 type Step = 'pekerja' | 'shift' | 'model' | 'po' | 'qty' | 'ringkas'
 
 export default function InputProduksi() {
-  const { user } = useAuth()
   const navigate = useNavigate()
 
   const [step, setStep] = useState<Step>('pekerja')
@@ -28,10 +26,10 @@ export default function InputProduksi() {
   const [saving, setSaving] = useState(false)
   const [sukses, setSukses] = useState(false)
 
-  const [idPekerja, setIdPekerja] = useState('')
+  const [idPekerja, setIdPekerja] = useState<number | null>(null)
   const [shift, setShift] = useState<1 | 2>(1)
-  const [idSepatu, setIdSepatu] = useState('')
-  const [idPo, setIdPo] = useState('')
+  const [idSepatu, setIdSepatu] = useState<number | null>(null)
+  const [idPo, setIdPo] = useState<number | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
 
   useEffect(() => {
@@ -47,35 +45,32 @@ export default function InputProduksi() {
   }, [])
 
   function reset() {
-    setIdPekerja('')
+    setIdPekerja(null)
     setShift(1)
-    setIdSepatu('')
-    setIdPo('')
+    setIdSepatu(null)
+    setIdPo(null)
     setQty({})
     setStep('pekerja')
     setSukses(false)
   }
 
-  const totalPasang = ukuranList.reduce((acc, u) => acc + (qty[u.id_ukuran] ?? 0), 0)
+  const totalPasang = ukuranList.reduce((acc, u) => acc + (qty[String(u.id_ukuran)] ?? 0), 0)
 
   async function onSimpan() {
     setSaving(true)
     setError(null)
     try {
-      await simpanProduksi(
-        {
-          tanggal: tanggalHariIni(),
-          shift,
-          id_pekerja: idPekerja,
-          id_sepatu: idSepatu,
-          id_po: idPo || null,
-          qtyPerUkuran: ukuranList.map((u) => ({
-            id_ukuran: u.id_ukuran,
-            qty: qty[u.id_ukuran] ?? 0,
-          })),
-        },
-        user?.id ?? null,
-      )
+      await simpanProduksi({
+        tanggal: tanggalHariIni(),
+        shift,
+        id_pekerja: idPekerja ?? 0,
+        id_sepatu: idSepatu ?? 0,
+        id_po: idPo,
+        qtyPerUkuran: ukuranList.map((u) => ({
+          id_ukuran: String(u.id_ukuran),
+          qty: qty[String(u.id_ukuran)] ?? 0,
+        })),
+      })
       setSukses(true)
     } catch (e) {
       setError((e as Error).message)
@@ -254,11 +249,11 @@ export default function InputProduksi() {
                 inputMode="numeric"
                 min={0}
                 placeholder="0"
-                value={qty[u.id_ukuran] ?? ''}
+                value={qty[String(u.id_ukuran)] ?? ''}
                 onChange={(e) =>
                   setQty((prev) => ({
                     ...prev,
-                    [u.id_ukuran]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                    [String(u.id_ukuran)]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
                   }))
                 }
                 className="w-24 rounded-xl border border-slate-300 px-4 py-3 text-center text-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"

@@ -3,53 +3,29 @@ import {
   getProduksiHariIni,
   hapusProduksi,
   replaceProduksiDetail,
+  getUkuranAktif,
+  type ProduksiRow,
 } from '../../lib/api'
-import { supabase } from '../../lib/supabase'
-import type { MasterUkuran, ProduksiDetail, ProduksiHarian, Pekerja, TipeSepatu } from '../../lib/types'
+import type { MasterUkuran } from '../../lib/types'
 import { formatTanggalPendek, formatRupiah, tanggalHariIni } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, Spinner } from '../../components/ui'
 
-interface Row extends ProduksiHarian {
-  nama_pekerja: string
-  nama_model: string
-  detail: ProduksiDetail[]
-}
-
 export default function Riwayat() {
-  const [rows, setRows] = useState<Row[]>([])
-  const [pekerjaMap, setPekerjaMap] = useState<Record<string, string>>({})
-  const [modelMap, setModelMap] = useState<Record<string, string>>({})
+  const [rows, setRows] = useState<ProduksiRow[]>([])
   const [ukuranList, setUkuranList] = useState<MasterUkuran[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [editId, setEditId] = useState<string | null>(null)
+  const [editId, setEditId] = useState<number | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
 
   const muat = useCallback(async () => {
     setLoading(true)
     try {
-      const [prod, pekerja, model, ukuran] = await Promise.all([
-        getProduksiHariIni(),
-        fetchPekerja(),
-        fetchModel(),
-        fetchUkuran(),
-      ])
-      setPekerjaMap(Object.fromEntries(pekerja.map((p) => [p.id_pekerja, p.nama])))
-      setModelMap(Object.fromEntries(model.map((m) => [m.id_sepatu, m.nama_model])))
+      const [prod, ukuran] = await Promise.all([getProduksiHariIni(), getUkuranAktif()])
+      setRows(prod)
       setUkuranList(ukuran)
-
-      const rowsWithDetail: Row[] = []
-      for (const p of prod) {
-        const d = await fetchDetail(p.id_produksi)
-        rowsWithDetail.push({
-          ...p,
-          nama_pekerja: pekerjaMap[p.id_pekerja] ?? '?',
-          nama_model: modelMap[p.id_sepatu] ?? '?',
-          detail: d,
-        })
-      }
-      setRows(rowsWithDetail)
+      setError(null)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -61,57 +37,26 @@ export default function Riwayat() {
     muat()
   }, [muat])
 
-  async function fetchPekerja() {
-    const { data, error } = await supabase
-      .from('pekerja')
-      .select('id_pekerja, nama')
-      .eq('status_aktif', true)
-    if (error) throw error
-    return (data ?? []) as Pekerja[]
-  }
-  async function fetchModel() {
-    const { data, error } = await supabase
-      .from('tipe_sepatu')
-      .select('id_sepatu, nama_model')
-    if (error) throw error
-    return (data ?? []) as TipeSepatu[]
-  }
-  async function fetchUkuran() {
-    const { data, error } = await supabase
-      .from('master_ukuran')
-      .select('*')
-      .eq('status_aktif', true)
-      .order('urutan')
-    if (error) throw error
-    return (data ?? []) as MasterUkuran[]
-  }
-  async function fetchDetail(idProduksi: string) {
-    const { data, error } = await supabase
-      .from('produksi_detail')
-      .select('*')
-      .eq('id_produksi', idProduksi)
-    if (error) throw error
-    return (data ?? []) as ProduksiDetail[]
-  }
-
-  function totalPasang(row: Row): number {
+  function totalPasang(row: ProduksiRow) {
     return row.detail.reduce((a, d) => a + d.qty, 0)
   }
-
-  function totalGaji(row: Row): number {
+  function totalGaji(row: ProduksiRow) {
     return row.detail.reduce((a, d) => a + d.qty * d.ongkos_kerja_saat_ini, 0)
   }
 
-  function mulaiEdit(row: Row) {
+  function mulaiEdit(row: ProduksiRow) {
     setEditId(row.id_produksi)
-    setQty(Object.fromEntries(row.detail.map((d) => [d.id_ukuran, d.qty])))
+    setQty(Object.fromEntries(row.detail.map((d) => [String(d.id_ukuran), d.qty])))
   }
 
-  async function onSimpanEdit(idProduksi: string) {
+  async function onSimpanEdit(idProduksi: number) {
     setSaving(true)
     setError(null)
     try {
-      await replaceProduksiDetail(idProduksi, ukuranList.map((u) => ({ id_ukuran: u.id_ukuran, qty: qty[u.id_ukuran] ?? 0 })))
+      await replaceProduksiDetail(
+        idProduksi,
+        ukuranList.map((u) => ({ id_ukuran: String(u.id_ukuran), qty: qty[String(u.id_ukuran)] ?? 0 })),
+      )
       setEditId(null)
       await muat()
     } catch (e) {
@@ -121,7 +66,7 @@ export default function Riwayat() {
     }
   }
 
-  async function onHapus(idProduksi: string) {
+  async function onHapus(idProduksi: number) {
     if (!window.confirm('Hapus data ini?')) return
     try {
       await hapusProduksi(idProduksi)
@@ -138,7 +83,9 @@ export default function Riwayat() {
     <div className="px-4 py-4">
       <div className="mb-4">
         <h1 className="text-lg font-bold text-slate-900">Riwayat Hari Ini</h1>
-        <p className="text-sm text-slate-500">{formatTanggalPendek(tanggalHariIni())} · data tanggal hari ini bisa diubah, data lama terkunci.</p>
+        <p className="text-sm text-slate-500">
+          {formatTanggalPendek(tanggalHariIni())} · data tanggal hari ini bisa diubah, data lama terkunci.
+        </p>
       </div>
 
       {rows.length === 0 ? (
@@ -172,11 +119,11 @@ export default function Riwayat() {
                         type="number"
                         inputMode="numeric"
                         min={0}
-                        value={qty[u.id_ukuran] ?? 0}
+                        value={qty[String(u.id_ukuran)] ?? 0}
                         onChange={(e) =>
                           setQty((prev) => ({
                             ...prev,
-                            [u.id_ukuran]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                            [String(u.id_ukuran)]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
                           }))
                         }
                         className="w-24 rounded-xl border border-slate-300 px-3 py-2 text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"

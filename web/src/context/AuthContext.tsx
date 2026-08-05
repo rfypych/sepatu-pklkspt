@@ -6,8 +6,8 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { supabase } from '../lib/supabase'
-import { getProfile } from '../lib/api'
+import { apiLogin, apiMe } from '../lib/api'
+import { getToken, setToken } from '../lib/config'
 import type { UserProfile } from '../lib/types'
 
 interface AuthContextValue {
@@ -24,58 +24,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let aktif = true
-
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (aktif && data.session?.user) {
-        try {
-          const profil = await getProfile(data.session.user.id)
-          setUser(profil)
-        } catch {
-          await supabase.auth.signOut()
-        }
-      }
-      if (aktif) setLoading(false)
-    })
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!aktif) return
-      if (session?.user) {
-        getProfile(session.user.id)
-          .then((p) => {
-            if (aktif) setUser(p)
-          })
-          .catch(() => {})
-      } else {
-        setUser(null)
-      }
-      if (!session) setLoading(false)
-    })
-
-    return () => {
-      aktif = false
-      sub.subscription.unsubscribe()
+    const token = getToken()
+    if (!token) {
+      setLoading(false)
+      return
     }
+    apiMe()
+      .then(({ user }) => {
+        setUser(user)
+      })
+      .catch(() => {
+        setToken(null)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    if (error || !data.user) return { error: error?.message ?? 'Gagal masuk' }
+  const signIn = useCallback(async (username: string, password: string) => {
     try {
-      const profil = await getProfile(data.user.id)
-      setUser(profil)
+      const { token, user } = await apiLogin(username.trim(), password)
+      setToken(token)
+      setUser(user)
       return { error: null }
-    } catch {
-      await supabase.auth.signOut()
-      return { error: 'Akun belum terdaftar di tabel users. Hubungi admin.' }
+    } catch (e) {
+      return { error: (e as Error).message }
     }
   }, [])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    setToken(null)
     setUser(null)
   }, [])
 

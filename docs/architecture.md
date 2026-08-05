@@ -1,68 +1,97 @@
 # Arsitektur & Tech Stack
 
+> **Update**: stack berubah dari Supabase menjadi **lokal penuh** — Node.js + Express + MySQL (Laragon). Semua jalan offline tanpa internet.
+
 ## 1. Keputusan Teknologi
 
 | Lapisan | Pilihan | Alasan |
 | --- | --- | --- |
 | **Frontend** | React + Vite + TypeScript | UI berbasis komponen, cocok untuk wizard form mandor & dashboard admin; build cepat. |
 | **UI Library** | Tailwind CSS | Cepat bikin UI besar-tombol mobile-first tanpa bolak-balik bikin CSS manual. |
-| **Backend / Database** | Supabase (PostgreSQL + Auth + Realtime + Storage) | BaaS: API otomatis dari tabel, login siap pakai, realtime utk dashboard live, hemat waktu tanpa bikin backend sendiri. |
-| **Hosting Frontend** | Vercel / Netlify | Deploy 1 klik utk SPA React. |
+| **Backend** | Node.js + Express + JWT | API lokal sederhana, auth pakai JWT (username + password + role). |
+| **Database** | MySQL 8 (Laragon) | Sudah terpasang di Laragon, user root tanpa password, offline. |
+| **Hosting** | Lokal (dev) → nanti Vercel | Dicoba lokal dulu; migrasi ke hosting menyusul. |
 | **Mobile** | Web-app dioptimasi HP → bungkus WebView (APK kecil) | Baik mandor **maupun admin (Si A)** akses lewat HP. Tidak perlu Android native, cepat & ringan. |
 
-### Kenapa bukan monolith server penuh?
-Sistem ini domain-nya kecil (input data + kalkulasi). Supabase sudah menutup kebutuhan auth, API, realtime, dan RLS (Row Level Security). Artinya hampir tidak ada backend custom → lebih cepat selesai dan lebih murah maintenance.
+### Struktur folder sekarang
+
+```
+sepatu-pklkspt/
+├── docs/                        <- dokumentasi & skema (arsip)
+├── server/                      <- API lokal (Node + Express + MySQL)
+│   ├── src/
+│   │   ├── index.js             <- entrypoint
+│   │   ├── db.js                <- koneksi MySQL pool
+│   │   ├── auth.js              <- JWT sign/verify + guard role
+│   │   ├── store.js             <- query dasar master data
+│   │   └── routes/              <- auth, master, produksi, payroll, dashboard
+│   └── sql/
+│       ├── schema.sql           <- skema MySQL (yang dipakai)
+│       └── seed.sql             <- data awal (admin/admin123, mandor/mandor123)
+└── web/                         <- aplikasi React (Vite + TS + Tailwind)
+```
+
+### Cara menjalankan (Laragon)
+
+1. Pastikan **MySQL Laragon menyala** (root tanpa password).
+2. Buat database & data awal (sekali saja):
+   ```
+   mysql -u root < server/sql/schema.sql
+   mysql -u root < server/sql/seed.sql
+   ```
+3. Jalankan API:
+   ```
+   cd server && npm install && npm run dev    # http://localhost:3000
+   ```
+4. Jalankan frontend:
+   ```
+   cd web && npm install && npm run dev       # http://localhost:5173
+   ```
+5. Login uji: `admin/admin123` (admin) atau `mandor/mandor123` (mandor).
 
 ## 2. Alur Data
 
 ```
-Mandor (HP)                    Supabase                     Admin Si A (HP/PC)
--------------                  --------                     -------------
-Login ───────────────────►  auth (username/password)
-Wizard input ─────────────►  POST /produksi_harian          Dashboard Live ◄── Realtime
-                          ◄── RETURNING id_produksi             │
-Simpan detail ───────────►  POST /produksi_detail              │
-                          ◄── snapshot ongkos_kerja            │
-                               │                               │
-                          Payroll: SELECT v_rekap_gaji ────────┘
-                          "Data Produksi" edit ──► UPDATE (kapan saja, admin)
+Mandor / Admin (HP/PC)          Server lokal (Node+Express)         MySQL (Laragon)
+------------------------        --------------------------           ----------------
+Login ──────────────────────►  POST /api/auth/login ──► verifikasi bcrypt → JWT
+Wizard input ───────────────►  POST /api/produksi ────► insert header + detail (snapshot ongkos)
+Dashboard (polling 5 dtk) ──►  GET /api/dashboard/today
+Payroll ────────────────────►  GET /api/payroll/rekap?periode=...
+Data Produksi edit ─────────►  PUT/DELETE /api/produksi/:id ──► (mandor dibatasi hari ini & punya sendiri)
 ```
 
-## 3. Struktur Folder (monorepo sederhana)
+## 3. Struktur Folder
 
 ```
 sepatu-pklkspt/
-├── docs/                        <- dokumentasi & skema (sudah ada)
-├── web/                         <- aplikasi React (Vite + TS + Tailwind)
-│   ├── src/
-│   │   ├── lib/                 <- supabase client, util, konstan (SHIFT, PERIODE)
-│   │   ├── components/          <- komponen UI bersama
-│   │   ├── features/
-│   │   │   ├── auth/            <- login admin & mandor
-│   │   │   ├── mandor/          <- wizard input, riwayat hari ini
-│   │   │   └── admin/           <- dashboard, payroll, master data, data produksi
-│   │   ├── layouts/             <- layout mobile (mandor & admin) + desktop (admin)
-│   │   └── pages/               <- routing
-│   ├── supabase/
-│   │   └── migrations/          <- file SQL (mulai dari docs/database-schema.sql)
-│   ├── package.json
-│   └── vite.config.ts
-└── mobile/                      <- (opsional) project WebView utk APK mandor
+├── docs/                        <- dokumentasi & skema (arsip desain)
+├── server/                      <- API lokal (Node + Express + MySQL)
+│   ├── src/routes/              <- auth, master, produksi, payroll, dashboard
+│   └── sql/                     <- schema.sql + seed.sql (yang dipakai)
+└── web/                         <- aplikasi React (Vite + TS + Tailwind)
+    ├── src/lib/                 <- api client (fetch), types, constants, config
+    ├── src/components/          <- komponen UI bersama
+    ├── src/context/             <- AuthContext (JWT + role)
+    ├── src/features/            <- auth, mandor, admin
+    ├── src/layouts/             <- layout mandor & admin (mobile-first)
+    └── src/App.tsx              <- routing + proteksi role
 ```
 
-## 4. RLS (Row Level Security) — Garis Besar
+## 4. Otorisasi (pengganti RLS)
 
-Supabase mewajibkan kebijakan keamanan per tabel. Rencana awal:
+Kebijakan diterapkan di backend (`server/src/routes/produksi.js`):
 
-| Tabel | Mandor | Admin |
+| Aksi | Mandor | Admin |
 | --- | --- | --- |
-| `pekerja`, `tipe_sepatu`, `master_ukuran`, `master_po` | `SELECT` (yang aktif) | `SELECT/INSERT/UPDATE/DELETE` |
-| `produksi_harian`, `produksi_detail` | `INSERT` + `SELECT` (hanya milik sendiri `created_by`) + `UPDATE/DELETE` **hanya data yang tanggal = hari ini** & milik sendiri | `SELECT/UPDATE/DELETE` **semua data, kapan saja** (override mandor) |
-
-> Detail RLS akan disempurnakan saat implementasi.
+| Master data (pekerja, model, ukuran, PO) | baca saja (yang aktif) | CRUD |
+| Simpan produksi | boleh (otomatis `created_by` = id mandor) | boleh |
+| Lihat produksi | hanya punya sendiri | semua |
+| Edit/hapus produksi | **hanya tanggal hari ini & miliknya** | **kapan saja** |
 
 ## 5. Catatan Penting
 
-- **Snapshot harga**: kolom `produksi_detail.ongkos_kerja_saat_ini` diisi dari `tipe_sepatu.ongkos_kerja` saat insert (lihat contoh query B di `database-schema.sql`). Ini menjamin perubahan harga tidak merusak riwayat.
-- **Periode gaji**: pakai fungsi `f_periode_gaji(tanggal)` → otomatis mengelompokkan 1–15 dan 16–akhir bulan.
-- **Ukuran fleksibel**: semua lewat `master_ukuran` + `produksi_detail`, tidak ada kolom `size_36..size_44` statis.
+- **Snapshot harga**: `produksi_detail.ongkos_kerja_saat_ini` diisi dari `tipe_sepatu.ongkos_kerja` saat insert. Mengubah harga master tidak merusak riwayat gaji.
+- **Periode gaji**: view `v_rekap_gaji` mengelompokkan otomatis `1–15` dan `16–akhir bulan`.
+- **Ukuran fleksibel**: lewat `master_ukuran` + `produksi_detail` — tidak ada kolom `size_36..size_44` statis.
+- **Akun uji**: `admin/admin123` dan `mandor/mandor123` (dari `seed.sql`).

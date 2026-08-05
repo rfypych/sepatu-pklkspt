@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'mandor'
 
 export interface UserProfile {
-  id: string
+  id: number
   username: string
   role: Role
   nama: string
@@ -9,71 +9,59 @@ export interface UserProfile {
 }
 
 export interface Pekerja {
-  id_pekerja: string
+  id_pekerja: number
   nama: string
-  status_aktif: boolean
-  created_at: string
+  status_aktif: boolean | number
+  created_at?: string
 }
 
 export interface TipeSepatu {
-  id_sepatu: string
+  id_sepatu: number
   nama_model: string
   ongkos_kerja: number
-  status_aktif: boolean
+  status_aktif: boolean | number
 }
 
 export interface MasterUkuran {
-  id_ukuran: string
+  id_ukuran: number
   label_ukuran: string
   urutan: number
-  status_aktif: boolean
+  status_aktif: boolean | number
 }
 
 export interface MasterPo {
-  id_po: string
+  id_po: number
   no_po: string
   nama_customer: string | null
-  tanggal_mulai: string | null
-  tanggal_selesai: string | null
-  catatan: string | null
-  status_aktif: boolean
+  status_aktif: boolean | number
 }
 
 export interface ProduksiHarian {
-  id_produksi: string
+  id_produksi: number
   tanggal: string
   shift: 1 | 2
-  id_pekerja: string
-  id_sepatu: string
-  id_po: string | null
+  id_pekerja: number
+  id_sepatu: number
+  id_po: number | null
   catatan: string | null
-  created_by: string | null
+  created_by: number | null
   created_at: string
   updated_at: string
 }
 
 export interface ProduksiDetail {
-  id_detail: string
-  id_produksi: string
-  id_ukuran: string
+  id_detail: number
+  id_produksi: number
+  id_ukuran: number
   qty: number
   ongkos_kerja_saat_ini: number
 }
 
-export interface ProduksiWithDetail extends ProduksiHarian {
-  nama_pekerja: string
-  nama_model: string
-  no_po: string | null
-  detail: ProduksiDetail[]
-  total_pasang: number
-  subtotal_gaji: number
-}
-
 export interface RekapGajiRow {
   periode: string
-  id_pekerja: string
+  id_pekerja: number
   nama_pekerja: string
-  id_sepatu: string
+  id_sepatu: number
   nama_model: string
   total_pasang: number
   total_gaji: number
