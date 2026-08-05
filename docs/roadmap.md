@@ -18,7 +18,7 @@ Urutan kerja dipecah supaya bisa **langsung dicoba Si A lebih awal** (fitur inpu
 - [ ] Wizard input: Pekerja → Shift → Model → Qty per ukuran → Ringkasan & SIMPAN.
 - [ ] Input qty pakai numpad (`type="number"`), default 0, validasi qty >= 0.
 - [ ] Simpan header + detail dengan snapshot ongkos (sekali transaksi).
-- [ ] Halaman "Riwayat Hari Ini": daftar data yang sudah diinput + edit/hapus (hari yang sama).
+- [ ] Halaman "Riwayat Hari Ini": daftar data yang sudah diinput + **edit/hapus data tanggal hari ini** (data hari sebelumnya terkunci).
 
 ## Fase 3 — Modul Admin: Master Data (2–3 hari)
 - [ ] Kelola Pekerja (CRUD + aktif/nonaktif).
@@ -29,6 +29,7 @@ Urutan kerja dipecah supaya bisa **langsung dicoba Si A lebih awal** (fitur inpu
 ## Fase 4 — Dashboard & Payroll (2–3 hari)
 - [ ] Dashboard live: total produksi hari ini, filter pekerja/model/tanggal.
 - [ ] Subscriptions Realtime supaya update otomatis saat mandor simpan.
+- [ ] Menu **"Data Produksi"**: list semua data + edit/hapus kapan saja (override mandor, khusus admin).
 - [ ] Payroll: pilih bulan → otomatis 2 periode → tabel rekap per pekerja + per model.
 - [ ] Total gaji = Σ (qty × ongkos snapshot).
 - [ ] Export Excel / PDF / cetak.
