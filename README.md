@@ -36,6 +36,7 @@ docs/
   requirements.md             <- rincian kebutuhan & aturan bisnis
   database-schema.sql         <- skema database + contoh query kalkulasi
   architecture.md             <- tech stack, arsitektur, struktur folder
+  flows.md                    <- alur kerja (mandor, admin, alur data)
   roadmap.md                  <- milestone implementasi
 ```
 
