@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS master_po (
   nama_customer   VARCHAR(100),
   tanggal_mulai   DATE,
   tanggal_selesai DATE,
+  target_qty      INTEGER     NOT NULL DEFAULT 0,   -- target pasang dari qty PO customer
   catatan         TEXT,
   status_aktif    SMALLINT    NOT NULL DEFAULT 1,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()

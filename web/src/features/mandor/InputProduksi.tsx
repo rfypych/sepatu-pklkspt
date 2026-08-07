@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getPekerjaAktif,
@@ -6,21 +6,16 @@ import {
   getTipeSepatuAktif,
   getUkuranAktif,
   simpanProduksiBatch,
-  simpanProduksi,
+  tambahPo,
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
 import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, Spinner } from '../../components/ui'
-
-// Mode input:
-//  - 'bertahap': wizard lama (pekerja -> shift -> satu model -> qty per ukuran)
-//  - 'tabel': satu layar, tambah banyak item berurutan, satu SIMPAN (seperti kertas)
-type Mode = 'bertahap' | 'tabel'
+import PoProgress from '../../components/PoProgress'
 
 export default function InputProduksi() {
   const navigate = useNavigate()
 
-  const [mode, setMode] = useState<Mode>('tabel')
   const [pekerjaList, setPekerjaList] = useState<Pekerja[]>([])
   const [modelList, setModelList] = useState<TipeSepatu[]>([])
   const [ukuranList, setUkuranList] = useState<MasterUkuran[]>([])
@@ -30,19 +25,21 @@ export default function InputProduksi() {
 
   const [sukses, setSukses] = useState(false)
   const [suksesInfo, setSuksesInfo] = useState<string>('')
+  const [suksesPo, setSuksesPo] = useState<{ no_po: string; achieved: number; target: number } | null>(null)
 
-  // State dipakai kedua mode
+  // Satu alur: pekerja -> shift -> PO (opsional) -> tambah item berurutan -> SIMPAN
   const [idPekerja, setIdPekerja] = useState<number | null>(null)
   const [shift, setShift] = useState<1 | 2>(1)
   const [idPo, setIdPo] = useState<number | null>(null)
-
-  // Mode bertahap (wizard lama)
-  const [step, setStep] = useState<'pekerja' | 'shift' | 'model' | 'po' | 'qty' | 'ringkas'>('pekerja')
-  const [idSepatu, setIdSepatu] = useState<number | null>(null)
-  const [qty, setQty] = useState<Record<string, number>>({})
-
-  // Mode tabel: daftar item yang sudah ditambahkan
   const [items, setItems] = useState<{ id_sepatu: number; qty: Record<string, number> }[]>([])
+
+  const reloadPo = useCallback(async () => {
+    try {
+      setPoList(await getPoAktif())
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }, [])
 
   useEffect(() => {
     Promise.all([getPekerjaAktif(), getTipeSepatuAktif(), getUkuranAktif(), getPoAktif()])
@@ -57,15 +54,12 @@ export default function InputProduksi() {
   }, [])
 
   function resetBaru() {
-    // Selesai simpan: kembali ke pilih pekerja (pertahankan mode)
     setIdPekerja(null)
     setIdPo(null)
-    setIdSepatu(null)
-    setQty({})
     setItems([])
-    setStep('pekerja')
     setSukses(false)
     setSuksesInfo('')
+    setSuksesPo(null)
     setError(null)
   }
 
@@ -81,6 +75,12 @@ export default function InputProduksi() {
         <p className="mt-1 text-sm text-slate-500">
           {pekerja?.nama} · {shift === 1 ? 'Shift 1' : 'Shift 2'} · {suksesInfo}
         </p>
+        {suksesPo && (
+          <div className="mt-3 w-full max-w-xs rounded-2xl bg-white p-3 text-left shadow-sm">
+            <div className="text-sm font-semibold text-slate-900">📦 {suksesPo.no_po}</div>
+            <PoProgress target={suksesPo.target} achieved={suksesPo.achieved} />
+          </div>
+        )}
         <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
           <BigButton onClick={resetBaru} className="w-full">
             Input Lagi
@@ -95,101 +95,47 @@ export default function InputProduksi() {
 
   return (
     <div className="px-4 py-4">
-      {/* Pilih mode */}
-      <div className="mb-4 flex gap-2">
-        {(
-          [
-            { id: 'tabel', label: '📋 Tabel' },
-            { id: 'bertahap', label: '🪜 Bertahap' },
-          ] as { id: Mode; label: string }[]
-        ).map((m) => (
-          <button
-            key={m.id}
-            onClick={() => {
-              setMode(m.id)
-              setError(null)
-            }}
-            className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-              mode === m.id ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-300'
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
       {error && (
         <div className="mb-3">
           <ErrorBox message={error} />
         </div>
       )}
 
-      {mode === 'tabel' ? (
-        <InputTabel
-          pekerjaList={pekerjaList}
-          modelList={modelList}
-          ukuranList={ukuranList}
-          poList={poList}
-          idPekerja={idPekerja}
-          setIdPekerja={setIdPekerja}
-          shift={shift}
-          setShift={setShift}
-          idPo={idPo}
-          setIdPo={setIdPo}
-          items={items}
-          setItems={setItems}
-          onSimpan={async (payload) => {
-            const r = await simpanProduksiBatch(payload)
-            setSuksesInfo(
-              `${r.jumlah} item · ${payload.items.reduce((a, it) => a + it.qtyPerUkuran.reduce((x, d) => x + d.qty, 0), 0)} pasang`,
-            )
-          }}
-        />
-      ) : (
-        <InputBertahap
-          pekerjaList={pekerjaList}
-          modelList={modelList}
-          ukuranList={ukuranList}
-          poList={poList}
-          idPekerja={idPekerja}
-          setIdPekerja={setIdPekerja}
-          shift={shift}
-          setShift={setShift}
-          idPo={idPo}
-          setIdPo={setIdPo}
-          step={step}
-          setStep={setStep}
-          idSepatu={idSepatu}
-          setIdSepatu={setIdSepatu}
-          qty={qty}
-          setQty={setQty}
-          onSimpan={async () => {
-            const r = await simpanProduksi({
-              tanggal: tanggalHariIni(),
-              shift,
-              id_pekerja: idPekerja ?? 0,
-              id_sepatu: idSepatu ?? 0,
-              id_po: idPo,
-              qtyPerUkuran: ukuranList.map((u) => ({
-                id_ukuran: String(u.id_ukuran),
-                qty: qty[String(u.id_ukuran)] ?? 0,
-              })),
-            })
-            void r
-            const total = ukuranList.reduce((a, u) => a + (qty[String(u.id_ukuran)] ?? 0), 0)
-            const model = modelList.find((m) => m.id_sepatu === idSepatu)
-            setSuksesInfo(`${model?.nama_model ?? ''} · ${total} pasang`)
-          }}
-        />
-      )}
+      <FormInput
+        pekerjaList={pekerjaList}
+        modelList={modelList}
+        ukuranList={ukuranList}
+        poList={poList}
+        idPekerja={idPekerja}
+        setIdPekerja={setIdPekerja}
+        shift={shift}
+        setShift={setShift}
+        idPo={idPo}
+        setIdPo={setIdPo}
+        items={items}
+        setItems={setItems}
+        onSimpan={async (payload) => {
+          const r = await simpanProduksiBatch(payload)
+          const totalPasang = payload.items.reduce((a, it) => a + it.qtyPerUkuran.reduce((x, d) => x + d.qty, 0), 0)
+          setSuksesInfo(`${r.jumlah} item · ${totalPasang} pasang`)
+          const po = poList.find((p) => p.id_po === idPo)
+          if (po) {
+            setSuksesPo({ no_po: po.no_po, achieved: po.achieved_qty + totalPasang, target: po.target_qty })
+          } else {
+            setSuksesPo(null)
+          }
+          void reloadPo()
+        }}
+        reloadPo={reloadPo}
+      />
     </div>
   )
 }
 
 // ============================================================================
-// MODE TABEL — tambah banyak item berurutan, simpan sekali
+// FORM INPUT — satu alur multi-item (mandor dapat item acak dari loker)
 // ============================================================================
-function InputTabel({
+function FormInput({
   pekerjaList,
   modelList,
   ukuranList,
@@ -203,13 +149,14 @@ function InputTabel({
   items,
   setItems,
   onSimpan,
+  reloadPo,
 }: {
   pekerjaList: Pekerja[]
   modelList: TipeSepatu[]
   ukuranList: MasterUkuran[]
   poList: MasterPo[]
   idPekerja: number | null
-  setIdPekerja: (id: number) => void
+  setIdPekerja: (id: number | null) => void
   shift: 1 | 2
   setShift: (s: 1 | 2) => void
   idPo: number | null
@@ -217,8 +164,12 @@ function InputTabel({
   items: { id_sepatu: number; qty: Record<string, number> }[]
   setItems: React.Dispatch<React.SetStateAction<{ id_sepatu: number; qty: Record<string, number> }[]>>
   onSimpan: (payload: import('../../lib/api').SimpanBatchInput) => Promise<void>
+  reloadPo: () => Promise<void>
 }) {
   const [pilihModel, setPilihModel] = useState(false)
+  const [pilihPo, setPilihPo] = useState(false)
+  const [tambahPoMode, setTambahPoMode] = useState(false)
+  const [poForm, setPoForm] = useState({ no_po: '', customer: '', target: '' })
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -226,10 +177,7 @@ function InputTabel({
     (a, it) => a + ukuranList.reduce((x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0), 0),
     0,
   )
-
-  function hitungPerItem(it: { id_sepatu: number; qty: Record<string, number> }) {
-    return ukuranList.reduce((x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0), 0)
-  }
+  const selectedPo = poList.find((p) => p.id_po === idPo)
 
   function onTambahItem(idSepatu: number) {
     if (items.some((it) => it.id_sepatu === idSepatu)) {
@@ -288,6 +236,25 @@ function InputTabel({
     }
   }
 
+  async function submitPo(e: React.FormEvent) {
+    e.preventDefault()
+    if (!poForm.no_po.trim()) {
+      setError('No PO wajib diisi.')
+      return
+    }
+    try {
+      const r = await tambahPo(poForm.no_po.trim(), poForm.customer.trim(), Number(poForm.target) || 0)
+      await reloadPo()
+      setIdPo(r.id_po)
+      setPoForm({ no_po: '', customer: '', target: '' })
+      setTambahPoMode(false)
+      setPilihPo(false)
+      setError(null)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
   if (!idPekerja) {
     return (
       <div className="space-y-3">
@@ -302,6 +269,108 @@ function InputTabel({
           </button>
         ))}
         {pekerjaList.length === 0 && <p className="text-sm text-slate-500">Belum ada pekerja aktif.</p>}
+      </div>
+    )
+  }
+
+  if (pilihPo) {
+    return (
+      <div className="space-y-3">
+        <h1 className="text-lg font-bold text-slate-900">Pilih PO</h1>
+        <button
+          onClick={() => {
+            setIdPo(null)
+            setPilihPo(false)
+          }}
+          className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-base font-semibold text-slate-500"
+        >
+          ⏭️ Lewati (tanpa PO)
+        </button>
+        {poList.map((p) => {
+          const penuh = p.target_qty > 0 && p.achieved_qty >= p.target_qty
+          return (
+            <button
+              key={p.id_po}
+              onClick={() => {
+                setIdPo(p.id_po)
+                setPilihPo(false)
+              }}
+              disabled={penuh}
+              className={`w-full rounded-2xl border-2 bg-white p-4 text-left shadow-sm transition-colors ${
+                penuh
+                  ? 'cursor-not-allowed border-slate-200 opacity-60'
+                  : 'border-transparent active:border-emerald-500 active:bg-emerald-50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">📦 {p.no_po}</span>
+                {p.nama_customer && <span className="text-sm text-slate-500">{p.nama_customer}</span>}
+              </div>
+              {p.target_qty > 0 ? (
+                <div className="pointer-events-none">
+                  <PoProgress target={p.target_qty} achieved={p.achieved_qty} />
+                </div>
+              ) : (
+                <div className="mt-1 text-xs text-slate-400">
+                  {p.achieved_qty > 0 ? `${p.achieved_qty} pasang terinput` : 'Belum ada target / produksi'}
+                </div>
+              )}
+            </button>
+          )
+        })}
+        {poList.length === 0 && <p className="text-sm text-slate-500">Belum ada PO. Buat PO baru di bawah.</p>}
+
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+          {tambahPoMode ? (
+            <form onSubmit={submitPo} className="space-y-2">
+              <div className="text-sm font-bold text-slate-700">➕ PO Baru</div>
+              <input
+                placeholder="No PO (cth: PO-2026-003)"
+                value={poForm.no_po}
+                onChange={(e) => setPoForm((f) => ({ ...f, no_po: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <input
+                placeholder="Customer (opsional)"
+                value={poForm.customer}
+                onChange={(e) => setPoForm((f) => ({ ...f, customer: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <input
+                placeholder="Target jumlah (pasang) — dari qty PO customer"
+                inputMode="numeric"
+                value={poForm.target}
+                onChange={(e) => setPoForm((f) => ({ ...f, target: e.target.value.replace(/[^\d]/g, '') }))}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <BigButton
+                  variant="ghost"
+                  type="button"
+                  onClick={() => {
+                    setTambahPoMode(false)
+                    setError(null)
+                  }}
+                >
+                  Batal
+                </BigButton>
+                <BigButton type="submit" disabled={saving}>
+                  Simpan PO
+                </BigButton>
+              </div>
+            </form>
+          ) : (
+            <BigButton variant="secondary" className="w-full" onClick={() => setTambahPoMode(true)}>
+              ＋ Tambah PO Baru
+            </BigButton>
+          )}
+        </div>
+
+        {error && <ErrorBox message={error} />}
+
+        <BigButton variant="ghost" className="w-full" onClick={() => setPilihPo(false)}>
+          ← Kembali
+        </BigButton>
       </div>
     )
   }
@@ -336,7 +405,12 @@ function InputTabel({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-slate-900">Input Produksi</h1>
-        <div className="text-sm text-slate-500">{pekerjaList.find((p) => p.id_pekerja === idPekerja)?.nama}</div>
+        <button
+          onClick={() => setIdPekerja(null)}
+          className="text-sm font-semibold text-slate-500 underline"
+        >
+          {pekerjaList.find((p) => p.id_pekerja === idPekerja)?.nama} ✕
+        </button>
       </div>
 
       {/* Shift */}
@@ -362,20 +436,32 @@ function InputTabel({
 
       {/* PO (opsional) */}
       <div>
-        <div className="mb-2 text-sm font-semibold text-slate-600">PO (opsional)</div>
-        <select
-          value={idPo ?? ''}
-          onChange={(e) => setIdPo(e.target.value ? Number(e.target.value) : null)}
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          <option value="">Lewati (tanpa PO)</option>
-          {poList.map((p) => (
-            <option key={p.id_po} value={p.id_po}>
-              {p.no_po}
-              {p.nama_customer ? ` — ${p.nama_customer}` : ''}
-            </option>
-          ))}
-        </select>
+        <div className="mb-2 text-sm font-semibold text-slate-600">PO</div>
+        {selectedPo ? (
+          <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-3">
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-slate-900">📦 {selectedPo.no_po}</div>
+              <button onClick={() => setPilihPo(true)} className="text-xs font-bold text-emerald-700 underline">
+                Ganti
+              </button>
+            </div>
+            {selectedPo.nama_customer && (
+              <div className="text-xs text-slate-500">{selectedPo.nama_customer}</div>
+            )}
+            {selectedPo.target_qty > 0 && (
+              <div className="pointer-events-none">
+                <PoProgress target={selectedPo.target_qty} achieved={selectedPo.achieved_qty} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={() => setPilihPo(true)}
+            className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-white p-3 text-sm font-semibold text-slate-500"
+          >
+            📦 Pilih PO (opsional)
+          </button>
+        )}
       </div>
 
       {/* Daftar item yang sudah ditambahkan */}
@@ -400,7 +486,7 @@ function InputTabel({
           <div className="space-y-3">
             {items.map((it, idx) => {
               const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
-              const subTotal = hitungPerItem(it)
+              const subTotal = ukuranList.reduce((x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0), 0)
               return (
                 <Card key={idx}>
                   <div className="mb-2 flex items-center justify-between">
@@ -450,276 +536,6 @@ function InputTabel({
       <BigButton disabled={saving || totalPasang <= 0} onClick={simpan} className="w-full py-4 text-lg">
         {saving ? 'Menyimpan...' : 'SIMPAN SEMUA'}
       </BigButton>
-    </div>
-  )
-}
-
-// ============================================================================
-// MODE BERTAHAP — wizard lama (satu model per simpan)
-// ============================================================================
-function InputBertahap({
-  pekerjaList,
-  modelList,
-  ukuranList,
-  poList,
-  idPekerja,
-  setIdPekerja,
-  shift,
-  setShift,
-  idPo,
-  setIdPo,
-  step,
-  setStep,
-  idSepatu,
-  setIdSepatu,
-  qty,
-  setQty,
-  onSimpan,
-}: {
-  pekerjaList: Pekerja[]
-  modelList: TipeSepatu[]
-  ukuranList: MasterUkuran[]
-  poList: MasterPo[]
-  idPekerja: number | null
-  setIdPekerja: (id: number) => void
-  shift: 1 | 2
-  setShift: (s: 1 | 2) => void
-  idPo: number | null
-  setIdPo: (id: number | null) => void
-  step: 'pekerja' | 'shift' | 'model' | 'po' | 'qty' | 'ringkas'
-  setStep: (s: 'pekerja' | 'shift' | 'model' | 'po' | 'qty' | 'ringkas') => void
-  idSepatu: number | null
-  setIdSepatu: (id: number) => void
-  qty: Record<string, number>
-  setQty: React.Dispatch<React.SetStateAction<Record<string, number>>>
-  onSimpan: () => Promise<void>
-}) {
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const totalPasang = ukuranList.reduce((acc, u) => acc + (qty[String(u.id_ukuran)] ?? 0), 0)
-  const pekerja = pekerjaList.find((p) => p.id_pekerja === idPekerja)
-  const model = modelList.find((m) => m.id_sepatu === idSepatu)
-  const po = poList.find((p) => p.id_po === idPo)
-
-  async function simpan() {
-    setSaving(true)
-    setError(null)
-    try {
-      await onSimpan()
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const stepTitles: Record<typeof step, string> = {
-    pekerja: 'Pilih Pekerja',
-    shift: 'Pilih Shift',
-    model: 'Pilih Model Sepatu',
-    po: 'PO (Opsional)',
-    qty: 'Isi Jumlah per Ukuran',
-    ringkas: 'Cek & Simpan',
-  }
-
-  return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-slate-900">{stepTitles[step]}</h1>
-        <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-          <span>Langkah</span>
-          <span className="rounded-full bg-slate-900 px-2 py-0.5 text-white">
-            {['pekerja', 'shift', 'model', 'po', 'qty', 'ringkas'].indexOf(step) + 1}/6
-          </span>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-3">
-          <ErrorBox message={error} />
-        </div>
-      )}
-
-      {step === 'pekerja' && (
-        <div className="space-y-3">
-          {pekerjaList.map((p) => (
-            <button
-              key={p.id_pekerja}
-              onClick={() => {
-                setIdPekerja(p.id_pekerja)
-                setStep('shift')
-              }}
-              className="w-full rounded-2xl border-2 border-transparent bg-white p-4 text-left text-base font-semibold text-slate-800 shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
-            >
-              👤 {p.nama}
-            </button>
-          ))}
-          {pekerjaList.length === 0 && <p className="text-sm text-slate-500">Belum ada pekerja aktif.</p>}
-        </div>
-      )}
-
-      {step === 'shift' && (
-        <div className="space-y-3">
-          {SHIFTS.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => {
-                setShift(s.value)
-                setStep('model')
-              }}
-              className="w-full rounded-2xl border-2 border-transparent bg-white p-5 text-center shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
-            >
-              <div className="text-xl font-bold text-slate-900">{s.label}</div>
-              <div className="text-sm text-slate-500">{s.sub}</div>
-            </button>
-          ))}
-          <BigButton variant="ghost" className="w-full" onClick={() => setStep('pekerja')}>
-            ← Kembali
-          </BigButton>
-        </div>
-      )}
-
-      {step === 'model' && (
-        <div className="space-y-3">
-          {modelList.map((m) => (
-            <button
-              key={m.id_sepatu}
-              onClick={() => {
-                setIdSepatu(m.id_sepatu)
-                setStep('po')
-              }}
-              className="flex w-full items-center justify-between rounded-2xl border-2 border-transparent bg-white p-4 shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
-            >
-              <span className="text-base font-semibold text-slate-800">👟 {m.nama_model}</span>
-              <span className="text-sm text-slate-500">{formatRupiah(m.ongkos_kerja)}/pasang</span>
-            </button>
-          ))}
-          {modelList.length === 0 && <p className="text-sm text-slate-500">Belum ada model sepatu aktif.</p>}
-          <BigButton variant="ghost" className="w-full" onClick={() => setStep('shift')}>
-            ← Kembali
-          </BigButton>
-        </div>
-      )}
-
-      {step === 'po' && (
-        <div className="space-y-3">
-          <button
-            onClick={() => setStep('qty')}
-            className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-base font-semibold text-slate-500"
-          >
-            Lewati (tanpa PO)
-          </button>
-          {poList.map((p) => (
-            <button
-              key={p.id_po}
-              onClick={() => {
-                setIdPo(p.id_po)
-                setStep('qty')
-              }}
-              className="w-full rounded-2xl border-2 border-transparent bg-white p-4 text-left shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
-            >
-              <div className="font-semibold text-slate-800">📦 {p.no_po}</div>
-              {p.nama_customer && <div className="text-sm text-slate-500">Customer: {p.nama_customer}</div>}
-            </button>
-          ))}
-          {poList.length === 0 && <p className="text-sm text-slate-500">Belum ada PO. Pilih "Lewati".</p>}
-          <BigButton variant="ghost" className="w-full" onClick={() => setStep('model')}>
-            ← Kembali
-          </BigButton>
-        </div>
-      )}
-
-      {step === 'qty' && (
-        <div className="space-y-3">
-          {ukuranList.map((u) => (
-            <div key={u.id_ukuran} className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
-              <span className="text-lg font-bold text-slate-800">{u.label_ukuran}</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                placeholder="0"
-                value={qty[String(u.id_ukuran)] ?? ''}
-                onChange={(e) =>
-                  setQty((prev) => ({
-                    ...prev,
-                    [String(u.id_ukuran)]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
-                  }))
-                }
-                className="w-24 rounded-xl border border-slate-300 px-4 py-3 text-center text-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          ))}
-          {ukuranList.length === 0 && (
-            <p className="text-sm text-slate-500">Belum ada ukuran aktif. Atur di Master Data.</p>
-          )}
-
-          <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-white">
-            <span className="font-semibold">Total Pasang</span>
-            <span className="text-xl font-bold">{totalPasang}</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <BigButton variant="ghost" onClick={() => setStep('po')}>
-              ← Kembali
-            </BigButton>
-            <BigButton disabled={totalPasang <= 0} onClick={() => setStep('ringkas')}>
-              Lanjut →
-            </BigButton>
-          </div>
-        </div>
-      )}
-
-      {step === 'ringkas' && (
-        <Card>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Pekerja</dt>
-              <dd className="font-semibold text-slate-900">{pekerja?.nama}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Shift</dt>
-              <dd className="font-semibold text-slate-900">
-                {shift === 1 ? 'Shift 1 (Pagi)' : 'Shift 2 (Siang/Malam)'}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Model</dt>
-              <dd className="font-semibold text-slate-900">{model?.nama_model}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Ongkos</dt>
-              <dd className="font-semibold text-slate-900">
-                {model ? formatRupiah(model.ongkos_kerja) : '-'}/pasang
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">PO</dt>
-              <dd className="font-semibold text-slate-900">{po?.no_po ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between border-t border-slate-200 pt-2">
-              <dt className="text-slate-500">Total Pasang</dt>
-              <dd className="text-lg font-bold text-emerald-700">{totalPasang}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Perkiraan Gaji</dt>
-              <dd className="text-lg font-bold text-emerald-700">
-                {model ? formatRupiah(totalPasang * model.ongkos_kerja) : '-'}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <BigButton variant="ghost" onClick={() => setStep('qty')}>
-              ← Edit
-            </BigButton>
-            <BigButton onClick={simpan} disabled={saving}>
-              {saving ? 'Menyimpan...' : 'SIMPAN'}
-            </BigButton>
-          </div>
-        </Card>
-      )}
     </div>
   )
 }

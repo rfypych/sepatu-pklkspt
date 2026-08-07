@@ -33,6 +33,8 @@ export interface MasterPo {
   id_po: number
   no_po: string
   nama_customer: string | null
+  target_qty: number
+  achieved_qty: number
   status_aktif: boolean | number
 }
 

@@ -22,6 +22,6 @@ INSERT INTO master_ukuran (label_ukuran, urutan) VALUES
   ('36', 1), ('37', 2), ('38', 3), ('39', 4), ('40', 5),
   ('41', 6), ('42', 7), ('43', 8), ('44', 9);
 
-INSERT INTO master_po (no_po, nama_customer) VALUES
-  ('PO-2026-001', 'Toko Sentral'),
-  ('PO-2026-002', 'Distributor Jaya');
+INSERT INTO master_po (no_po, nama_customer, target_qty) VALUES
+  ('PO-2026-001', 'Toko Sentral',      1200),
+  ('PO-2026-002', 'Distributor Jaya',  800);

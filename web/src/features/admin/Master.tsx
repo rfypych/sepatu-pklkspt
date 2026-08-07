@@ -16,6 +16,7 @@ import {
 } from '../../lib/api'
 import { formatRupiah } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, FieldLabel, Spinner, TextInput } from '../../components/ui'
+import PoProgress from '../../components/PoProgress'
 
 type Tab = 'pekerja' | 'model' | 'ukuran' | 'po'
 
@@ -308,22 +309,32 @@ function TabPo({ setError }: { setError: (m: string | null) => void }) {
   const { list, setList, loading, reload } = useList(getPoSemua, setError)
   const [noPo, setNoPo] = useState('')
   const [customer, setCustomer] = useState('')
+  const [target, setTarget] = useState('')
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
     if (!noPo.trim()) return
     try {
-      await tambahPo(noPo.trim(), customer.trim())
+      await tambahPo(noPo.trim(), customer.trim(), Number(target) || 0)
       setNoPo('')
       setCustomer('')
+      setTarget('')
       await reload()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+  async function simpanTarget(p: MasterPo) {
+    try {
+      await ubahPo(p.id_po, { target_qty: p.target_qty })
+      setError('Target PO disimpan.')
     } catch (err) {
       setError((err as Error).message)
     }
   }
   async function toggle(p: MasterPo) {
     try {
-      await ubahPo(p.id_po, !Boolean(p.status_aktif))
+      await ubahPo(p.id_po, { status_aktif: !Boolean(p.status_aktif) })
       setList((prev) =>
         prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: !x.status_aktif } : x)),
       )
@@ -342,26 +353,58 @@ function TabPo({ setError }: { setError: (m: string | null) => void }) {
             <TextInput placeholder="No PO (cth: PO-2026-001)" value={noPo} onChange={(e) => setNoPo(e.target.value)} />
             <TextInput placeholder="Customer (opsional)" value={customer} onChange={(e) => setCustomer(e.target.value)} />
           </div>
+          <TextInput
+            placeholder="Target jumlah (pasang), sesuai qty PO customer"
+            inputMode="numeric"
+            value={target}
+            onChange={(e) => setTarget(e.target.value.replace(/[^\d]/g, ''))}
+          />
           <BigButton type="submit" className="w-full py-2.5">+ Tambah</BigButton>
         </form>
       </Card>
 
       {list.map((p) => (
-        <Card key={p.id_po} className="flex items-center justify-between">
-          <div>
-            <div className={`font-semibold ${p.status_aktif ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
-              📦 {p.no_po}
+        <Card key={p.id_po}>
+          <div className="flex items-start justify-between">
+            <div>
+              <div className={`font-semibold ${p.status_aktif ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
+                📦 {p.no_po}
+              </div>
+              {p.nama_customer && <div className="text-sm text-slate-500">{p.nama_customer}</div>}
             </div>
-            {p.nama_customer && <div className="text-sm text-slate-500">{p.nama_customer}</div>}
+            <button
+              onClick={() => toggle(p)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                p.status_aktif ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+              }`}
+            >
+              {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
+            </button>
           </div>
-          <button
-            onClick={() => toggle(p)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-              p.status_aktif ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
-            }`}
-          >
-            {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
-          </button>
+
+          <div className="mt-2 flex items-center gap-2">
+            <span className="shrink-0 text-xs text-slate-500">Target</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={p.target_qty}
+              onChange={(e) =>
+                setList((prev) =>
+                  prev.map((x) =>
+                    x.id_po === p.id_po ? { ...x, target_qty: Number(e.target.value) || 0 } : x,
+                  ),
+                )
+              }
+              className="w-24 rounded-xl border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+            <span className="text-xs text-slate-500">pasang</span>
+            <BigButton variant="secondary" className="py-1.5" onClick={() => simpanTarget(p)}>
+              Simpan
+            </BigButton>
+          </div>
+
+          <PoProgress target={p.target_qty} achieved={p.achieved_qty} />
         </Card>
       ))}
     </div>

@@ -111,6 +111,7 @@ router.patch('/ukuran/:id', adminOnly, async (req, res) => {
 })
 
 // ---------------- PO ----------------
+// Mandor juga boleh menambah PO (target sesuai qty dari customer).
 router.get('/po', async (req, res) => {
   try {
     res.json(await listPo(req.query.aktif === 'true'))
@@ -119,16 +120,17 @@ router.get('/po', async (req, res) => {
   }
 })
 
-router.post('/po', adminOnly, async (req, res) => {
+router.post('/po', async (req, res) => {
   try {
     const noPo = (req.body.no_po || '').trim()
     if (!noPo) return res.status(400).json({ error: 'No PO wajib diisi' })
     const customer = (req.body.nama_customer || '').trim() || null
+    const target = Math.max(0, Math.floor(Number(req.body.target_qty) || 0))
     const { rows } = await pool.query(
-      'INSERT INTO master_po (no_po, nama_customer) VALUES ($1, $2) RETURNING id_po',
-      [noPo, customer],
+      'INSERT INTO master_po (no_po, nama_customer, target_qty) VALUES ($1, $2, $3) RETURNING id_po',
+      [noPo, customer, target],
     )
-    res.json({ id_po: Number(rows[0].id_po), no_po: noPo, nama_customer: customer })
+    res.json({ id_po: Number(rows[0].id_po), no_po: noPo, nama_customer: customer, target_qty: target })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -136,8 +138,12 @@ router.post('/po', adminOnly, async (req, res) => {
 
 router.patch('/po/:id', adminOnly, async (req, res) => {
   try {
-    const { status_aktif } = req.body ?? {}
-    await pool.query('UPDATE master_po SET status_aktif = $1 WHERE id_po = $2', [status_aktif ? 1 : 0, Number(req.params.id)])
+    const { no_po, nama_customer, target_qty, status_aktif } = req.body ?? {}
+    const id = Number(req.params.id)
+    if (no_po !== undefined) await pool.query('UPDATE master_po SET no_po = $1 WHERE id_po = $2', [String(no_po).trim(), id])
+    if (nama_customer !== undefined) await pool.query('UPDATE master_po SET nama_customer = $1 WHERE id_po = $2', [String(nama_customer).trim() || null, id])
+    if (target_qty !== undefined) await pool.query('UPDATE master_po SET target_qty = $1 WHERE id_po = $2', [Math.max(0, Math.floor(Number(target_qty) || 0)), id])
+    if (status_aktif !== undefined) await pool.query('UPDATE master_po SET status_aktif = $1 WHERE id_po = $2', [status_aktif ? 1 : 0, id])
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })

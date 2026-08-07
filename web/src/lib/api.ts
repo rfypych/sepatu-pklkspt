@@ -78,12 +78,17 @@ export const ubahUkuran = (id: number, status_aktif: boolean) =>
   patch<{ ok: boolean }>(`/ukuran/${id}`, { status_aktif })
 
 // ---------------- PO ----------------
-export const getPoAktif = () => get<MasterPo[]>('/po?aktif=true')
-export const getPoSemua = () => get<MasterPo[]>('/po')
-export const tambahPo = (no_po: string, nama_customer: string) =>
-  post<MasterPo>('/po', { no_po, nama_customer })
-export const ubahPo = (id: number, status_aktif: boolean) =>
-  patch<{ ok: boolean }>(`/po/${id}`, { status_aktif })
+const normPo = (p: MasterPo): MasterPo => ({
+  ...p,
+  target_qty: toNum(p.target_qty),
+  achieved_qty: toNum(p.achieved_qty),
+})
+export const getPoAktif = async () => (await get<MasterPo[]>('/po?aktif=true')).map(normPo)
+export const getPoSemua = async () => (await get<MasterPo[]>('/po')).map(normPo)
+export const tambahPo = (no_po: string, nama_customer: string, target_qty: number) =>
+  post<MasterPo>('/po', { no_po, nama_customer, target_qty })
+export const ubahPo = (id: number, body: { no_po?: string; nama_customer?: string; target_qty?: number; status_aktif?: boolean }) =>
+  patch<{ ok: boolean }>(`/po/${id}`, body)
 
 // ---------------- PRODUKSI ----------------
 export interface SimpanInput {

@@ -41,9 +41,19 @@ export async function listUkuran(aktifOnly = false) {
 }
 
 export async function listPo(aktifOnly = false) {
-  let sql = 'SELECT * FROM master_po'
-  if (aktifOnly) sql += ' WHERE status_aktif = 1'
-  sql += ' ORDER BY no_po'
+  // achieved_qty = total pasang yang sudah dicatat untuk PO tsb (akumulasi semua tanggal)
+  let sql = `
+    SELECT mp.*,
+      COALESCE((
+        SELECT SUM(pd.qty)
+        FROM produksi_detail pd
+        JOIN produksi_harian ph ON ph.id_produksi = pd.id_produksi
+        WHERE ph.id_po = mp.id_po
+      ), 0) AS achieved_qty
+    FROM master_po mp
+  `
+  if (aktifOnly) sql += ' WHERE mp.status_aktif = 1'
+  sql += ' ORDER BY mp.no_po'
   const { rows } = await pool.query(sql)
   return rows
 }
