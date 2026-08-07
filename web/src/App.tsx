@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './features/auth/Login'
+import Help from './features/help/Help'
 import MandorLayout from './layouts/MandorLayout'
 import AdminLayout from './layouts/AdminLayout'
 import InputProduksi from './features/mandor/InputProduksi'
@@ -28,10 +29,25 @@ function Protected({ role, children }: { role: 'admin' | 'mandor'; children: Rea
   return <>{children}</>
 }
 
+function ProtectedAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <Spinner />
+  if (!user) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
 function Router() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route
+        path="/help"
+        element={
+          <ProtectedAuth>
+            <Help />
+          </ProtectedAuth>
+        }
+      />
       <Route path="/" element={<HomeRedirect />} />
       <Route
         path="/mandor"

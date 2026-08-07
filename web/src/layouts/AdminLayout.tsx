@@ -6,6 +6,7 @@ const navItems = [
   { to: '/admin/produksi', label: 'Data Produksi', icon: '📝', end: false },
   { to: '/admin/payroll', label: 'Payroll', icon: '💰', end: false },
   { to: '/admin/master', label: 'Master Data', icon: '⚙️', end: false },
+  { to: '/help', label: 'Bantuan', icon: '🛟', end: false },
 ]
 
 export default function AdminLayout() {

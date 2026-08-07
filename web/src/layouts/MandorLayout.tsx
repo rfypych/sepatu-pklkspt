@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 const navItems = [
   { to: '/mandor', label: 'INPUT PRODUKSI', icon: '✏️' },
   { to: '/mandor/riwayat', label: 'RIWAYAT HARI INI', icon: '📋' },
+  { to: '/help', label: 'BANTUAN', icon: '🛟' },
 ]
 
 export default function MandorLayout() {
@@ -37,7 +38,7 @@ export default function MandorLayout() {
         <Outlet />
       </main>
 
-      <nav className="grid grid-cols-2 gap-2 border-t border-slate-200 bg-white p-2">
+      <nav className="grid grid-cols-3 gap-2 border-t border-slate-200 bg-white p-2">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
