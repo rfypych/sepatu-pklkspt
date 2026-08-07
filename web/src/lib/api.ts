@@ -123,9 +123,20 @@ export const getProduksi = async (tanggal?: string, idPekerja?: string) => {
 export const simpanProduksi = (
   input: SimpanInput,
 ) => post<{ id_produksi: number }>('/produksi', input)
-export const simpanProduksiBatch = (
-  rows: SimpanInput[],
-) => post<{ ids: number[] }>('/produksi/batch', { rows })
+
+export interface SimpanBatchItem {
+  id_sepatu: number
+  qtyPerUkuran: { id_ukuran: string; qty: number }[]
+}
+export interface SimpanBatchInput {
+  tanggal: string
+  shift: 1 | 2
+  id_pekerja: number
+  id_po: number | null
+  items: SimpanBatchItem[]
+}
+export const simpanProduksiBatch = (input: SimpanBatchInput) =>
+  post<{ jumlah: number; id_produksi_list: number[] }>('/produksi/batch', input)
 export const replaceProduksiDetail = (
   id: number,
   qtyPerUkuran: { id_ukuran: string; qty: number }[],

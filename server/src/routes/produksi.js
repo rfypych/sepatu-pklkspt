@@ -110,48 +110,48 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Simpan banyak baris produksi sekaligus (tabel mandor)
+// Simpan beberapa item sekaligus untuk satu pekerja dalam satu shift
+// (mandor dapat item acak dari loker, tidak tahu akan dapat item yang mana).
+// Body: { tanggal, shift, id_pekerja, id_po, items: [{ id_sepatu, qtyPerUkuran: [{id_ukuran, qty}] }] }
 router.post('/batch', async (req, res) => {
   const client = await pool.connect()
   try {
-    const { rows } = req.body ?? {}
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return res.status(400).json({ error: 'Tidak ada data untuk disimpan' })
+    const { tanggal, shift, id_pekerja, id_po, items } = req.body ?? {}
+    if (!tanggal || !shift || !id_pekerja || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Data tidak lengkap' })
+    }
+
+    const itemValid = items.filter((it) => it && it.id_sepatu && Array.isArray(it.qtyPerUkuran))
+    if (itemValid.length === 0) {
+      return res.status(400).json({ error: 'Tidak ada item yang diisi' })
     }
 
     await client.query('BEGIN')
-    const saved = []
-
-    for (const row of rows) {
-      const { tanggal, shift, id_pekerja, id_sepatu, id_po, qtyPerUkuran } = row ?? {}
-      if (!tanggal || !shift || !id_pekerja || !id_sepatu || !Array.isArray(qtyPerUkuran)) {
-        throw new Error('Data baris tidak lengkap')
-      }
-
-      const { rows: sepatu } = await client.query('SELECT ongkos_kerja FROM tipe_sepatu WHERE id_sepatu = $1', [Number(id_sepatu)])
+    const idProduksi = []
+    for (const it of itemValid) {
+      const { rows: sepatu } = await client.query('SELECT ongkos_kerja FROM tipe_sepatu WHERE id_sepatu = $1', [Number(it.id_sepatu)])
       const ongkos = Number(sepatu[0]?.ongkos_kerja ?? 0)
 
       const { rows: hdr } = await client.query(
         `INSERT INTO produksi_harian (tanggal, shift, id_pekerja, id_sepatu, id_po, created_by)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id_produksi`,
-        [tanggal, Number(shift), Number(id_pekerja), Number(id_sepatu), id_po ? Number(id_po) : null, req.user.id],
+        [tanggal, Number(shift), Number(id_pekerja), Number(it.id_sepatu), id_po ? Number(id_po) : null, req.user.id],
       )
-      const idProduksi = Number(hdr[0].id_produksi)
+      const id = Number(hdr[0].id_produksi)
+      idProduksi.push(id)
 
-      for (const d of qtyPerUkuran) {
+      for (const d of it.qtyPerUkuran) {
         const qty = Number(d.qty) || 0
         if (qty <= 0) continue
         await client.query(
           'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
-          [idProduksi, Number(d.id_ukuran), qty, ongkos],
+          [id, Number(d.id_ukuran), qty, ongkos],
         )
       }
-      saved.push(idProduksi)
     }
-
     await client.query('COMMIT')
-    res.json({ ids: saved })
+    res.json({ id_produksi: idProduksi[0], id_produksi_list: idProduksi, jumlah: idProduksi.length })
   } catch (e) {
     await client.query('ROLLBACK')
     res.status(500).json({ error: e.message })

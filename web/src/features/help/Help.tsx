@@ -84,17 +84,18 @@ export default function Help() {
 
         <Bagian judul="2️⃣ Untuk Mandor — Cara Input Produksi">
           <div className="space-y-3">
-            <p>
-              Dari menu <b>INPUT PRODUKSI</b>, Anda mengisi data dalam <b>satu tabel</b> seperti
-              mencatat di kertas. Setiap <b>baris</b> adalah satu pekerjaan:
+            <p>Dari menu <b>INPUT PRODUKSI</b>, ada 2 cara. Yang default adalah <b>📋 Tabel</b>:</p>
+            <Langkah nomor="1" judul="Pilih Pekerja" isi="Ketuk nama pekerja yang hari ini dicatat hasilnya." />
+            <Langkah nomor="2" judul="Pilih Shift" isi="Tekan tombol SHIFT 1 (pagi) atau SHIFT 2 (siang/malam)." />
+            <Langkah nomor="3" judul="Pilih PO bila perlu" isi="Opsional. Bisa dipilih nomor PO, atau biarkan 'Lewati'." />
+            <Langkah nomor="4" judul="+ Tambah Item" isi="Karena satu pekerja dalam satu shift bisa dapat item acak dari loker, tekan TAMBAH ITEM untuk tiap model yang keluar (misal Futsal, Brickmansion, dst)." />
+            <Langkah nomor="5" judul="Isi Jumlah per Ukuran" isi="Untuk tiap item, ketik jumlah pasang per ukuran 36–44. Isi 0/kosong untuk ukuran yang tidak ada hasilnya." />
+            <Langkah nomor="6" judul="SIMPAN SEMUA" isi="Setelah semua item diisi, tekan SIMPAN SEMUA. Semua item tersimpan sekaligus untuk pekerja & shift itu." />
+            <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-700">
+              💡 Mau input satu-satu seperti dulu? Tekan tombol <b>🪜 Bertahap</b> di atas.
             </p>
-            <Langkah nomor="1" judul="Isi baris" isi="Di tiap baris pilih Nama Pekerja, Shift (1 atau 2), dan Model Sepatu." />
-            <Langkah nomor="2" judul="Isi jumlah per ukuran" isi="Ketik jumlah pasang yang selesai pada kolom ukuran (36 sampai 44). Ukuran yang tidak ada hasilnya dibiarkan 0." />
-            <Langkah nomor="3" judul="Tambah baris bila perlu" isi="Tekan '+ Tambah Baris' bila hari ini mencatat lebih dari satu pekerjaan." />
-            <Langkah nomor="4" judul="PO (opsional)" isi="Di bagian atas tabel, pilih nomor PO bila perlu. Bisa dibiarkan 'Tanpa PO'." />
-            <Langkah nomor="5" judul="Tekan SIMPAN SEMUA" isi="Setelah semua baris terisi, tekan tombol SIMPAN SEMUA — semua baris tersimpan sekaligus." />
             <p className="rounded-lg bg-emerald-50 p-2 text-xs text-emerald-800">
-              ✅ Total pasang dihitung otomatis di kolom Total. Baris yang kosong (semua 0) tidak akan tersimpan.
+              ✅ Total pasang dihitung otomatis — tidak perlu menghitung sendiri.
             </p>
           </div>
         </Bagian>
