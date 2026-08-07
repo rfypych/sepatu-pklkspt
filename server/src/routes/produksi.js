@@ -110,6 +110,56 @@ router.post('/', async (req, res) => {
   }
 })
 
+// Simpan banyak baris produksi sekaligus (tabel mandor)
+router.post('/batch', async (req, res) => {
+  const client = await pool.connect()
+  try {
+    const { rows } = req.body ?? {}
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ error: 'Tidak ada data untuk disimpan' })
+    }
+
+    await client.query('BEGIN')
+    const saved = []
+
+    for (const row of rows) {
+      const { tanggal, shift, id_pekerja, id_sepatu, id_po, qtyPerUkuran } = row ?? {}
+      if (!tanggal || !shift || !id_pekerja || !id_sepatu || !Array.isArray(qtyPerUkuran)) {
+        throw new Error('Data baris tidak lengkap')
+      }
+
+      const { rows: sepatu } = await client.query('SELECT ongkos_kerja FROM tipe_sepatu WHERE id_sepatu = $1', [Number(id_sepatu)])
+      const ongkos = Number(sepatu[0]?.ongkos_kerja ?? 0)
+
+      const { rows: hdr } = await client.query(
+        `INSERT INTO produksi_harian (tanggal, shift, id_pekerja, id_sepatu, id_po, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id_produksi`,
+        [tanggal, Number(shift), Number(id_pekerja), Number(id_sepatu), id_po ? Number(id_po) : null, req.user.id],
+      )
+      const idProduksi = Number(hdr[0].id_produksi)
+
+      for (const d of qtyPerUkuran) {
+        const qty = Number(d.qty) || 0
+        if (qty <= 0) continue
+        await client.query(
+          'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
+          [idProduksi, Number(d.id_ukuran), qty, ongkos],
+        )
+      }
+      saved.push(idProduksi)
+    }
+
+    await client.query('COMMIT')
+    res.json({ ids: saved })
+  } catch (e) {
+    await client.query('ROLLBACK')
+    res.status(500).json({ error: e.message })
+  } finally {
+    client.release()
+  }
+})
+
 // Ganti detail (edit qty)
 router.put('/:id/detail', async (req, res) => {
   try {

@@ -123,6 +123,9 @@ export const getProduksi = async (tanggal?: string, idPekerja?: string) => {
 export const simpanProduksi = (
   input: SimpanInput,
 ) => post<{ id_produksi: number }>('/produksi', input)
+export const simpanProduksiBatch = (
+  rows: SimpanInput[],
+) => post<{ ids: number[] }>('/produksi/batch', { rows })
 export const replaceProduksiDetail = (
   id: number,
   qtyPerUkuran: { id_ukuran: string; qty: number }[],

@@ -84,15 +84,17 @@ export default function Help() {
 
         <Bagian judul="2️⃣ Untuk Mandor — Cara Input Produksi">
           <div className="space-y-3">
-            <p>Dari menu <b>INPUT PRODUKSI</b>, ikuti 6 langkah berikut:</p>
-            <Langkah nomor="1" judul="Pilih Pekerja" isi="Ketuk nama pekerja yang hari ini dicatat hasilnya." />
-            <Langkah nomor="2" judul="Pilih Shift" isi="Tekan tombol besar SHIFT 1 (pagi) atau SHIFT 2 (siang/malam)." />
-            <Langkah nomor="3" judul="Pilih Model Sepatu" isi="Futsal, Brickmansion, Onrush, Superstars, atau model lain yang aktif." />
-            <Langkah nomor="4" judul="PO (Opsional)" isi="Pilih nomor PO yang sedang dikerjakan, atau tekan 'Lewati' bila tidak pakai PO." />
-            <Langkah nomor="5" judul="Isi Jumlah per Ukuran" isi="Ketik jumlah pasang yang selesai untuk ukuran 36 sampai 44. Isi 0 (atau kosongkan) untuk ukuran yang tidak ada hasilnya." />
-            <Langkah nomor="6" judul="Cek & SIMPAN" isi="Periksa ringkasan, lalu tekan tombol SIMPAN. Data langsung tersimpan." />
+            <p>
+              Dari menu <b>INPUT PRODUKSI</b>, Anda mengisi data dalam <b>satu tabel</b> seperti
+              mencatat di kertas. Setiap <b>baris</b> adalah satu pekerjaan:
+            </p>
+            <Langkah nomor="1" judul="Isi baris" isi="Di tiap baris pilih Nama Pekerja, Shift (1 atau 2), dan Model Sepatu." />
+            <Langkah nomor="2" judul="Isi jumlah per ukuran" isi="Ketik jumlah pasang yang selesai pada kolom ukuran (36 sampai 44). Ukuran yang tidak ada hasilnya dibiarkan 0." />
+            <Langkah nomor="3" judul="Tambah baris bila perlu" isi="Tekan '+ Tambah Baris' bila hari ini mencatat lebih dari satu pekerjaan." />
+            <Langkah nomor="4" judul="PO (opsional)" isi="Di bagian atas tabel, pilih nomor PO bila perlu. Bisa dibiarkan 'Tanpa PO'." />
+            <Langkah nomor="5" judul="Tekan SIMPAN SEMUA" isi="Setelah semua baris terisi, tekan tombol SIMPAN SEMUA — semua baris tersimpan sekaligus." />
             <p className="rounded-lg bg-emerald-50 p-2 text-xs text-emerald-800">
-              ✅ Total pasang dan perkiraan gaji dihitung otomatis — Anda tidak perlu menghitung sendiri.
+              ✅ Total pasang dihitung otomatis di kolom Total. Baris yang kosong (semua 0) tidak akan tersimpan.
             </p>
           </div>
         </Bagian>
