@@ -10,6 +10,7 @@ import Dashboard from './features/admin/Dashboard'
 import DataProduksi from './features/admin/DataProduksi'
 import Payroll from './features/admin/Payroll'
 import Master from './features/admin/Master'
+import RekapHarian from './features/admin/RekapHarian'
 import { Spinner } from './components/ui'
 
 function HomeRedirect() {
@@ -70,6 +71,7 @@ function Router() {
       >
         <Route index element={<Dashboard />} />
         <Route path="produksi" element={<DataProduksi />} />
+        <Route path="rekap" element={<RekapHarian />} />
         <Route path="payroll" element={<Payroll />} />
         <Route path="master" element={<Master />} />
       </Route>

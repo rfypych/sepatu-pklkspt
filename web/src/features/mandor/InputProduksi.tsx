@@ -1,37 +1,46 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   getPekerjaAktif,
   getPoAktif,
+  getProduksiHariIni,
   getTipeSepatuAktif,
   getUkuranAktif,
+  hapusProduksi,
   simpanProduksiBatch,
   tambahPo,
+  type ProduksiRow,
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
-import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
+import { SHIFTS, formatRupiah, formatTanggalPendek, tanggalHariIni } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, Spinner } from '../../components/ui'
 import PoProgress from '../../components/PoProgress'
 
-export default function InputProduksi() {
-  const navigate = useNavigate()
+type ItemKosong = { id_sepatu: number; qty: Record<string, number> }
+type Screen = 'pekerja' | 'form' | 'po' | 'item'
 
+export default function InputProduksi() {
+  // ---- Data master & tersimpan hari ini ----
   const [pekerjaList, setPekerjaList] = useState<Pekerja[]>([])
   const [modelList, setModelList] = useState<TipeSepatu[]>([])
   const [ukuranList, setUkuranList] = useState<MasterUkuran[]>([])
   const [poList, setPoList] = useState<MasterPo[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [savedRows, setSavedRows] = useState<ProduksiRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
-  const [sukses, setSukses] = useState(false)
-  const [suksesInfo, setSuksesInfo] = useState<string>('')
-  const [suksesPo, setSuksesPo] = useState<{ no_po: string; achieved: number; target: number } | null>(null)
-
-  // Satu alur: pekerja -> shift -> PO (opsional) -> tambah item berurutan -> SIMPAN
+  // ---- State input (alur mengalir: mengetik -> total & PO update langsung) ----
+  const [screen, setScreen] = useState<Screen>('pekerja')
   const [idPekerja, setIdPekerja] = useState<number | null>(null)
   const [shift, setShift] = useState<1 | 2>(1)
   const [idPo, setIdPo] = useState<number | null>(null)
-  const [items, setItems] = useState<{ id_sepatu: number; qty: Record<string, number> }[]>([])
+  const [items, setItems] = useState<ItemKosong[]>([])
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  // ---- Tambah PO baru ----
+  const [showTambahPo, setShowTambahPo] = useState(false)
+  const [poForm, setPoForm] = useState({ no_po: '', customer: '', target: '' })
 
   const reloadPo = useCallback(async () => {
     try {
@@ -41,166 +50,40 @@ export default function InputProduksi() {
     }
   }, [])
 
+  const refreshSaved = useCallback(async () => {
+    try {
+      setSavedRows(await getProduksiHariIni())
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }, [])
+
   useEffect(() => {
-    Promise.all([getPekerjaAktif(), getTipeSepatuAktif(), getUkuranAktif(), getPoAktif()])
-      .then(([p, m, u, po]) => {
+    Promise.all([getPekerjaAktif(), getTipeSepatuAktif(), getUkuranAktif(), getPoAktif(), getProduksiHariIni()])
+      .then(([p, m, u, po, saved]) => {
         setPekerjaList(p)
         setModelList(m)
         setUkuranList(u)
         setPoList(po)
+        setSavedRows(saved)
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
-  function resetBaru() {
-    setIdPekerja(null)
-    setIdPo(null)
-    setItems([])
-    setSukses(false)
-    setSuksesInfo('')
-    setSuksesPo(null)
-    setError(null)
-  }
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 2600)
+    return () => clearTimeout(t)
+  }, [toast])
 
-  if (loading) return <Spinner />
+  // ---- Streaming: total langsung terisi saat mengetik qty ukuran ----
+  const itemSubtotal = (it: ItemKosong) => ukuranList.reduce((x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0), 0)
+  const entryTotal = items.reduce((a, it) => a + itemSubtotal(it), 0)
+  const selectedPo = poList.find((p) => p.id_po === idPo) ?? null
+  const proyeksiPo = selectedPo ? selectedPo.achieved_qty + entryTotal : 0
 
-  const pekerja = pekerjaList.find((p) => p.id_pekerja === idPekerja)
-
-  if (sukses) {
-    return (
-      <div className="flex min-h-full flex-col items-center justify-center px-6 text-center">
-        <div className="text-6xl">✅</div>
-        <h2 className="mt-4 text-xl font-bold text-slate-900">Data Tersimpan!</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {pekerja?.nama} · {shift === 1 ? 'Shift 1' : 'Shift 2'} · {suksesInfo}
-        </p>
-        {suksesPo && (
-          <div className="mt-3 w-full max-w-xs rounded-2xl bg-white p-3 text-left shadow-sm">
-            <div className="text-sm font-semibold text-slate-900">📦 {suksesPo.no_po}</div>
-            <PoProgress target={suksesPo.target} achieved={suksesPo.achieved} />
-          </div>
-        )}
-        <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
-          <BigButton onClick={resetBaru} className="w-full">
-            Input Lagi
-          </BigButton>
-          <BigButton variant="ghost" onClick={() => navigate('/mandor/riwayat')}>
-            Lihat Riwayat Hari Ini
-          </BigButton>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="px-4 py-4">
-      {error && (
-        <div className="mb-3">
-          <ErrorBox message={error} />
-        </div>
-      )}
-
-      <FormInput
-        pekerjaList={pekerjaList}
-        modelList={modelList}
-        ukuranList={ukuranList}
-        poList={poList}
-        idPekerja={idPekerja}
-        setIdPekerja={setIdPekerja}
-        shift={shift}
-        setShift={setShift}
-        idPo={idPo}
-        setIdPo={setIdPo}
-        items={items}
-        setItems={setItems}
-        onSimpan={async (payload) => {
-          const r = await simpanProduksiBatch(payload)
-          const totalPasang = payload.items.reduce((a, it) => a + it.qtyPerUkuran.reduce((x, d) => x + d.qty, 0), 0)
-          setSuksesInfo(`${r.jumlah} item · ${totalPasang} pasang`)
-          const po = poList.find((p) => p.id_po === idPo)
-          if (po) {
-            setSuksesPo({ no_po: po.no_po, achieved: po.achieved_qty + totalPasang, target: po.target_qty })
-          } else {
-            setSuksesPo(null)
-          }
-          void reloadPo()
-        }}
-        reloadPo={reloadPo}
-      />
-    </div>
-  )
-}
-
-// ============================================================================
-// FORM INPUT — satu alur multi-item (mandor dapat item acak dari loker)
-// ============================================================================
-function FormInput({
-  pekerjaList,
-  modelList,
-  ukuranList,
-  poList,
-  idPekerja,
-  setIdPekerja,
-  shift,
-  setShift,
-  idPo,
-  setIdPo,
-  items,
-  setItems,
-  onSimpan,
-  reloadPo,
-}: {
-  pekerjaList: Pekerja[]
-  modelList: TipeSepatu[]
-  ukuranList: MasterUkuran[]
-  poList: MasterPo[]
-  idPekerja: number | null
-  setIdPekerja: (id: number | null) => void
-  shift: 1 | 2
-  setShift: (s: 1 | 2) => void
-  idPo: number | null
-  setIdPo: (id: number | null) => void
-  items: { id_sepatu: number; qty: Record<string, number> }[]
-  setItems: React.Dispatch<React.SetStateAction<{ id_sepatu: number; qty: Record<string, number> }[]>>
-  onSimpan: (payload: import('../../lib/api').SimpanBatchInput) => Promise<void>
-  reloadPo: () => Promise<void>
-}) {
-  const [pilihModel, setPilihModel] = useState(false)
-  const [pilihPo, setPilihPo] = useState(false)
-  const [tambahPoMode, setTambahPoMode] = useState(false)
-  const [poForm, setPoForm] = useState({ no_po: '', customer: '', target: '' })
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  const totalPasang = items.reduce(
-    (a, it) => a + ukuranList.reduce((x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0), 0),
-    0,
-  )
-  const selectedPo = poList.find((p) => p.id_po === idPo)
-
-  function onTambahItem(idSepatu: number) {
-    if (items.some((it) => it.id_sepatu === idSepatu)) {
-      setError('Item tersebut sudah ada. Edit jumlahnya di bawah.')
-      setPilihModel(false)
-      return
-    }
-    setItems((prev) => [...prev, { id_sepatu: idSepatu, qty: {} }])
-    setPilihModel(false)
-    setError(null)
-  }
-
-  function hapusItem(idx: number) {
-    setItems((prev) => prev.filter((_, i) => i !== idx))
-  }
-
-  function setItemQty(idx: number, idUkuran: string, val: number) {
-    setItems((prev) =>
-      prev.map((it, i) =>
-        i === idx ? { ...it, qty: { ...it.qty, [idUkuran]: Math.max(0, Math.floor(val || 0)) } } : it,
-      ),
-    )
-  }
+  const totalToday = savedRows.reduce((a, r) => a + r.detail.reduce((x, d) => x + d.qty, 0), 0)
 
   async function simpan() {
     if (!idPekerja) return
@@ -213,26 +96,42 @@ function FormInput({
         })),
       }))
       .filter((it) => it.qtyPerUkuran.some((d) => d.qty > 0))
-
     if (payloadItems.length === 0) {
       setError('Belum ada item yang diisi jumlahnya.')
       return
     }
-
     setSaving(true)
     setError(null)
     try {
-      await onSimpan({
+      const r = await simpanProduksiBatch({
         tanggal: tanggalHariIni(),
         shift,
         id_pekerja: idPekerja,
         id_po: idPo,
         items: payloadItems,
       })
+      setItems([]) // terkunci: jadi baris tersimpan seharian
+      setToast(`✓ Tersimpan: ${r.jumlah} item · ${entryTotal} pasang`)
+      await Promise.all([refreshSaved(), reloadPo()])
     } catch (e) {
       setError((e as Error).message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function hapus(id: number) {
+    if (!window.confirm('Hapus data ini? Gaji akan ikut berubah.')) return
+    setDeletingId(id)
+    setError(null)
+    try {
+      await hapusProduksi(id)
+      setToast('🗑 Data dihapus')
+      await Promise.all([refreshSaved(), reloadPo()])
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -247,169 +146,316 @@ function FormInput({
       await reloadPo()
       setIdPo(r.id_po)
       setPoForm({ no_po: '', customer: '', target: '' })
-      setTambahPoMode(false)
-      setPilihPo(false)
+      setShowTambahPo(false)
+      setScreen('form')
       setError(null)
     } catch (err) {
       setError((err as Error).message)
     }
   }
 
-  if (!idPekerja) {
-    return (
-      <div className="space-y-3">
-        <h1 className="text-lg font-bold text-slate-900">Pilih Pekerja</h1>
-        {pekerjaList.map((p) => (
-          <button
-            key={p.id_pekerja}
-            onClick={() => setIdPekerja(p.id_pekerja)}
-            className="w-full rounded-2xl border-2 border-transparent bg-white p-4 text-left text-base font-semibold text-slate-800 shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
-          >
-            👤 {p.nama}
-          </button>
-        ))}
-        {pekerjaList.length === 0 && <p className="text-sm text-slate-500">Belum ada pekerja aktif.</p>}
+  if (loading) return <Spinner />
+
+  const pekerja = pekerjaList.find((p) => p.id_pekerja === idPekerja)
+
+  return (
+    <div className="space-y-4 px-4 py-4">
+      <div>
+        <h1 className="text-lg font-bold text-slate-900">Input Produksi</h1>
+        <p className="text-sm text-slate-500">
+          {formatTanggalPendek(tanggalHariIni())} · data tersimpan utuh seharian, hanya bisa dihapus
+        </p>
       </div>
-    )
-  }
 
-  if (pilihPo) {
-    return (
-      <div className="space-y-3">
-        <h1 className="text-lg font-bold text-slate-900">Pilih PO</h1>
-        <button
-          onClick={() => {
-            setIdPo(null)
-            setPilihPo(false)
-          }}
-          className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-base font-semibold text-slate-500"
-        >
-          ⏭️ Lewati (tanpa PO)
-        </button>
-        {poList.map((p) => {
-          const penuh = p.target_qty > 0 && p.achieved_qty >= p.target_qty
-          return (
-            <button
-              key={p.id_po}
-              onClick={() => {
-                setIdPo(p.id_po)
-                setPilihPo(false)
-              }}
-              disabled={penuh}
-              className={`w-full rounded-2xl border-2 bg-white p-4 text-left shadow-sm transition-colors ${
-                penuh
-                  ? 'cursor-not-allowed border-slate-200 opacity-60'
-                  : 'border-transparent active:border-emerald-500 active:bg-emerald-50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800">📦 {p.no_po}</span>
-                {p.nama_customer && <span className="text-sm text-slate-500">{p.nama_customer}</span>}
-              </div>
-              {p.target_qty > 0 ? (
-                <div className="pointer-events-none">
-                  <PoProgress target={p.target_qty} achieved={p.achieved_qty} />
-                </div>
-              ) : (
-                <div className="mt-1 text-xs text-slate-400">
-                  {p.achieved_qty > 0 ? `${p.achieved_qty} pasang terinput` : 'Belum ada target / produksi'}
-                </div>
-              )}
-            </button>
-          )
-        })}
-        {poList.length === 0 && <p className="text-sm text-slate-500">Belum ada PO. Buat PO baru di bawah.</p>}
-
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4">
-          {tambahPoMode ? (
-            <form onSubmit={submitPo} className="space-y-2">
-              <div className="text-sm font-bold text-slate-700">➕ PO Baru</div>
-              <input
-                placeholder="No PO (cth: PO-2026-003)"
-                value={poForm.no_po}
-                onChange={(e) => setPoForm((f) => ({ ...f, no_po: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <input
-                placeholder="Customer (opsional)"
-                value={poForm.customer}
-                onChange={(e) => setPoForm((f) => ({ ...f, customer: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <input
-                placeholder="Target jumlah (pasang) — dari qty PO customer"
-                inputMode="numeric"
-                value={poForm.target}
-                onChange={(e) => setPoForm((f) => ({ ...f, target: e.target.value.replace(/[^\d]/g, '') }))}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <BigButton
-                  variant="ghost"
-                  type="button"
-                  onClick={() => {
-                    setTambahPoMode(false)
-                    setError(null)
-                  }}
-                >
-                  Batal
-                </BigButton>
-                <BigButton type="submit" disabled={saving}>
-                  Simpan PO
-                </BigButton>
-              </div>
-            </form>
-          ) : (
-            <BigButton variant="secondary" className="w-full" onClick={() => setTambahPoMode(true)}>
-              ＋ Tambah PO Baru
-            </BigButton>
-          )}
+      {toast && (
+        <div className="rounded-2xl bg-emerald-600 px-4 py-3 text-center text-sm font-bold text-white shadow">
+          {toast}
         </div>
+      )}
+      {error && <ErrorBox message={error} />}
 
-        {error && <ErrorBox message={error} />}
+      {screen === 'po' ? (
+        <PilihPo
+          poList={poList}
+          entryTotal={entryTotal}
+          showTambahPo={showTambahPo}
+          setShowTambahPo={setShowTambahPo}
+          poForm={poForm}
+          setPoForm={setPoForm}
+          submitPo={submitPo}
+          onPilih={(id) => {
+            setIdPo(id)
+            setScreen('form')
+          }}
+          onLewati={() => {
+            setIdPo(null)
+            setScreen('form')
+          }}
+          onBatal={() => setScreen('form')}
+        />
+      ) : screen === 'item' ? (
+        <PilihItem
+          modelList={modelList}
+          onPilih={(id) => {
+            if (items.some((it) => it.id_sepatu === id)) {
+              setError('Item tersebut sudah ada. Edit jumlahnya di bawah.')
+              return
+            }
+            setItems((prev) => [...prev, { id_sepatu: id, qty: {} }])
+            setError(null)
+            setScreen('form')
+          }}
+          onBatal={() => setScreen('form')}
+        />
+      ) : screen === 'form' && pekerja ? (
+        <FormUtama
+          pekerjaNama={pekerja.nama}
+          gantiPekerja={() => {
+            setIdPekerja(null)
+            setIdPo(null)
+            setItems([])
+            setScreen('pekerja')
+          }}
+          modelList={modelList}
+          ukuranList={ukuranList}
+          shift={shift}
+          setShift={setShift}
+          selectedPo={selectedPo}
+          proyeksiPo={proyeksiPo}
+          entryTotal={entryTotal}
+          bukaPo={() => setScreen('po')}
+          items={items}
+          setItems={setItems}
+          itemSubtotal={itemSubtotal}
+          bukaItem={() => setScreen('item')}
+          hapusItem={(i) => setItems((prev) => prev.filter((_, x) => x !== i))}
+          onSimpan={simpan}
+          saving={saving}
+        />
+      ) : (
+        <PilihPekerja
+          pekerjaList={pekerjaList}
+          onPilih={(id) => {
+            setIdPekerja(id)
+            setScreen('form')
+          }}
+        />
+      )}
 
-        <BigButton variant="ghost" className="w-full" onClick={() => setPilihPo(false)}>
-          ← Kembali
-        </BigButton>
-      </div>
-    )
-  }
+      <TersimpanHariIni rows={savedRows} deletingId={deletingId} onHapus={hapus} totalToday={totalToday} />
+    </div>
+  )
+}
 
-  if (pilihModel) {
-    return (
-      <div className="space-y-3">
-        <h1 className="text-lg font-bold text-slate-900">Pilih Item</h1>
-        {modelList.map((m) => (
+function PilihPekerja({ pekerjaList, onPilih }: { pekerjaList: Pekerja[]; onPilih: (id: number) => void }) {
+  return (
+    <div className="space-y-3">
+      <h2 className="text-base font-bold text-slate-900">Pilih Pekerja</h2>
+      {pekerjaList.map((p) => (
+        <button
+          key={p.id_pekerja}
+          onClick={() => onPilih(p.id_pekerja)}
+          className="w-full rounded-2xl border-2 border-transparent bg-white p-4 text-left text-base font-semibold text-slate-800 shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
+        >
+          👤 {p.nama}
+        </button>
+      ))}
+      {pekerjaList.length === 0 && <p className="text-sm text-slate-500">Belum ada pekerja aktif.</p>}
+    </div>
+  )
+}
+
+function PilihItem({
+  modelList,
+  onPilih,
+  onBatal,
+}: {
+  modelList: TipeSepatu[]
+  onPilih: (id: number) => void
+  onBatal: () => void
+}) {
+  return (
+    <div className="space-y-3">
+      <h2 className="text-base font-bold text-slate-900">Pilih Item</h2>
+      {modelList.map((m) => (
+        <button
+          key={m.id_sepatu}
+          onClick={() => onPilih(m.id_sepatu)}
+          className="flex w-full items-center justify-between rounded-2xl border-2 border-transparent bg-white p-4 shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
+        >
+          <span className="text-base font-semibold text-slate-800">👟 {m.nama_model}</span>
+          <span className="text-sm text-slate-500">{formatRupiah(m.ongkos_kerja)}/pasang</span>
+        </button>
+      ))}
+      <BigButton variant="ghost" className="w-full" onClick={onBatal}>
+        ← Kembali
+      </BigButton>
+    </div>
+  )
+}
+
+function PilihPo({
+  poList,
+  entryTotal,
+  showTambahPo,
+  setShowTambahPo,
+  poForm,
+  setPoForm,
+  submitPo,
+  onPilih,
+  onLewati,
+  onBatal,
+}: {
+  poList: MasterPo[]
+  entryTotal: number
+  showTambahPo: boolean
+  setShowTambahPo: (b: boolean) => void
+  poForm: { no_po: string; customer: string; target: string }
+  setPoForm: (f: { no_po: string; customer: string; target: string }) => void
+  submitPo: (e: React.FormEvent) => Promise<void>
+  onPilih: (id: number) => void
+  onLewati: () => void
+  onBatal: () => void
+}) {
+  return (
+    <div className="space-y-3">
+      <h2 className="text-base font-bold text-slate-900">Pilih PO</h2>
+      <button
+        onClick={onLewati}
+        className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-base font-semibold text-slate-500"
+      >
+        ⏭️ Lewati (tanpa PO)
+      </button>
+
+      {poList.map((p) => {
+        const penuh = p.target_qty > 0 && p.achieved_qty >= p.target_qty
+        return (
           <button
-            key={m.id_sepatu}
-            onClick={() => onTambahItem(m.id_sepatu)}
-            className="flex w-full items-center justify-between rounded-2xl border-2 border-transparent bg-white p-4 shadow-sm transition-colors active:border-emerald-500 active:bg-emerald-50"
+            key={p.id_po}
+            onClick={() => onPilih(p.id_po)}
+            disabled={penuh}
+            className={`w-full rounded-2xl border-2 bg-white p-4 text-left shadow-sm transition-colors ${
+              penuh
+                ? 'cursor-not-allowed border-slate-200 opacity-60'
+                : 'border-transparent active:border-emerald-500 active:bg-emerald-50'
+            }`}
           >
-            <span className="text-base font-semibold text-slate-800">👟 {m.nama_model}</span>
-            <span className="text-sm text-slate-500">{formatRupiah(m.ongkos_kerja)}/pasang</span>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-800">📦 {p.no_po}</span>
+              {p.nama_customer && <span className="text-sm text-slate-500">{p.nama_customer}</span>}
+            </div>
+            {p.target_qty > 0 ? (
+              <div className="pointer-events-none">
+                <PoProgress target={p.target_qty} achieved={p.achieved_qty + entryTotal} />
+              </div>
+            ) : (
+              <div className="mt-1 text-xs text-slate-400">
+                {p.achieved_qty > 0 ? `${p.achieved_qty} pasang terinput` : 'Belum ada target / produksi'}
+              </div>
+            )}
           </button>
-        ))}
-        {error && (
-          <div>
-            <ErrorBox message={error} />
-          </div>
+        )
+      })}
+      {poList.length === 0 && <p className="text-sm text-slate-500">Belum ada PO. Buat PO baru di bawah.</p>}
+
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+        {showTambahPo ? (
+          <form onSubmit={submitPo} className="space-y-2">
+            <div className="text-sm font-bold text-slate-700">➕ PO Baru</div>
+            <input
+              placeholder="No PO (cth: PO-2026-003)"
+              value={poForm.no_po}
+              onChange={(e) => setPoForm({ ...poForm, no_po: e.target.value })}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <input
+              placeholder="Customer (opsional)"
+              value={poForm.customer}
+              onChange={(e) => setPoForm({ ...poForm, customer: e.target.value })}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <input
+              placeholder="Target jumlah (pasang) — dari qty PO customer"
+              inputMode="numeric"
+              value={poForm.target}
+              onChange={(e) => setPoForm({ ...poForm, target: e.target.value.replace(/[^\d]/g, '') })}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <BigButton variant="ghost" type="button" onClick={() => setShowTambahPo(false)}>
+                Batal
+              </BigButton>
+              <BigButton type="submit">Simpan PO</BigButton>
+            </div>
+          </form>
+        ) : (
+          <BigButton variant="secondary" className="w-full" onClick={() => setShowTambahPo(true)}>
+            ＋ Tambah PO Baru
+          </BigButton>
         )}
-        <BigButton variant="ghost" className="w-full" onClick={() => setPilihModel(false)}>
-          ← Kembali
-        </BigButton>
       </div>
+
+      <BigButton variant="ghost" className="w-full" onClick={onBatal}>
+        ← Kembali
+      </BigButton>
+    </div>
+  )
+}
+
+function FormUtama({
+  pekerjaNama,
+  gantiPekerja,
+  modelList,
+  ukuranList,
+  shift,
+  setShift,
+  selectedPo,
+  proyeksiPo,
+  entryTotal,
+  bukaPo,
+  items,
+  setItems,
+  itemSubtotal,
+  bukaItem,
+  hapusItem,
+  onSimpan,
+  saving,
+}: {
+  pekerjaNama: string
+  gantiPekerja: () => void
+  modelList: TipeSepatu[]
+  ukuranList: MasterUkuran[]
+  shift: 1 | 2
+  setShift: (s: 1 | 2) => void
+  selectedPo: MasterPo | null
+  proyeksiPo: number
+  entryTotal: number
+  bukaPo: () => void
+  items: ItemKosong[]
+  setItems: React.Dispatch<React.SetStateAction<ItemKosong[]>>
+  itemSubtotal: (it: ItemKosong) => number
+  bukaItem: () => void
+  hapusItem: (i: number) => void
+  onSimpan: () => Promise<void>
+  saving: boolean
+}) {
+  function ubahQty(i: number, idUkuran: string, val: number) {
+    setItems((prev) =>
+      prev.map((it, x) =>
+        x === i ? { ...it, qty: { ...it.qty, [idUkuran]: Math.max(0, Math.floor(val || 0)) } } : it,
+      ),
     )
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-slate-900">Input Produksi</h1>
-        <button
-          onClick={() => setIdPekerja(null)}
-          className="text-sm font-semibold text-slate-500 underline"
-        >
-          {pekerjaList.find((p) => p.id_pekerja === idPekerja)?.nama} ✕
+      <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-white">
+        <div>
+          <div className="font-bold">👤 {pekerjaNama}</div>
+          <div className="text-xs text-slate-300">{shift === 1 ? 'Shift 1 (Pagi)' : 'Shift 2 (Siang/Malam)'}</div>
+        </div>
+        <button onClick={gantiPekerja} className="text-xs font-bold text-slate-300 underline">
+          Ganti Pekerja
         </button>
       </div>
 
@@ -434,29 +480,30 @@ function FormInput({
         </div>
       </div>
 
-      {/* PO (opsional) */}
+      {/* PO */}
       <div>
-        <div className="mb-2 text-sm font-semibold text-slate-600">PO</div>
+        <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-600">
+          <span>PO</span>
+          <button onClick={bukaPo} className="text-sky-600 underline">
+            {selectedPo ? 'Ganti' : 'Pilih'}
+          </button>
+        </div>
         {selectedPo ? (
-          <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-3">
+          <Card className="border-2 border-emerald-300">
             <div className="flex items-center justify-between">
               <div className="font-semibold text-slate-900">📦 {selectedPo.no_po}</div>
-              <button onClick={() => setPilihPo(true)} className="text-xs font-bold text-emerald-700 underline">
-                Ganti
-              </button>
+              {selectedPo.nama_customer && <div className="text-xs text-slate-500">{selectedPo.nama_customer}</div>}
             </div>
-            {selectedPo.nama_customer && (
-              <div className="text-xs text-slate-500">{selectedPo.nama_customer}</div>
-            )}
-            {selectedPo.target_qty > 0 && (
-              <div className="pointer-events-none">
-                <PoProgress target={selectedPo.target_qty} achieved={selectedPo.achieved_qty} />
-              </div>
-            )}
-          </div>
+            <div className="mt-1">
+              <PoProgress target={selectedPo.target_qty} achieved={proyeksiPo} />
+              <p className="mt-1 text-[11px] text-slate-400">
+                Proyeksi seiring ketik: {entryTotal.toLocaleString('id-ID')} pasang ditambahkan live
+              </p>
+            </div>
+          </Card>
         ) : (
           <button
-            onClick={() => setPilihPo(true)}
+            onClick={bukaPo}
             className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-white p-3 text-sm font-semibold text-slate-500"
           >
             📦 Pilih PO (opsional)
@@ -464,15 +511,15 @@ function FormInput({
         )}
       </div>
 
-      {/* Daftar item yang sudah ditambahkan */}
+      {/* Item yang sedang diisi */}
       <div>
         <div className="mb-2 flex items-center justify-between">
           <div className="text-sm font-semibold text-slate-600">
-            Item ({items.length}) <span className="font-normal text-slate-400">· isi jumlah per ukuran</span>
+            Item ({items.length}) <span className="font-normal text-slate-400">· ketik = langsung terhitung</span>
           </div>
-          <BigButton variant="secondary" className="px-3 py-2 text-sm" onClick={() => setPilihModel(true)}>
+          <button onClick={bukaItem} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white">
             + Tambah Item
-          </BigButton>
+          </button>
         </div>
 
         {items.length === 0 ? (
@@ -486,7 +533,6 @@ function FormInput({
           <div className="space-y-3">
             {items.map((it, idx) => {
               const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
-              const subTotal = ukuranList.reduce((x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0), 0)
               return (
                 <Card key={idx}>
                   <div className="mb-2 flex items-center justify-between">
@@ -497,8 +543,11 @@ function FormInput({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-emerald-700">{subTotal} psg</span>
-                      <button onClick={() => hapusItem(idx)} className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600">
+                      <span className="text-sm font-bold text-emerald-700">{itemSubtotal(it)} psg</span>
+                      <button
+                        onClick={() => hapusItem(idx)}
+                        className="rounded-lg px-2 py-1 text-xs font-bold text-rose-600"
+                      >
                         🗑
                       </button>
                     </div>
@@ -513,7 +562,7 @@ function FormInput({
                           min={0}
                           placeholder="0"
                           value={it.qty[String(u.id_ukuran)] ?? ''}
-                          onChange={(e) => setItemQty(idx, String(u.id_ukuran), Number(e.target.value))}
+                          onChange={(e) => ubahQty(idx, String(u.id_ukuran), Number(e.target.value))}
                           className="w-full rounded-xl border border-slate-300 px-2 py-2.5 text-center text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
@@ -526,16 +575,89 @@ function FormInput({
         )}
       </div>
 
-      {error && <ErrorBox message={error} />}
-
-      <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-white">
-        <span className="font-semibold">Total Pasang</span>
-        <span className="text-xl font-bold">{totalPasang}</span>
+      <div className="rounded-2xl bg-slate-900 px-4 py-3 text-white">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold">Total (akan disimpan)</span>
+          <span className="text-2xl font-bold tabular-nums">{entryTotal.toLocaleString('id-ID')}</span>
+        </div>
+        {selectedPo && (
+          <div className="mt-1 flex items-center justify-between text-xs text-slate-300">
+            <span>Progress PO (dengan yang diketik)</span>
+            <span className="font-bold tabular-nums">
+              {proyeksiPo.toLocaleString('id-ID')} / {selectedPo.target_qty.toLocaleString('id-ID')}
+            </span>
+          </div>
+        )}
       </div>
 
-      <BigButton disabled={saving || totalPasang <= 0} onClick={simpan} className="w-full py-4 text-lg">
-        {saving ? 'Menyimpan...' : 'SIMPAN SEMUA'}
+      <BigButton disabled={saving || entryTotal <= 0} onClick={onSimpan} className="w-full py-4 text-lg">
+        {saving ? 'Menyimpan...' : 'SIMPAN SEKARANG'}
       </BigButton>
     </div>
+  )
+}
+
+function TersimpanHariIni({
+  rows,
+  deletingId,
+  onHapus,
+  totalToday,
+}: {
+  rows: ProduksiRow[]
+  deletingId: number | null
+  onHapus: (id: number) => void
+  totalToday: number
+}) {
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-slate-900">Tersimpan Hari Ini</h2>
+        <span className="text-sm font-semibold text-slate-500">
+          {(rows.length === 1 ? '1 transaksi' : `${rows.length} transaksi`)} · {totalToday.toLocaleString('id-ID')} pasang
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
+        <Card className="text-center text-slate-500">
+          <div className="text-3xl">📭</div>
+          <p className="mt-1 text-sm">Belum ada data tersimpan hari ini.</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((r) => {
+            const pasang = r.detail.reduce((a, d) => a + d.qty, 0)
+            const gaji = r.detail.reduce((a, d) => a + d.qty * d.ongkos_kerja_saat_ini, 0)
+            return (
+              <Card key={r.id_produksi}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-slate-900">
+                      👟 {r.nama_model} <span className="text-slate-400">·</span> {r.nama_pekerja}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {r.shift === 1 ? 'Shift 1' : 'Shift 2'}
+                      {r.no_po ? ` · 📦 ${r.no_po}` : ''}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-slate-900">{pasang} pasang</div>
+                    <div className="text-xs text-emerald-700">{formatRupiah(gaji)}</div>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <button
+                    onClick={() => onHapus(r.id_produksi)}
+                    disabled={deletingId === r.id_produksi}
+                    className="w-full rounded-xl bg-rose-50 py-2 text-xs font-bold text-rose-600 active:bg-rose-100"
+                  >
+                    {deletingId === r.id_produksi ? 'Menghapus...' : '🗑 Hapus item ini'}
+                  </button>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }

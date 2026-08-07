@@ -84,18 +84,18 @@ export default function Help() {
 
         <Bagian judul="2️⃣ Untuk Mandor — Cara Input Produksi">
           <div className="space-y-3">
-            <p>Dari menu <b>INPUT PRODUKSI</b>, ada 2 cara. Yang default adalah <b>📋 Tabel</b>:</p>
+            <p>Dari menu <b>INPUT PRODUKSI</b>, semua dalam satu alur:</p>
             <Langkah nomor="1" judul="Pilih Pekerja" isi="Ketuk nama pekerja yang hari ini dicatat hasilnya." />
             <Langkah nomor="2" judul="Pilih Shift" isi="Tekan tombol SHIFT 1 (pagi) atau SHIFT 2 (siang/malam)." />
-            <Langkah nomor="3" judul="Pilih PO bila perlu" isi="Opsional. Bisa dipilih nomor PO, atau biarkan 'Lewati'." />
+            <Langkah nomor="3" judul="Pilih PO bila perlu" isi="Opsional. Bisa dipilih nomor PO (dengan target & progresnya), atau biarkan 'Lewati'. Bisa juga buat PO baru lewat tombol Tambah PO Baru." />
             <Langkah nomor="4" judul="+ Tambah Item" isi="Karena satu pekerja dalam satu shift bisa dapat item acak dari loker, tekan TAMBAH ITEM untuk tiap model yang keluar (misal Futsal, Brickmansion, dst)." />
-            <Langkah nomor="5" judul="Isi Jumlah per Ukuran" isi="Untuk tiap item, ketik jumlah pasang per ukuran 36–44. Isi 0/kosong untuk ukuran yang tidak ada hasilnya." />
-            <Langkah nomor="6" judul="SIMPAN SEMUA" isi="Setelah semua item diisi, tekan SIMPAN SEMUA. Semua item tersimpan sekaligus untuk pekerja & shift itu." />
+            <Langkah nomor="5" judul="Isi Jumlah per Ukuran" isi="Untuk tiap item, ketik jumlah pasang per ukuran 36–44. Isi 0/kosong untuk ukuran yang tidak ada hasilnya. Total dan progres PO langsung bertambah seiring mengetik." />
+            <Langkah nomor="6" judul="SIMPAN SEKARANG" isi="Setelah semua item diisi, tekan SIMPAN SEKARANG. Semua item tersimpan sekaligus untuk pekerja & shift itu." />
             <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-700">
-              💡 Mau input satu-satu seperti dulu? Tekan tombol <b>🪜 Bertahap</b> di atas.
+              💡 Setelah disimpan, data masuk ke daftar <b>Tersimpan Hari Ini</b> dan menetap seharian — tidak bisa diinput ulang. Kalau salah, tekan <b>🗑 Hapus</b> pada item itu lalu input lagi.
             </p>
             <p className="rounded-lg bg-emerald-50 p-2 text-xs text-emerald-800">
-              ✅ Total pasang dihitung otomatis — tidak perlu menghitung sendiri.
+              ✅ Total pasang & progres PO dihitung otomatis saat Anda mengetik — tidak perlu menghitung sendiri.
             </p>
           </div>
         </Bagian>

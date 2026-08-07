@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: '📊', end: true },
   { to: '/admin/produksi', label: 'Data Produksi', icon: '📝', end: false },
+  { to: '/admin/rekap', label: 'Rekap Harian', icon: '📅', end: false },
   { to: '/admin/payroll', label: 'Payroll', icon: '💰', end: false },
   { to: '/admin/master', label: 'Master Data', icon: '⚙️', end: false },
   { to: '/help', label: 'Bantuan', icon: '🛟', end: false },
