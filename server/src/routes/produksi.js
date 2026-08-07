@@ -1,13 +1,10 @@
 import { Router } from 'express'
 import pool from '../db.js'
 import { authRequired, attachUser } from '../auth.js'
+import { todayStr } from '../date.js'
 
 const router = Router()
 router.use(authRequired, attachUser)
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
 
 // Hari ini (semua pengguna melihat data hari ini)
 router.get('/hari-ini', async (req, res) => {
