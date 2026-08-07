@@ -3,11 +3,13 @@ import { getDaftarPeriode, getRekapGaji } from '../../lib/api'
 import type { RekapGajiRow } from '../../lib/types'
 import { formatAngka, formatRupiah, labelPeriode } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, SelectInput, Spinner } from '../../components/ui'
+import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
 
 export default function Payroll() {
   const [periodeList, setPeriodeList] = useState<string[]>([])
   const [periode, setPeriode] = useState('')
   const [rows, setRows] = useState<RekapGajiRow[]>([])
+  const [view, setView] = useState<ViewMode>('kartu')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,16 +70,19 @@ export default function Payroll() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-2">
         <div>
           <h1 className="text-lg font-bold text-slate-900">Payroll</h1>
           <p className="text-sm text-slate-500">Rekap gaji otomatis per periode.</p>
         </div>
-        {rows.length > 0 && (
-          <BigButton variant="secondary" className="py-2" onClick={exportCsv}>
-            ⬇ CSV
-          </BigButton>
-        )}
+        <div className="flex items-center gap-2">
+          {rows.length > 0 && (
+            <BigButton variant="secondary" className="py-2" onClick={exportCsv}>
+              ⬇ CSV
+            </BigButton>
+          )}
+          <ViewToggle value={view} onChange={setView} />
+        </div>
       </div>
 
       <Card>
@@ -107,32 +112,61 @@ export default function Payroll() {
             <div className="mt-1 text-2xl font-bold">{formatRupiah(grandTotal)}</div>
           </Card>
 
-          <div className="space-y-3">
-            {Array.from(perPekerja.entries()).map(([id, p]) => (
-              <Card key={id}>
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-slate-900">{p.nama}</div>
-                  <div className="text-right">
-                    <div className="font-bold text-emerald-700">{formatRupiah(p.total_gaji)}</div>
-                    <div className="text-sm text-slate-500">{formatAngka(p.total_pasang)} pasang</div>
+          {view === 'tabel' ? (
+            <Tabel>
+              <THead>
+                <Th>Pekerja</Th>
+                <Th>Model</Th>
+                <Th className="text-right">Pasang</Th>
+                <Th className="text-right">Ongkos (Rp/ps)</Th>
+                <Th className="text-right">Total Gaji</Th>
+              </THead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
+                    <Td className="font-semibold text-slate-900">{r.nama_pekerja}</Td>
+                    <Td>{r.nama_model}</Td>
+                    <Td className="text-right">{formatAngka(r.total_pasang)}</Td>
+                    <Td className="text-right">{formatRupiah(r.total_gaji / r.total_pasang)}</Td>
+                    <Td className="text-right font-semibold text-emerald-700">{formatRupiah(r.total_gaji)}</Td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-100 font-bold">
+                  <Td colSpan={2}>Grand Total</Td>
+                  <Td className="text-right">{formatAngka(rows.reduce((a, r) => a + r.total_pasang, 0))}</Td>
+                  <Td />
+                  <Td className="text-right text-emerald-700">{formatRupiah(grandTotal)}</Td>
+                </tr>
+              </tbody>
+            </Tabel>
+          ) : (
+            <div className="space-y-3">
+              {Array.from(perPekerja.entries()).map(([id, p]) => (
+                <Card key={id}>
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-slate-900">{p.nama}</div>
+                    <div className="text-right">
+                      <div className="font-bold text-emerald-700">{formatRupiah(p.total_gaji)}</div>
+                      <div className="text-sm text-slate-500">{formatAngka(p.total_pasang)} pasang</div>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-2 space-y-1 border-t border-slate-100 pt-2">
-                  {rows
-                    .filter((r) => r.id_pekerja === id)
-                    .map((r, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-slate-600">{r.nama_model}</span>
-                        <span className="text-slate-500">
-                          {formatAngka(r.total_pasang)} ps × {formatRupiah(r.total_gaji / r.total_pasang)} ={' '}
-                          {formatRupiah(r.total_gaji)}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </Card>
-            ))}
-          </div>
+                  <div className="mt-2 space-y-1 border-t border-slate-100 pt-2">
+                    {rows
+                      .filter((r) => r.id_pekerja === id)
+                      .map((r, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-slate-600">{r.nama_model}</span>
+                          <span className="text-slate-500">
+                            {formatAngka(r.total_pasang)} ps × {formatRupiah(r.total_gaji / r.total_pasang)} ={' '}
+                            {formatRupiah(r.total_gaji)}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
