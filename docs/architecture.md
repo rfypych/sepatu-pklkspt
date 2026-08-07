@@ -1,6 +1,6 @@
 # Arsitektur & Tech Stack
 
-> **Update**: stack berubah dari Supabase menjadi **lokal penuh** — Node.js + Express + MySQL (Laragon). Semua jalan offline tanpa internet.
+> **Update (2026-08)**: stack berubah dari Supabase → **lokal (MySQL Laragon)** → sekarang **Vercel + Neon (Postgres)**. Backend & frontend di-deploy ke Vercel, database di Neon (serverless Postgres). Arsitektur lama (MySQL Laragon) masih tersedia sebagai arsip di `server/sql/schema.sql` & `server/sql/seed.sql`.
 
 ## 1. Keputusan Teknologi
 
@@ -8,9 +8,9 @@
 | --- | --- | --- |
 | **Frontend** | React + Vite + TypeScript | UI berbasis komponen, cocok untuk wizard form mandor & dashboard admin; build cepat. |
 | **UI Library** | Tailwind CSS | Cepat bikin UI besar-tombol mobile-first tanpa bolak-balik bikin CSS manual. |
-| **Backend** | Node.js + Express + JWT | API lokal sederhana, auth pakai JWT (username + password + role). |
-| **Database** | MySQL 8 (Laragon) | Sudah terpasang di Laragon, user root tanpa password, offline. |
-| **Hosting** | Lokal (dev) → nanti Vercel | Dicoba lokal dulu; migrasi ke hosting menyusul. |
+| **Backend** | Node.js + Express + JWT | API sederhana, auth pakai JWT (username + password + role). |
+| **Database** | PostgreSQL (Neon serverless) | Tidak perlu kelola server; aman dari risiko VPS down/reset. |
+| **Hosting** | Vercel (frontend + backend serverless) | Deploy otomatis dari GitHub, domain gratis vercel.app, tanpa kelola server. |
 | **Mobile** | Web-app dioptimasi HP → bungkus WebView (APK kecil) | Baik mandor **maupun admin (Si A)** akses lewat HP. Tidak perlu Android native, cepat & ringan. |
 
 ### Struktur folder sekarang
@@ -18,67 +18,73 @@
 ```
 sepatu-pklkspt/
 ├── docs/                        <- dokumentasi & skema (arsip)
-├── server/                      <- API lokal (Node + Express + MySQL)
+├── server/                      <- API (Node + Express + PostgreSQL)
 │   ├── src/
-│   │   ├── index.js             <- entrypoint
-│   │   ├── db.js                <- koneksi MySQL pool
+│   │   ├── app.js               <- build Express app (export untuk Vercel)
+│   │   ├── index.js             <- entrypoint dev lokal (listen)
+│   │   ├── db.js                <- koneksi pg pool (Neon)
 │   │   ├── auth.js              <- JWT sign/verify + guard role
 │   │   ├── store.js             <- query dasar master data
 │   │   └── routes/              <- auth, master, produksi, payroll, dashboard
+│   ├── api/index.js             <- entry serverless Vercel (export app)
+│   ├── vercel.json              <- routes /api/* → serverless function
 │   └── sql/
-│       ├── schema.sql           <- skema MySQL (yang dipakai)
-│       └── seed.sql             <- data awal (admin/admin123, mandor/mandor123)
+│       ├── pg-schema.sql        <- skema PostgreSQL (produksi/Neon) ✅ dipakai
+│       ├── pg-seed.sql          <- data awal (admin/admin123, mandor/mandor123) ✅ dipakai
+│       ├── schema.sql           <- skema MySQL (arsip dev lokal lama)
+│       └── seed.sql             <- seed MySQL (arsip dev lokal lama)
 └── web/                         <- aplikasi React (Vite + TS + Tailwind)
 ```
 
-### Cara menjalankan (Laragon)
+### Cara menjalankan lokal (dev)
 
-1. Pastikan **MySQL Laragon menyala** (root tanpa password).
-2. Buat database & data awal (sekali saja):
+1. Siapkan database Postgres (bisa Neon). Jalankan sekali:
    ```
-   mysql -u root < server/sql/schema.sql
-   mysql -u root < server/sql/seed.sql
+   psql $DATABASE_URL < server/sql/pg-schema.sql
+   psql $DATABASE_URL < server/sql/pg-seed.sql
    ```
-3. Jalankan API:
+2. Jalankan API (set `DATABASE_URL`):
    ```
    cd server && npm install && npm run dev    # http://localhost:3000
    ```
-4. Jalankan frontend:
+3. Jalankan frontend:
    ```
    cd web && npm install && npm run dev       # http://localhost:5173
    ```
-5. Login uji: `admin/admin123` (admin) atau `mandor/mandor123` (mandor).
+   Vite dev server me-*proxy* `/api` → `localhost:3000`, jadi dari browser tidak perlu ubah URL.
+4. Login uji: `admin/admin123` (admin) atau `mandor/mandor123` (mandor).
+
+### Cara deploy (Vercel + Neon)
+
+- **Database**: buat project di Neon → ambil connection string (`DATABASE_URL`).
+- **Backend**: project Vercel dengan root `server/`. Set env `DATABASE_URL` & `JWT_SECRET`. `vercel.json` sudah mengarahkan `/api/*` ke `api/index.js`.
+- **Frontend**: project Vercel dengan root `web/`. Set env `VITE_API_URL` = URL backend (mis. `https://xxx.vercel.app/api`). Build Vite menghasilkan static; nantinya frontend & backend bisa digabung di satu domain lewat Vercel rewrite bila perlu.
 
 ## 2. Alur Data
 
 ```
-Mandor / Admin (HP/PC)          Server lokal (Node+Express)         MySQL (Laragon)
-------------------------        --------------------------           ----------------
-Login ──────────────────────►  POST /api/auth/login ──► verifikasi bcrypt → JWT
+Mandor / Admin (HP/PC)          Vercel (Express serverless)      Neon (Postgres)
+-----------------------         --------------------------       ----------------
+Login ─────────────────────►  POST /api/auth/login ──► verifikasi bcrypt → JWT
 Wizard input ───────────────►  POST /api/produksi ────► insert header + detail (snapshot ongkos)
 Dashboard (polling 5 dtk) ──►  GET /api/dashboard/today
 Payroll ────────────────────►  GET /api/payroll/rekap?periode=...
-Data Produksi edit ─────────►  PUT/DELETE /api/produksi/:id ──► (mandor dibatasi hari ini & punya sendiri)
+Data Produksi edit ─────────►  PUT/DELETE /api/produksi/:id ──► (mandor dibatasi tanggal hari ini)
 ```
 
-## 3. Struktur Folder
+## 3. Struktur Folder (web)
 
 ```
-sepatu-pklkspt/
-├── docs/                        <- dokumentasi & skema (arsip desain)
-├── server/                      <- API lokal (Node + Express + MySQL)
-│   ├── src/routes/              <- auth, master, produksi, payroll, dashboard
-│   └── sql/                     <- schema.sql + seed.sql (yang dipakai)
-└── web/                         <- aplikasi React (Vite + TS + Tailwind)
-    ├── src/lib/                 <- api client (fetch), types, constants, config
-    ├── src/components/          <- komponen UI bersama
-    ├── src/context/             <- AuthContext (JWT + role)
-    ├── src/features/            <- auth, mandor, admin
-    ├── src/layouts/             <- layout mandor & admin (mobile-first)
-    └── src/App.tsx              <- routing + proteksi role
+web/
+├── src/lib/                 <- api client (fetch), types, constants, config
+├── src/components/          <- komponen UI bersama (Card, ViewToggle, Tabel)
+├── src/context/             <- AuthContext (JWT + role)
+├── src/features/            <- auth, mandor, admin
+├── src/layouts/             <- layout mandor & admin (mobile-first)
+└── src/App.tsx              <- routing + proteksi role
 ```
 
-## 4. Otorisasi (pengganti RLS)
+## 4. Otorisasi
 
 Kebijakan diterapkan di backend (`server/src/routes/produksi.js`):
 
@@ -94,4 +100,5 @@ Kebijakan diterapkan di backend (`server/src/routes/produksi.js`):
 - **Snapshot harga**: `produksi_detail.ongkos_kerja_saat_ini` diisi dari `tipe_sepatu.ongkos_kerja` saat insert. Mengubah harga master tidak merusak riwayat gaji.
 - **Periode gaji**: view `v_rekap_gaji` mengelompokkan otomatis `1–15` dan `16–akhir bulan`.
 - **Ukuran fleksibel**: lewat `master_ukuran` + `produksi_detail` — tidak ada kolom `size_36..size_44` statis.
-- **Akun uji**: `admin/admin123` dan `mandor/mandor123` (dari `seed.sql`).
+- **Akun uji**: `admin/admin123` dan `mandor/mandor123` (dari `pg-seed.sql`).
+- **Perbedaan driver MySQL vs PG**: driver `pg` memakai placeholder `$1,$2,...` dan `RETURNING id` untuk insert; kolom `DATE` dan `NUMERIC` dikembalikan sebagai string (sama seperti `dateStrings:true` di mysql2), jadi `web/src/lib/api.ts` (`toNum`) tetap berfungsi tanpa perubahan.

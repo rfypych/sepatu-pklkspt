@@ -5,31 +5,28 @@ import { authRequired, attachUser } from '../auth.js'
 const router = Router()
 router.use(authRequired, attachUser)
 
-function canModify(req) {
-  // Mandor hanya boleh ubah data milik sendiri di tanggal hari ini; admin bebas.
-  if (req.user.role === 'admin') return true
-  const today = new Date().toISOString().slice(0, 10)
-  return { createdByOnly: true, today }
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
 }
 
 // Hari ini (semua pengguna melihat data hari ini)
 router.get('/hari-ini', async (req, res) => {
   try {
-    const today = new Date().toISOString().slice(0, 10)
-    let sql = `
+    const today = todayStr()
+    const sql = `
       SELECT ph.*, p.nama AS nama_pekerja, ts.nama_model, po.no_po
       FROM produksi_harian ph
       JOIN pekerja p      ON p.id_pekerja = ph.id_pekerja
       JOIN tipe_sepatu ts ON ts.id_sepatu = ph.id_sepatu
       LEFT JOIN master_po po ON po.id_po = ph.id_po
-      WHERE ph.tanggal = ?
+      WHERE ph.tanggal = $1
+      ORDER BY ph.created_at DESC
     `
-    sql += ' ORDER BY ph.created_at DESC'
-    const [rows] = await pool.query(sql, [today])
+    const { rows } = await pool.query(sql, [today])
 
     for (const r of rows) {
-      const [detail] = await pool.query(
-        'SELECT * FROM produksi_detail WHERE id_produksi = ? ORDER BY id_ukuran',
+      const { rows: detail } = await pool.query(
+        'SELECT * FROM produksi_detail WHERE id_produksi = $1 ORDER BY id_ukuran',
         [r.id_produksi],
       )
       r.detail = detail
@@ -54,19 +51,19 @@ router.get('/', async (req, res) => {
       WHERE 1=1
     `
     if (tanggal) {
-      sql += ' AND ph.tanggal = ?'
       params.push(tanggal)
+      sql += ` AND ph.tanggal = $${params.length}`
     }
     if (pekerja) {
-      sql += ' AND ph.id_pekerja = ?'
       params.push(Number(pekerja))
+      sql += ` AND ph.id_pekerja = $${params.length}`
     }
     sql += ' ORDER BY ph.tanggal DESC, ph.shift'
-    const [rows] = await pool.query(sql, params)
+    const { rows } = await pool.query(sql, params)
 
     for (const r of rows) {
-      const [detail] = await pool.query(
-        'SELECT * FROM produksi_detail WHERE id_produksi = ? ORDER BY id_ukuran',
+      const { rows: detail } = await pool.query(
+        'SELECT * FROM produksi_detail WHERE id_produksi = $1 ORDER BY id_ukuran',
         [r.id_produksi],
       )
       r.detail = detail
@@ -79,39 +76,40 @@ router.get('/', async (req, res) => {
 
 // Simpan produksi (header + detail + snapshot ongkos)
 router.post('/', async (req, res) => {
-  const conn = await pool.getConnection()
+  const client = await pool.connect()
   try {
     const { tanggal, shift, id_pekerja, id_sepatu, id_po, qtyPerUkuran } = req.body ?? {}
     if (!tanggal || !shift || !id_pekerja || !id_sepatu || !Array.isArray(qtyPerUkuran)) {
       return res.status(400).json({ error: 'Data tidak lengkap' })
     }
 
-    const [sepatu] = await conn.query('SELECT ongkos_kerja FROM tipe_sepatu WHERE id_sepatu = ?', [Number(id_sepatu)])
+    const { rows: sepatu } = await client.query('SELECT ongkos_kerja FROM tipe_sepatu WHERE id_sepatu = $1', [Number(id_sepatu)])
     const ongkos = Number(sepatu[0]?.ongkos_kerja ?? 0)
 
-    await conn.beginTransaction()
-    const [hdr] = await conn.execute(
+    await client.query('BEGIN')
+    const { rows: hdr } = await client.query(
       `INSERT INTO produksi_harian (tanggal, shift, id_pekerja, id_sepatu, id_po, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id_produksi`,
       [tanggal, Number(shift), Number(id_pekerja), Number(id_sepatu), id_po ? Number(id_po) : null, req.user.id],
     )
-    const idProduksi = Number(hdr.insertId)
+    const idProduksi = Number(hdr[0].id_produksi)
 
     for (const d of qtyPerUkuran) {
       const qty = Number(d.qty) || 0
       if (qty <= 0) continue
-      await conn.execute(
-        'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES (?, ?, ?, ?)',
+      await client.query(
+        'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
         [idProduksi, Number(d.id_ukuran), qty, ongkos],
       )
     }
-    await conn.commit()
+    await client.query('COMMIT')
     res.json({ id_produksi: idProduksi })
   } catch (e) {
-    await conn.rollback()
+    await client.query('ROLLBACK')
     res.status(500).json({ error: e.message })
   } finally {
-    conn.release()
+    client.release()
   }
 })
 
@@ -122,29 +120,30 @@ router.put('/:id/detail', async (req, res) => {
     const { qtyPerUkuran } = req.body ?? {}
     if (!Array.isArray(qtyPerUkuran)) return res.status(400).json({ error: 'Data tidak lengkap' })
 
-    const [row] = await pool.query('SELECT * FROM produksi_harian WHERE id_produksi = ?', [id])
-    if (!row[0]) return res.status(404).json({ error: 'Data tidak ditemukan' })
+    const { rows } = await pool.query('SELECT * FROM produksi_harian WHERE id_produksi = $1', [id])
+    if (!rows[0]) return res.status(404).json({ error: 'Data tidak ditemukan' })
 
     // batasan: mandor hanya boleh mengubah data tanggal hari ini
     if (req.user.role === 'mandor') {
-      const today = new Date().toISOString().slice(0, 10)
-      if (row[0].tanggal !== today) {
+      const today = todayStr()
+      // pg mengembalikan DATE sebagai string 'YYYY-MM-DD'
+      if (String(rows[0].tanggal).slice(0, 10) !== today) {
         return res.status(403).json({ error: 'Mandor hanya bisa mengubah data tanggal hari ini' })
       }
     }
 
-    const [lama] = await pool.query(
-      'SELECT ongkos_kerja_saat_ini FROM produksi_detail WHERE id_produksi = ? LIMIT 1',
+    const { rows: lama } = await pool.query(
+      'SELECT ongkos_kerja_saat_ini FROM produksi_detail WHERE id_produksi = $1 LIMIT 1',
       [id],
     )
     const ongkos = Number(lama[0]?.ongkos_kerja_saat_ini ?? 0)
 
-    await pool.query('DELETE FROM produksi_detail WHERE id_produksi = ?', [id])
+    await pool.query('DELETE FROM produksi_detail WHERE id_produksi = $1', [id])
     for (const d of qtyPerUkuran) {
       const qty = Number(d.qty) || 0
       if (qty <= 0) continue
       await pool.query(
-        'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES (?, ?, ?, ?)',
+        'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
         [id, Number(d.id_ukuran), qty, ongkos],
       )
     }
@@ -158,16 +157,16 @@ router.put('/:id/detail', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id)
-    const [row] = await pool.query('SELECT * FROM produksi_harian WHERE id_produksi = ?', [id])
-    if (!row[0]) return res.status(404).json({ error: 'Data tidak ditemukan' })
+    const { rows } = await pool.query('SELECT * FROM produksi_harian WHERE id_produksi = $1', [id])
+    if (!rows[0]) return res.status(404).json({ error: 'Data tidak ditemukan' })
 
     if (req.user.role === 'mandor') {
-      const today = new Date().toISOString().slice(0, 10)
-      if (row[0].tanggal !== today) {
+      const today = todayStr()
+      if (String(rows[0].tanggal).slice(0, 10) !== today) {
         return res.status(403).json({ error: 'Mandor hanya bisa menghapus data tanggal hari ini' })
       }
     }
-    await pool.query('DELETE FROM produksi_harian WHERE id_produksi = ?', [id])
+    await pool.query('DELETE FROM produksi_harian WHERE id_produksi = $1', [id])
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })

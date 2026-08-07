@@ -8,7 +8,7 @@ router.use(authRequired, attachUser)
 router.get('/today', async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10)
-    const [rows] = await pool.query('SELECT * FROM v_total_per_produksi WHERE tanggal = ? ORDER BY shift', [today])
+    const { rows } = await pool.query('SELECT * FROM v_total_per_produksi WHERE tanggal = $1 ORDER BY shift', [today])
     res.json(rows)
   } catch (e) {
     res.status(500).json({ error: e.message })

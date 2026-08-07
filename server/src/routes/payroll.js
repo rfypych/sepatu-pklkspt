@@ -7,9 +7,9 @@ router.use(authRequired, attachUser)
 
 router.get('/periods', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT DISTINCT CONCAT(DATE_FORMAT(tanggal,'%Y-%m'), '-',
-              IF(DAY(tanggal) <= 15,'1','2')) AS periode
+    const { rows } = await pool.query(
+      `SELECT DISTINCT to_char(tanggal, 'YYYY-MM') || '-' ||
+              (CASE WHEN EXTRACT(DAY FROM tanggal) <= 15 THEN '1' ELSE '2' END) AS periode
        FROM produksi_harian ORDER BY periode DESC`,
     )
     res.json(rows.map((r) => r.periode))
@@ -22,7 +22,7 @@ router.get('/rekap', async (req, res) => {
   try {
     const { periode } = req.query
     if (!periode) return res.status(400).json({ error: 'Periode wajib diisi' })
-    const [rows] = await pool.query('SELECT * FROM v_rekap_gaji WHERE periode = ?', [periode])
+    const { rows } = await pool.query('SELECT * FROM v_rekap_gaji WHERE periode = $1', [periode])
     res.json(rows)
   } catch (e) {
     res.status(500).json({ error: e.message })

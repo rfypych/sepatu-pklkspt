@@ -1,15 +1,17 @@
-import mysql from 'mysql2/promise'
+import pg from 'pg'
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'sepatu',
-  waitForConnections: true,
-  connectionLimit: 10,
-  namedPlaceholders: true,
-  dateStrings: true,
+const { Pool, types } = pg
+
+// Neon/Postgres mengembalikan kolom DATE sebagai string 'YYYY-MM-DD' oleh
+// parser bawaan, dan NUMERIC sebagai string juga (sama seperti MySQL dateStrings).
+// Biarkan parser default; driver pg sudah menangani keduanya.
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Neon memerlukan TLS; nonaktifkan hanya untuk dev lokal (PGSSL=false).
+  ssl: process.env.PGSSL === 'false' ? false : { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 })
 
 export default pool
