@@ -9,10 +9,10 @@ export default defineConfig({
     host: true, // bisa diakses dari perangkat lain di jaringan lokal (LAN)
     port: 5173,
     proxy: {
-      // Teruskan request /api ke backend serverless yang aktif di Vercel
+      // Teruskan request /api ke backend di VPS
       // atau ke http://localhost:3000 jika VITE_API_PROXY disetel lokal.
       '/api': {
-        target: process.env.VITE_API_PROXY || 'https://server-eta-six-49.vercel.app',
+        target: process.env.VITE_API_PROXY || 'https://sepatu-api.ansein.com',
         changeOrigin: true,
         secure: false,
       },
@@ -23,7 +23,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_PROXY || 'https://server-eta-six-49.vercel.app',
+        target: process.env.VITE_API_PROXY || 'https://sepatu-api.ansein.com',
         changeOrigin: true,
         secure: false,
       },
