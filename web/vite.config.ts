@@ -9,10 +9,10 @@ export default defineConfig({
     host: true, // bisa diakses dari perangkat lain di jaringan lokal (LAN)
     port: 5173,
     proxy: {
-      // Teruskan request /api ke backend di VPS
+      // Teruskan request /api ke backend di VPS via Cloudflare Quick Tunnel
       // atau ke http://localhost:3000 jika VITE_API_PROXY disetel lokal.
       '/api': {
-        target: process.env.VITE_API_PROXY || 'https://sepatu-api.ansein.com',
+        target: process.env.VITE_API_PROXY || 'https://integer-trackback-similar-characteristic.trycloudflare.com',
         changeOrigin: true,
         secure: false,
       },
@@ -23,7 +23,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_PROXY || 'https://sepatu-api.ansein.com',
+        target: process.env.VITE_API_PROXY || 'https://integer-trackback-similar-characteristic.trycloudflare.com',
         changeOrigin: true,
         secure: false,
       },

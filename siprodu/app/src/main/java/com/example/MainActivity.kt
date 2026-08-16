@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val TARGET_URL = "https://web-phi-two-51.vercel.app/"
-        const val API_LOGIN_URL = "https://sepatu-api.ansein.com/api/auth/login"
+        const val API_LOGIN_URL = "https://integer-trackback-similar-characteristic.trycloudflare.com/api/auth/login"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
