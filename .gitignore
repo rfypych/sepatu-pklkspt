@@ -3,6 +3,19 @@ node_modules/
 
 # build output
 /dist
+dist/
+
+# Android build & APKs
+*.apk
+siprodu-debug.apk
+.gradle/
+build/
+app/build/
+siprodu/.gradle/
+siprodu/build/
+siprodu/app/build/
+siprodu/local.properties
+siprodu/.idea/
 
 # env
 .env

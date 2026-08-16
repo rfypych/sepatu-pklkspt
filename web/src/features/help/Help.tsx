@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card } from '../../components/ui'
+import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
 
 function Bagian({
   judul,
@@ -13,28 +13,28 @@ function Bagian({
 }) {
   const [buka, setBuka] = useState(defaultBuka)
   return (
-    <Card className="overflow-hidden p-0">
+    <div className="overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-xs">
       <button
         onClick={() => setBuka((b) => !b)}
-        className="flex w-full items-center justify-between px-4 py-4 text-left"
+        className="flex w-full items-center justify-between p-4 text-left hover:bg-neutral-50/80 transition-colors"
       >
-        <span className="font-bold text-slate-900">{judul}</span>
-        <span className="text-slate-400">{buka ? '▾' : '▸'}</span>
+        <span className="font-semibold text-neutral-900">{judul}</span>
+        {buka ? <ChevronDown className="h-4 w-4 text-neutral-500" /> : <ChevronRight className="h-4 w-4 text-neutral-400" />}
       </button>
-      {buka && <div className="border-t border-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-700">{children}</div>}
-    </Card>
+      {buka && <div className="border-t border-neutral-100 p-4 text-sm leading-relaxed text-neutral-700 bg-neutral-50/50">{children}</div>}
+    </div>
   )
 }
 
 function Langkah({ nomor, judul, isi }: { nomor: string; judul: string; isi: string }) {
   return (
     <div className="flex gap-3">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-bold text-white">
         {nomor}
       </div>
       <div>
-        <div className="font-semibold text-slate-800">{judul}</div>
-        <div className="mt-0.5 text-slate-600">{isi}</div>
+        <div className="font-semibold text-neutral-900">{judul}</div>
+        <div className="mt-0.5 text-xs text-neutral-600 leading-relaxed">{isi}</div>
       </div>
     </div>
   )
@@ -44,17 +44,17 @@ export default function Help() {
   const navigate = useNavigate()
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
+    <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 active:bg-slate-100"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200"
         >
-          ← Kembali
+          <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">🛟 Pusat Bantuan</h1>
-          <p className="text-sm text-slate-500">Panduan lengkap memakai aplikasi.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Pusat Bantuan</h1>
+          <p className="text-xs text-neutral-500">Panduan lengkap operasional sistem.</p>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export default function Help() {
             <Langkah
               nomor="2"
               judul="Isi Username & Password"
-              isi="Masukkan username dan password yang diberikan oleh admin (Si A)."
+              isi="Masukkan username dan password yang diberikan oleh Admin."
             />
             <Langkah
               nomor="3"
@@ -77,25 +77,22 @@ export default function Help() {
               isi="Setelah masuk, aplikasi otomatis menampilkan menu sesuai peran Anda — Mandor atau Admin."
             />
             <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-              ⚠️ Kalau lupa password, minta direset oleh admin.
+              ⚠️ Kalau lupa password, minta direset oleh Admin.
             </p>
           </div>
         </Bagian>
 
         <Bagian judul="2️⃣ Untuk Mandor — Cara Input Produksi">
           <div className="space-y-3">
-            <p>Dari menu <b>INPUT PRODUKSI</b>, semua dalam satu alur:</p>
+            <p>Dari menu <b>INPUT PRODUKSI</b>, Anda dapat mencatat hasil harian:</p>
             <Langkah nomor="1" judul="Pilih Pekerja" isi="Ketuk nama pekerja yang hari ini dicatat hasilnya." />
             <Langkah nomor="2" judul="Pilih Shift" isi="Tekan tombol SHIFT 1 (pagi) atau SHIFT 2 (siang/malam)." />
-            <Langkah nomor="3" judul="Pilih PO bila perlu" isi="Opsional. Bisa dipilih nomor PO (dengan target & progresnya), atau biarkan 'Lewati'. Bisa juga buat PO baru lewat tombol Tambah PO Baru." />
-            <Langkah nomor="4" judul="+ Tambah Item" isi="Karena satu pekerja dalam satu shift bisa dapat item acak dari loker, tekan TAMBAH ITEM untuk tiap model yang keluar (misal Futsal, Brickmansion, dst)." />
-            <Langkah nomor="5" judul="Isi Jumlah per Ukuran" isi="Untuk tiap item, ketik jumlah pasang per ukuran 36–44. Isi 0/kosong untuk ukuran yang tidak ada hasilnya. Total dan progres PO langsung bertambah seiring mengetik." />
-            <Langkah nomor="6" judul="SIMPAN SEKARANG" isi="Setelah semua item diisi, tekan SIMPAN SEKARANG. Semua item tersimpan sekaligus untuk pekerja & shift itu." />
-            <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-700">
-              💡 Setelah disimpan, data masuk ke daftar <b>Tersimpan Hari Ini</b> dan menetap seharian — tidak bisa diinput ulang. Kalau salah, tekan <b>🗑 Hapus</b> pada item itu lalu input lagi.
-            </p>
+            <Langkah nomor="3" judul="Pilih PO bila perlu" isi="Opsional. Bisa dipilih nomor PO, atau biarkan 'Lewati'." />
+            <Langkah nomor="4" judul="+ Tambah Model" isi="Tekan + TAMBAH MODEL untuk tiap model yang dikerjakan." />
+            <Langkah nomor="5" judul="Isi Jumlah per Ukuran" isi="Untuk tiap model, ketik jumlah pasang per ukuran. Isi 0/kosong untuk ukuran yang tidak ada hasilnya." />
+            <Langkah nomor="6" judul="SIMPAN DATA" isi="Setelah semua model diisi, tekan SIMPAN HASIL PRODUKSI. Semua data tersimpan sekaligus untuk pekerja & shift tersebut." />
             <p className="rounded-lg bg-emerald-50 p-2 text-xs text-emerald-800">
-              ✅ Total pasang & progres PO dihitung otomatis saat Anda mengetik — tidak perlu menghitung sendiri.
+              ✅ Total pasang dihitung otomatis — tidak perlu menghitung sendiri.
             </p>
           </div>
         </Bagian>
@@ -103,14 +100,14 @@ export default function Help() {
         <Bagian judul="3️⃣ Untuk Mandor — Riwayat & Koreksi Data">
           <div className="space-y-3">
             <p>
-              Menu <b>RIWAYAT HARI INI</b> menampilkan semua data produksi hari ini. Di sini Anda bisa:
+              Menu <b>RIWAYAT</b> menampilkan seluruh catatan hasil produksi. Di sini Anda bisa:
             </p>
             <ul className="list-inside space-y-1">
               <li>✏️ <b>Edit</b> — mengubah jumlah pasang bila salah ketik.</li>
               <li>🗑 <b>Hapus</b> — menghapus baris yang tidak perlu.</li>
             </ul>
             <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-              ⚠️ Hanya data <b>tanggal hari ini</b> yang bisa diubah. Data hari sebelumnya terkunci — kalau ada koreksi lewat hari, hubungi admin (Si A).
+              ⚠️ Hanya data <b>tanggal hari ini</b> yang bisa diubah mandor. Data hari sebelumnya terkunci — kalau ada koreksi lewat hari, hubungi Admin.
             </p>
           </div>
         </Bagian>
@@ -119,7 +116,7 @@ export default function Help() {
           <div className="space-y-3">
             <p>Menu <b>Dashboard</b> menampilkan ringkasan produksi hari ini secara real-time (ter-update otomatis tiap 5 detik):</p>
             <ul className="list-inside space-y-1">
-              <li>📦 <b>Total Pasang Hari Ini</b> — jumlah seluruh pasang sepatu yang dicatat hari ini.</li>
+              <li>📦 <b>Total Pasang Hari Ini</b> — jumlah seluruh pasang yang dicatat hari ini.</li>
               <li>💰 <b>Perkiraan Gaji</b> — total estimasi upah seluruh pekerja hari ini.</li>
               <li>Daftar per pekerja: berapa pasang dan berapa upahnya per model & shift.</li>
             </ul>
@@ -131,7 +128,7 @@ export default function Help() {
             <p>Menu <b>Data Produksi</b> adalah daftar lengkap seluruh data yang diinput mandor:</p>
             <ul className="list-inside space-y-1">
               <li>🔍 <b>Filter</b> — pilih tanggal dan/atau nama pekerja untuk mempersempit tampilan.</li>
-              <li>✏️ <b>Edit</b> — perbaiki jumlah pasang yang salah (contoh: kepencet 1000 padahal 100).</li>
+              <li>✏️ <b>Edit</b> — perbaiki jumlah pasang yang salah.</li>
               <li>🗑 <b>Hapus</b> — hapus data yang keliru/duplikat.</li>
             </ul>
             <p className="rounded-lg bg-sky-50 p-2 text-xs text-sky-800">
@@ -165,11 +162,11 @@ export default function Help() {
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <div className="font-semibold text-slate-800">👟 Model & Ongkos</div>
-                <div className="text-slate-600">Tambah model sepatu baru dan atur ongkos kerja per pasang (Rp). Perubahan harga hanya berlaku untuk data baru — gaji periode lama tidak ikut berubah.</div>
+                <div className="text-slate-600">Tambah model baru dan atur ongkos kerja per pasang (Rp). Perubahan harga hanya berlaku untuk data baru — gaji periode lama tidak ikut berubah.</div>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <div className="font-semibold text-slate-800">📏 Ukuran</div>
-                <div className="text-slate-600">Aktifkan/nonaktifkan ukuran, dan tambah ukuran baru (misal 45, 46). Ukuran aktif otomatis muncul di form mandor.</div>
+                <div className="text-slate-600">Aktifkan/nonaktifkan ukuran, dan tambah ukuran baru. Ukuran aktif otomatis muncul di form mandor.</div>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <div className="font-semibold text-slate-800">📦 PO</div>
@@ -182,7 +179,7 @@ export default function Help() {
         <Bagian judul="8️⃣ Apa itu PO?">
           <div className="space-y-3">
             <p>
-              PO = <b>Surat Perintah Kerja</b> — pesanan produksi dari customer, contoh: <i>"PO-2026-001: buat 500 pasang Futsal untuk Toko Sentral"</i>.
+              PO = <b>Surat Perintah Kerja</b> — pesanan produksi dari customer, contoh: <i>"PO-2026-001: buat 500 pasang untuk Toko Sentral"</i>.
             </p>
             <p>
               PO <b>bukan target harian yang wajib tercapai</b>. PO adalah jatah pekerjaan yang dikerjakan sedikit demi sedikit setiap shift. Yang dicatat mandor adalah <b>berapa pasang yang selesai hari itu</b>.
@@ -195,10 +192,10 @@ export default function Help() {
 
         <Bagian judul="9️⃣ Bagaimana Gaji Dihitung?">
           <div className="space-y-3">
-            <p>Gaji memakai sistem <b>borongan (per pasang)</b>:</p>
+            <p>Perhitungan upah kerja dihitung per pasang:</p>
             <div className="rounded-xl bg-slate-50 p-3 text-center">
-              <div className="font-semibold text-slate-800">Gaji = Jumlah Pasang × Ongkos Kerja Model</div>
-              <div className="mt-1 text-xs text-slate-500">Contoh: 100 pasang Futsal × Rp 1.000 = Rp 100.000</div>
+              <div className="font-semibold text-slate-800">Upah = Jumlah Pasang × Ongkos Kerja Model</div>
+              <div className="mt-1 text-xs text-slate-500">Contoh: 100 pasang × Rp 1.000 = Rp 100.000</div>
             </div>
             <p>Rinciannya:</p>
             <ul className="list-inside space-y-1">

@@ -53,6 +53,9 @@ export function apiLogin(username: string, password: string) {
 export function apiMe() {
   return get<{ user: UserProfile }>('/auth/me')
 }
+export function apiSwitchRole(role: 'admin' | 'mandor') {
+  return post<LoginResult>('/auth/switch', { role })
+}
 
 // ---------------- PEKERJA ----------------
 export const getPekerjaAktif = () => get<Pekerja[]>('/pekerja?aktif=true')
@@ -117,6 +120,22 @@ const normProduksi = (r: ProduksiRow): ProduksiRow => ({
   detail: (r.detail ?? []).map(normDetail),
 })
 
+export interface MandorInitData {
+  pekerja: Pekerja[]
+  model: TipeSepatu[]
+  ukuran: MasterUkuran[]
+  po: MasterPo[]
+  todayProduksi: ProduksiRow[]
+}
+
+export const getMandorInit = async (): Promise<MandorInitData> => {
+  const data = await get<MandorInitData>('/produksi/mandor-init')
+  return {
+    ...data,
+    todayProduksi: (data.todayProduksi ?? []).map(normProduksi),
+  }
+}
+
 export const getProduksiHariIni = async () => (await get<ProduksiRow[]>('/produksi/hari-ini')).map(normProduksi)
 export const getProduksi = async (tanggal?: string, idPekerja?: string) => {
   const params = new URLSearchParams()
@@ -124,6 +143,10 @@ export const getProduksi = async (tanggal?: string, idPekerja?: string) => {
   if (idPekerja) params.set('pekerja', idPekerja)
   const qs = params.toString()
   return (await get<ProduksiRow[]>(`/produksi${qs ? `?${qs}` : ''}`)).map(normProduksi)
+}
+export const getProduksiRentang = async (dari: string, sampai: string) => {
+  const qs = new URLSearchParams({ dari, sampai })
+  return (await get<ProduksiRow[]>(`/produksi?${qs}`)).map(normProduksi)
 }
 export const simpanProduksi = (
   input: SimpanInput,
@@ -175,20 +198,3 @@ const normTotal = (r: TotalPerProduksi): TotalPerProduksi => ({
   subtotal_gaji: toNum(r.subtotal_gaji),
 })
 export const getDashboardToday = async () => (await get<TotalPerProduksi[]>('/dashboard/today')).map(normTotal)
-
-// ---------------- REKAP HARIAN ---------------
-export interface RekapHarianRow {
-  tanggal: string
-  id_pekerja: number
-  nama_pekerja: string
-  total_pasang: number
-  total_gaji: number
-}
-const normRekapHarian = (r: RekapHarianRow): RekapHarianRow => ({
-  ...r,
-  tanggal: String(r.tanggal).slice(0, 10),
-  total_pasang: toNum(r.total_pasang),
-  total_gaji: toNum(r.total_gaji),
-})
-export const getRekapHarian = async (dari: string, sampai: string) =>
-  (await get<RekapHarianRow[]>(`/rekap/harian?${new URLSearchParams({ dari, sampai })}`)).map(normRekapHarian)

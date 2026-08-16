@@ -14,9 +14,10 @@ import {
   tambahPo,
   ubahPo,
 } from '../../lib/api'
-import { formatRupiah } from '../../lib/constants'
+import { formatAngka, formatRupiah, tanggalHariIni } from '../../lib/constants'
 import { BigButton, Card, ErrorBox, FieldLabel, Spinner, TextInput } from '../../components/ui'
 import PoProgress from '../../components/PoProgress'
+import { Download, Layers, Package, Plus, Ruler, User } from 'lucide-react'
 
 type Tab = 'pekerja' | 'model' | 'ukuran' | 'po'
 
@@ -24,32 +25,40 @@ export default function Master() {
   const [tab, setTab] = useState<Tab>('pekerja')
   const [error, setError] = useState<string | null>(null)
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'pekerja', label: 'Pekerja' },
-    { id: 'model', label: 'Model & Ongkos' },
-    { id: 'ukuran', label: 'Ukuran' },
-    { id: 'po', label: 'PO' },
+  const tabs: { id: Tab; label: string; icon: typeof User }[] = [
+    { id: 'pekerja', label: 'Pekerja', icon: User },
+    { id: 'model', label: 'Model & Ongkos', icon: Layers },
+    { id: 'ukuran', label: 'Ukuran', icon: Ruler },
+    { id: 'po', label: 'PO', icon: Package },
   ]
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div>
-        <h1 className="text-lg font-bold text-slate-900">Master Data</h1>
-        <p className="text-sm text-slate-500">Semua bisa diubah tanpa bongkar kode.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Master Data</h1>
+        <p className="text-xs text-neutral-500">Kelola pekerja, tarif upah model, daftar ukuran, dan nomor PO.</p>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-sm">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
-              tab === t.id ? 'bg-sky-600 text-white' : 'text-slate-600 active:bg-slate-100'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="flex gap-1.5 rounded-2xl border border-neutral-200/80 bg-white p-1.5 shadow-xs">
+        {tabs.map((t) => {
+          const Icon = t.icon
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold tracking-tight transition-all ${
+                tab === t.id
+                  ? 'bg-neutral-900 text-white shadow-xs'
+                  : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span className="truncate">{t.label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {error && <ErrorBox message={error} />}
@@ -100,7 +109,7 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
   }
   async function toggle(p: Pekerja) {
     try {
-      await ubahPekerja(p.id_pekerja, { status_aktif: !Boolean(p.status_aktif) })
+      await ubahPekerja(p.id_pekerja, { status_aktif: !p.status_aktif })
       setList((prev) =>
         prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: !x.status_aktif } : x)),
       )
@@ -114,33 +123,43 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
     <div className="space-y-3">
       <Card>
         <form onSubmit={tambah} className="space-y-2">
-          <FieldLabel>Tambah Pekerja</FieldLabel>
+          <FieldLabel>Tambah Pekerja Baru</FieldLabel>
           <div className="flex gap-2">
             <TextInput
-              placeholder="Nama pekerja"
+              placeholder="Ketik nama pekerja"
               value={nama}
               onChange={(e) => setNama(e.target.value)}
               className="flex-1 py-2.5"
             />
-            <BigButton type="submit" className="py-2.5">+</BigButton>
+            <BigButton type="submit" className="py-2.5 px-4">
+              <Plus className="h-4 w-4" />
+            </BigButton>
           </div>
         </form>
       </Card>
-      {list.map((p) => (
-        <Card key={p.id_pekerja} className="flex items-center justify-between">
-          <span className={`font-semibold ${p.status_aktif ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
-            {p.nama}
-          </span>
-          <button
-            onClick={() => toggle(p)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-              p.status_aktif ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
-            }`}
-          >
-            {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
-          </button>
-        </Card>
-      ))}
+
+      <div className="space-y-2">
+        {list.map((p) => (
+          <Card key={p.id_pekerja} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${p.status_aktif ? 'bg-neutral-100 text-neutral-800' : 'bg-neutral-100 text-neutral-400'}`}>
+                <User className="h-4 w-4" />
+              </div>
+              <span className={`text-base font-semibold ${p.status_aktif ? 'text-neutral-900' : 'text-neutral-400 line-through'}`}>
+                {p.nama}
+              </span>
+            </div>
+            <button
+              onClick={() => toggle(p)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                p.status_aktif ? 'bg-rose-50 text-rose-700 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              }`}
+            >
+              {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
+            </button>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }
@@ -165,14 +184,14 @@ function TabModel({ setError }: { setError: (m: string | null) => void }) {
   async function simpanHarga(m: TipeSepatu) {
     try {
       await ubahTipeSepatu(m.id_sepatu, { ongkos_kerja: m.ongkos_kerja })
-      setError('Harga disimpan. Berlaku untuk data baru (periode lama tidak berubah).')
+      setError('Harga disimpan. Berlaku untuk data baru (periode lama tetap terkunci).')
     } catch (err) {
       setError((err as Error).message)
     }
   }
   async function toggle(m: TipeSepatu) {
     try {
-      await ubahTipeSepatu(m.id_sepatu, { status_aktif: !Boolean(m.status_aktif) })
+      await ubahTipeSepatu(m.id_sepatu, { status_aktif: !m.status_aktif })
       setList((prev) =>
         prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: !x.status_aktif } : x)),
       )
@@ -185,60 +204,73 @@ function TabModel({ setError }: { setError: (m: string | null) => void }) {
   return (
     <div className="space-y-3">
       <Card>
-        <form onSubmit={tambah} className="space-y-2">
-          <FieldLabel>Tambah Model Sepatu</FieldLabel>
+        <form onSubmit={tambah} className="space-y-3">
+          <FieldLabel>Tambah Model Sepatu & Tarif Upah</FieldLabel>
           <div className="grid grid-cols-2 gap-2">
-            <TextInput placeholder="Nama model" value={nama} onChange={(e) => setNama(e.target.value)} />
+            <TextInput placeholder="Nama model (cth: Futsal)" value={nama} onChange={(e) => setNama(e.target.value)} />
             <TextInput
-              placeholder="Ongkos (Rp/pasang)"
+              placeholder="Ongkos (cth: 1200)"
               inputMode="numeric"
               value={ongkos}
               onChange={(e) => setOngkos(e.target.value.replace(/[^\d]/g, ''))}
             />
           </div>
-          <BigButton type="submit" className="w-full py-2.5">+ Tambah</BigButton>
+          <BigButton type="submit" className="w-full py-2.5">
+            + Tambah Model
+          </BigButton>
         </form>
       </Card>
 
-      {list.map((m) => (
-        <Card key={m.id_sepatu}>
-          <div className="flex items-center justify-between">
-            <span className={`font-semibold ${m.status_aktif ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
-              {m.nama_model}
-            </span>
-            <button
-              onClick={() => toggle(m)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                m.status_aktif ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
-              }`}
-            >
-              {m.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
-            </button>
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={m.ongkos_kerja}
-              onChange={(e) =>
-                setList((prev) =>
-                  prev.map((x) =>
-                    x.id_sepatu === m.id_sepatu
-                      ? { ...x, ongkos_kerja: Number(e.target.value) || 0 }
-                      : x,
-                  ),
-                )
-              }
-              className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-            <span className="text-xs text-slate-500">= {formatRupiah(m.ongkos_kerja)}/pasang</span>
-            <BigButton variant="secondary" className="py-2" onClick={() => simpanHarga(m)}>
-              Simpan
-            </BigButton>
-          </div>
-        </Card>
-      ))}
+      <div className="space-y-2.5">
+        {list.map((m) => (
+          <Card key={m.id_sepatu}>
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <span className={`text-base font-semibold ${m.status_aktif ? 'text-neutral-900' : 'text-neutral-400 line-through'}`}>
+                  {m.nama_model}
+                </span>
+              </div>
+              <button
+                onClick={() => toggle(m)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  m.status_aktif ? 'bg-rose-50 text-rose-700 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                {m.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
+              </button>
+            </div>
+            <div className="mt-2.5 flex items-center gap-2">
+              <span className="text-xs font-semibold text-neutral-500">Tarif:</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={m.ongkos_kerja}
+                onChange={(e) =>
+                  setList((prev) =>
+                    prev.map((x) =>
+                      x.id_sepatu === m.id_sepatu
+                        ? { ...x, ongkos_kerja: Number(e.target.value) || 0 }
+                        : x,
+                    ),
+                  )
+                }
+                className="w-28 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-sm font-bold text-neutral-900 focus:bg-white focus:border-neutral-900 focus:outline-none"
+              />
+              <span className="text-xs text-neutral-500">= {formatRupiah(m.ongkos_kerja)}/psg</span>
+              <button
+                className="ml-auto rounded-xl bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-neutral-800"
+                onClick={() => simpanHarga(m)}
+              >
+                Simpan
+              </button>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }
@@ -260,7 +292,7 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
   }
   async function toggle(u: MasterUkuran) {
     try {
-      await ubahUkuran(u.id_ukuran, !Boolean(u.status_aktif))
+      await ubahUkuran(u.id_ukuran, !u.status_aktif)
       setList((prev) =>
         prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: !x.status_aktif } : x)),
       )
@@ -274,7 +306,7 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
     <div className="space-y-3">
       <Card>
         <form onSubmit={tambah} className="space-y-2">
-          <FieldLabel>Tambah Ukuran</FieldLabel>
+          <FieldLabel>Tambah Ukuran Baru</FieldLabel>
           <div className="flex gap-2">
             <TextInput
               placeholder="cth: 45"
@@ -283,24 +315,36 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
               onChange={(e) => setLabel(e.target.value.replace(/[^\d]/g, ''))}
               className="flex-1 py-2.5"
             />
-            <BigButton type="submit" className="py-2.5">+</BigButton>
+            <BigButton type="submit" className="py-2.5 px-4">
+              <Plus className="h-4 w-4" />
+            </BigButton>
           </div>
         </form>
       </Card>
-      <div className="flex flex-wrap gap-2">
-        {list.map((u) => (
-          <button
-            key={u.id_ukuran}
-            onClick={() => toggle(u)}
-            className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
-              u.status_aktif ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400 line-through'
-            }`}
-          >
-            {u.label_ukuran}
-          </button>
-        ))}
+
+      <div className="rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-xs">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+          Daftar Ukuran Aktif
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {list.map((u) => (
+            <button
+              key={u.id_ukuran}
+              onClick={() => toggle(u)}
+              className={`rounded-2xl px-4 py-2.5 text-sm font-bold transition-all ${
+                u.status_aktif
+                  ? 'bg-neutral-900 text-white shadow-xs'
+                  : 'bg-neutral-100 text-neutral-400 line-through'
+              }`}
+            >
+              {u.label_ukuran}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-neutral-400">
+          Hitam = aktif (muncul di form mandor). Ketuk nomor untuk menonaktifkan.
+        </p>
       </div>
-      <p className="text-xs text-slate-500">Hijau = aktif (muncul di form mandor). Klik untuk menonaktifkan.</p>
     </div>
   )
 }
@@ -334,7 +378,7 @@ function TabPo({ setError }: { setError: (m: string | null) => void }) {
   }
   async function toggle(p: MasterPo) {
     try {
-      await ubahPo(p.id_po, { status_aktif: !Boolean(p.status_aktif) })
+      await ubahPo(p.id_po, { status_aktif: !p.status_aktif })
       setList((prev) =>
         prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: !x.status_aktif } : x)),
       )
@@ -344,69 +388,140 @@ function TabPo({ setError }: { setError: (m: string | null) => void }) {
   }
 
   if (loading) return <Spinner />
+
+  const totalTarget = list.reduce((a, p) => a + p.target_qty, 0)
+  const totalTerisi = list.reduce((a, p) => a + p.achieved_qty, 0)
+
+  async function exportExcel() {
+    const XLSX = await import('xlsx')
+    const rows = list.map((p) => {
+      const sisa = Math.max(0, p.target_qty - p.achieved_qty)
+      const lunas = p.target_qty > 0 && sisa === 0
+      return {
+        'No PO': p.no_po,
+        Customer: p.nama_customer ?? '',
+        'Target (pasang)': p.target_qty,
+        'Terisi (pasang)': p.achieved_qty,
+        'Sisa (pasang)': sisa,
+        Status: p.target_qty > 0 ? (lunas ? 'LUNAS' : 'Berjalan') : 'Belum ada target',
+      }
+    })
+    rows.push({
+      'No PO': 'TOTAL',
+      Customer: '',
+      'Target (pasang)': totalTarget,
+      'Terisi (pasang)': totalTerisi,
+      'Sisa (pasang)': Math.max(0, totalTarget - totalTerisi),
+      Status: '',
+    })
+    const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [{ wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'PO')
+    XLSX.writeFile(wb, `laporan-po-${tanggalHariIni()}.xlsx`)
+  }
+
   return (
     <div className="space-y-3">
+      {/* Summary Card */}
+      <div className="rounded-2xl bg-neutral-900 p-4 text-white shadow-md">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Total Semua PO</div>
+            <div className="mt-1 text-2xl font-bold tracking-tight">{list.length} PO</div>
+            <div className="mt-1 text-xs text-neutral-300">
+              Terisi{' '}
+              <span className="font-bold text-emerald-400">
+                {formatAngka(totalTerisi)} / {formatAngka(totalTarget)}
+              </span>{' '}
+              pasang
+              {totalTarget > 0 && (
+                <span className="ml-1">({Math.round((totalTerisi / totalTarget) * 100)}%)</span>
+              )}
+            </div>
+          </div>
+          {list.length > 0 && (
+            <button
+              className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
+              onClick={exportExcel}
+            >
+              <Download className="h-3 w-3" />
+              <span>Ekspor</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tambah PO Form */}
       <Card>
-        <form onSubmit={tambah} className="space-y-2">
-          <FieldLabel>Tambah PO</FieldLabel>
+        <form onSubmit={tambah} className="space-y-3">
+          <FieldLabel>Tambah Purchase Order (PO)</FieldLabel>
           <div className="grid grid-cols-2 gap-2">
             <TextInput placeholder="No PO (cth: PO-2026-001)" value={noPo} onChange={(e) => setNoPo(e.target.value)} />
             <TextInput placeholder="Customer (opsional)" value={customer} onChange={(e) => setCustomer(e.target.value)} />
           </div>
           <TextInput
-            placeholder="Target jumlah (pasang), sesuai qty PO customer"
+            placeholder="Target jumlah (pasang), sesuai order customer"
             inputMode="numeric"
             value={target}
             onChange={(e) => setTarget(e.target.value.replace(/[^\d]/g, ''))}
           />
-          <BigButton type="submit" className="w-full py-2.5">+ Tambah</BigButton>
+          <BigButton type="submit" className="w-full py-2.5">+ Tambah PO</BigButton>
         </form>
       </Card>
 
-      {list.map((p) => (
-        <Card key={p.id_po}>
-          <div className="flex items-start justify-between">
-            <div>
-              <div className={`font-semibold ${p.status_aktif ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
-                📦 {p.no_po}
+      {/* PO List */}
+      <div className="space-y-2.5">
+        {list.map((p) => (
+          <Card key={p.id_po}>
+            <div className="flex items-start justify-between">
+              <div>
+                <div className={`text-base font-semibold ${p.status_aktif ? 'text-neutral-900' : 'text-neutral-400 line-through'}`}>
+                  📦 {p.no_po}
+                </div>
+                {p.nama_customer && <div className="text-xs text-neutral-500">{p.nama_customer}</div>}
               </div>
-              {p.nama_customer && <div className="text-sm text-slate-500">{p.nama_customer}</div>}
+              <button
+                onClick={() => toggle(p)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  p.status_aktif ? 'bg-rose-50 text-rose-700 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
+              </button>
             </div>
-            <button
-              onClick={() => toggle(p)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                p.status_aktif ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
-              }`}
-            >
-              {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
-            </button>
-          </div>
 
-          <div className="mt-2 flex items-center gap-2">
-            <span className="shrink-0 text-xs text-slate-500">Target</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={p.target_qty}
-              onChange={(e) =>
-                setList((prev) =>
-                  prev.map((x) =>
-                    x.id_po === p.id_po ? { ...x, target_qty: Number(e.target.value) || 0 } : x,
-                  ),
-                )
-              }
-              className="w-24 rounded-xl border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-            <span className="text-xs text-slate-500">pasang</span>
-            <BigButton variant="secondary" className="py-1.5" onClick={() => simpanTarget(p)}>
-              Simpan
-            </BigButton>
-          </div>
+            <div className="mt-2.5 flex items-center gap-2">
+              <span className="shrink-0 text-xs font-semibold text-neutral-500">Target</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={p.target_qty}
+                onChange={(e) =>
+                  setList((prev) =>
+                    prev.map((x) =>
+                      x.id_po === p.id_po ? { ...x, target_qty: Number(e.target.value) || 0 } : x,
+                    ),
+                  )
+                }
+                className="w-24 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-sm font-bold text-neutral-900 focus:bg-white focus:border-neutral-900 focus:outline-none"
+              />
+              <span className="text-xs text-neutral-500">pasang</span>
+              <button
+                className="ml-auto rounded-xl bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-neutral-800"
+                onClick={() => simpanTarget(p)}
+              >
+                Simpan
+              </button>
+            </div>
 
-          <PoProgress target={p.target_qty} achieved={p.achieved_qty} />
-        </Card>
-      ))}
+            <div className="mt-2">
+              <PoProgress target={p.target_qty} achieved={p.achieved_qty} />
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }

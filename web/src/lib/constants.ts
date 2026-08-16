@@ -36,12 +36,15 @@ export function formatTanggalPendek(iso: string): string {
 }
 
 export function labelPeriode(periode: string): string {
-  // periode format: 'YYYY-MM-1' atau 'YYYY-MM-2'
+  // periode format: 'YYYY-MM-1' (tgl 1-15) atau 'YYYY-MM-2' (tgl 16-akhir)
   const [tahun, bulan, nomor] = periode.split('-')
-  const namaBulan = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(
-    new Date(Number(tahun), Number(bulan) - 1, 1),
-  )
-  return nomor === '1' ? `1–15 ${namaBulan} ${tahun}` : `16–31 ${namaBulan} ${tahun}`
+  const dateObj = new Date(Number(tahun), Number(bulan) - 1, 1)
+  const namaBulan = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(dateObj)
+  if (nomor === '1') {
+    return `Tgl 1–15 ${namaBulan} ${tahun} (Periode I / Tengah Bulan)`
+  }
+  const lastDay = new Date(Number(tahun), Number(bulan), 0).getDate()
+  return `Tgl 16–${lastDay} ${namaBulan} ${tahun} (Periode II / Akhir Bulan)`
 }
 
 export function tanggalHariIni(): string {
@@ -50,3 +53,22 @@ export function tanggalHariIni(): string {
   const day = String(d.getDate()).padStart(2, '0')
   return `${d.getFullYear()}-${m}-${day}`
 }
+
+export function tanggalAwalBulan(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+export function tanggalAwalTahun(): string {
+  return `${new Date().getFullYear()}-01-01`
+}
+
+export function labelPeriodeRiwayat(p: PeriodRiwayat): string {
+  if (p === 'hari') return 'Hari Ini'
+  if (p === 'bulan') {
+    return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date())
+  }
+  return `Tahun ${new Date().getFullYear()}`
+}
+
+export type PeriodRiwayat = 'hari' | 'bulan' | 'tahun'

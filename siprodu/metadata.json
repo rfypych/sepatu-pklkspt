@@ -1,0 +1,6 @@
+{
+  "name": "SIPRODU",
+  "description": "Sistem Informasi Produksi & Upah - Pencatatan produksi harian, matriks ukuran sepatu, kalkulasi upah kerja, manajemen PO, dan rekapitulasi slip gaji.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

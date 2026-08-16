@@ -4,9 +4,36 @@ html,
 body,
 #root {
   height: 100%;
+  background-color: #f5f5f5;
 }
 
 body {
-  @apply bg-slate-100 text-slate-900 antialiased;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  background-color: #f5f5f5;
+  color: #171717;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.015em;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+input, select, textarea {
+  user-select: auto;
+}
+
+/* Custom smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
 }

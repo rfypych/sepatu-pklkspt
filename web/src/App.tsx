@@ -10,7 +10,7 @@ import Dashboard from './features/admin/Dashboard'
 import DataProduksi from './features/admin/DataProduksi'
 import Payroll from './features/admin/Payroll'
 import Master from './features/admin/Master'
-import RekapHarian from './features/admin/RekapHarian'
+import Pengaturan from './features/settings/Pengaturan'
 import { Spinner } from './components/ui'
 
 function HomeRedirect() {
@@ -51,6 +51,14 @@ function Router() {
       />
       <Route path="/" element={<HomeRedirect />} />
       <Route
+        path="/pengaturan"
+        element={
+          <ProtectedAuth>
+            <Pengaturan />
+          </ProtectedAuth>
+        }
+      />
+      <Route
         path="/mandor"
         element={
           <Protected role="mandor">
@@ -71,7 +79,6 @@ function Router() {
       >
         <Route index element={<Dashboard />} />
         <Route path="produksi" element={<DataProduksi />} />
-        <Route path="rekap" element={<RekapHarian />} />
         <Route path="payroll" element={<Payroll />} />
         <Route path="master" element={<Master />} />
       </Route>

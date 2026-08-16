@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { apiLogin, apiMe } from '../lib/api'
+import { apiLogin, apiMe, apiSwitchRole } from '../lib/api'
 import { getToken, setToken } from '../lib/config'
 import type { UserProfile } from '../lib/types'
 
@@ -15,6 +15,7 @@ interface AuthContextValue {
   loading: boolean
   signIn: (username: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
+  switchRole: (role: 'admin' | 'mandor') => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -22,22 +23,6 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const token = getToken()
-    if (!token) {
-      setLoading(false)
-      return
-    }
-    apiMe()
-      .then(({ user }) => {
-        setUser(user)
-      })
-      .catch(() => {
-        setToken(null)
-      })
-      .finally(() => setLoading(false))
-  }, [])
 
   const signIn = useCallback(async (username: string, password: string) => {
     try {
@@ -50,13 +35,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  useEffect(() => {
+    const token = getToken()
+    if (!token) {
+      const isApk = typeof navigator !== 'undefined' && (navigator.userAgent.includes('SepatuMandorApp') || new URLSearchParams(window.location.search).get('auto') === 'mandor')
+      if (isApk) {
+        signIn('mandor', 'mandor123').finally(() => setLoading(false))
+        return
+      }
+      setLoading(false)
+      return
+    }
+    apiMe()
+      .then(({ user }) => {
+        setUser(user)
+      })
+      .catch(() => {
+        setToken(null)
+      })
+      .finally(() => setLoading(false))
+  }, [signIn])
+
   const signOut = useCallback(async () => {
     setToken(null)
     setUser(null)
   }, [])
 
+  const switchRole = useCallback(async (role: 'admin' | 'mandor') => {
+    try {
+      const { token, user } = await apiSwitchRole(role)
+      setToken(token)
+      setUser(user)
+      return { error: null }
+    } catch (e) {
+      return { error: (e as Error).message }
+    }
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, switchRole }}>
       {children}
     </AuthContext.Provider>
   )

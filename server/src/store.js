@@ -10,8 +10,19 @@ export async function findUserByUsername(username) {
 
 export async function findUserById(id) {
   const { rows } = await pool.query(
-    'SELECT id, username, role, nama, status_aktif FROM users WHERE id = $1 LIMIT 1',
+    'SELECT id, username, role, nama, status_aktif, switch_group FROM users WHERE id = $1 LIMIT 1',
     [id],
+  )
+  return rows[0] ?? null
+}
+
+export async function findUserByGroupAndRole(switchGroup, role) {
+  const { rows } = await pool.query(
+    `SELECT id, username, role, nama, status_aktif, switch_group
+     FROM users
+     WHERE switch_group = $1 AND role = $2 AND status_aktif = 1
+     ORDER BY id LIMIT 1`,
+    [switchGroup, role],
   )
   return rows[0] ?? null
 }

@@ -5,9 +5,9 @@
 --   mandor: mandor123 (role mandor)
 -- ============================================================================
 
-INSERT INTO users (username, password_hash, role, nama) VALUES
-  ('admin',  '$2b$10$kzyaRpNC9Ww9vd.1fjTZou4BI9zyE.BgfVDQWyYP9fM7Y4p5Or8kG', 'admin',  'Si A'),
-  ('mandor', '$2b$10$GoVBoHR6Xf/fPV/PgsN0XedQiI37tvTmI6ymP0lovCXUN3gnNPxN6', 'mandor', 'Pak Mandor');
+INSERT INTO users (username, password_hash, role, nama, switch_group) VALUES
+  ('admin',  '$2b$10$kzyaRpNC9Ww9vd.1fjTZou4BI9zyE.BgfVDQWyYP9fM7Y4p5Or8kG', 'admin',  'Si A', 1),
+  ('mandor', '$2b$10$GoVBoHR6Xf/fPV/PgsN0XedQiI37tvTmI6ymP0lovCXUN3gnNPxN6', 'mandor', 'Pak Mandor', 1);
 
 INSERT INTO pekerja (nama) VALUES
   ('Pramono'), ('Slamet'), ('Wahyu'), ('Joko'), ('Agus');

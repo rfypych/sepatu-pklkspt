@@ -9,7 +9,19 @@ router.use(authRequired, attachUser)
 // ---------------- PEKERJA ----------------
 router.get('/pekerja', async (req, res) => {
   try {
-    res.json(await listPekerja(req.query.aktif === 'true'))
+    const raw = await listPekerja(req.query.aktif === 'true')
+    const mapped = raw.map((r) => ({
+      ...r,
+      id: String(r.id_pekerja),
+      id_pekerja: Number(r.id_pekerja),
+      nama: r.nama,
+      nik: `NIK-${String(r.id_pekerja).padStart(4, '0')}`,
+      bagian: 'Produksi & Assembling',
+      shift: 1,
+      aktif: r.status_aktif === 1,
+      status_aktif: r.status_aktif,
+    }))
+    res.json(mapped)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -20,60 +32,143 @@ router.post('/pekerja', adminOnly, async (req, res) => {
     const nama = (req.body.nama || '').trim()
     if (!nama) return res.status(400).json({ error: 'Nama wajib diisi' })
     const { rows } = await pool.query('INSERT INTO pekerja (nama) VALUES ($1) RETURNING id_pekerja', [nama])
-    res.json({ id_pekerja: Number(rows[0].id_pekerja), nama })
+    const id = Number(rows[0].id_pekerja)
+    res.json({
+      id: String(id),
+      id_pekerja: id,
+      nama,
+      nik: `NIK-${String(id).padStart(4, '0')}`,
+      bagian: 'Produksi & Assembling',
+      shift: 1,
+      aktif: true,
+      status_aktif: 1,
+    })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })
 
-router.patch('/pekerja/:id', adminOnly, async (req, res) => {
+const updatePekerjaHandler = async (req, res) => {
   try {
-    const { nama, status_aktif } = req.body ?? {}
+    const { nama, status_aktif, aktif } = req.body ?? {}
     const id = Number(req.params.id)
-    if (nama !== undefined) await pool.query('UPDATE pekerja SET nama = $1 WHERE id_pekerja = $2', [nama.trim(), id])
-    if (status_aktif !== undefined) await pool.query('UPDATE pekerja SET status_aktif = $1 WHERE id_pekerja = $2', [status_aktif ? 1 : 0, id])
-    res.json({ ok: true })
+    if (nama !== undefined) await pool.query('UPDATE pekerja SET nama = $1 WHERE id_pekerja = $2', [String(nama).trim(), id])
+    const resolvedAktif = status_aktif !== undefined ? (status_aktif ? 1 : 0) : (aktif !== undefined ? (aktif ? 1 : 0) : undefined)
+    if (resolvedAktif !== undefined) await pool.query('UPDATE pekerja SET status_aktif = $1 WHERE id_pekerja = $2', [resolvedAktif, id])
+    res.json({
+      id: String(id),
+      id_pekerja: id,
+      nama: nama || '',
+      aktif: resolvedAktif === 1,
+      status_aktif: resolvedAktif ?? 1,
+      ok: true,
+    })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+router.patch('/pekerja/:id', adminOnly, updatePekerjaHandler)
+router.put('/pekerja/:id', adminOnly, updatePekerjaHandler)
+
+router.delete('/pekerja/:id', adminOnly, async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    await pool.query('UPDATE pekerja SET status_aktif = 0 WHERE id_pekerja = $1', [id])
+    res.json({ ok: true, success: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })
 
-// ---------------- TIPE SEPATU ----------------
-router.get('/tipe-sepatu', async (req, res) => {
+// ---------------- TIPE SEPATU / MODEL ----------------
+const listModelHandler = async (req, res) => {
   try {
-    res.json(await listTipeSepatu(req.query.aktif === 'true'))
+    const raw = await listTipeSepatu(req.query.aktif === 'true')
+    const mapped = raw.map((r) => ({
+      ...r,
+      id: String(r.id_sepatu),
+      id_sepatu: Number(r.id_sepatu),
+      kode_model: r.nama_model,
+      nama_model: r.nama_model,
+      kategori: 'Model',
+      ongkos_per_pasang: Number(r.ongkos_kerja || 0),
+      ongkos_kerja: Number(r.ongkos_kerja || 0),
+      status_aktif: r.status_aktif,
+    }))
+    res.json(mapped)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
-})
+}
+router.get('/tipe-sepatu', listModelHandler)
+router.get('/model', listModelHandler)
 
-router.post('/tipe-sepatu', adminOnly, async (req, res) => {
+const createModelHandler = async (req, res) => {
   try {
-    const nama = (req.body.nama_model || '').trim()
-    const ongkos = Number(req.body.ongkos_kerja || 0)
+    const nama = (req.body.nama_model || req.body.kode_model || '').trim()
+    const ongkos = Number(req.body.ongkos_kerja ?? req.body.ongkos_per_pasang ?? 0)
     if (!nama) return res.status(400).json({ error: 'Nama model wajib diisi' })
     const { rows } = await pool.query(
       'INSERT INTO tipe_sepatu (nama_model, ongkos_kerja) VALUES ($1, $2) RETURNING id_sepatu',
       [nama, ongkos],
     )
-    res.json({ id_sepatu: Number(rows[0].id_sepatu), nama_model: nama, ongkos_kerja: ongkos })
+    const id = Number(rows[0].id_sepatu)
+    res.json({
+      id: String(id),
+      id_sepatu: id,
+      kode_model: nama,
+      nama_model: nama,
+      kategori: 'Model',
+      ongkos_per_pasang: ongkos,
+      ongkos_kerja: ongkos,
+      status_aktif: 1,
+    })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
-})
+}
+router.post('/tipe-sepatu', adminOnly, createModelHandler)
+router.post('/model', adminOnly, createModelHandler)
 
-router.patch('/tipe-sepatu/:id', adminOnly, async (req, res) => {
+const updateModelHandler = async (req, res) => {
   try {
-    const { nama_model, ongkos_kerja, status_aktif } = req.body ?? {}
+    const { nama_model, kode_model, ongkos_kerja, ongkos_per_pasang, status_aktif } = req.body ?? {}
     const id = Number(req.params.id)
-    if (nama_model !== undefined) await pool.query('UPDATE tipe_sepatu SET nama_model = $1 WHERE id_sepatu = $2', [nama_model.trim(), id])
-    if (ongkos_kerja !== undefined) await pool.query('UPDATE tipe_sepatu SET ongkos_kerja = $1 WHERE id_sepatu = $2', [Number(ongkos_kerja), id])
+    const nama = (nama_model || kode_model || '').trim()
+    if (nama) await pool.query('UPDATE tipe_sepatu SET nama_model = $1 WHERE id_sepatu = $2', [nama, id])
+    const ongkos = ongkos_kerja !== undefined ? Number(ongkos_kerja) : (ongkos_per_pasang !== undefined ? Number(ongkos_per_pasang) : undefined)
+    if (ongkos !== undefined) await pool.query('UPDATE tipe_sepatu SET ongkos_kerja = $1 WHERE id_sepatu = $2', [ongkos, id])
     if (status_aktif !== undefined) await pool.query('UPDATE tipe_sepatu SET status_aktif = $1 WHERE id_sepatu = $2', [status_aktif ? 1 : 0, id])
-    res.json({ ok: true })
+    res.json({
+      id: String(id),
+      id_sepatu: id,
+      kode_model: nama,
+      nama_model: nama,
+      ongkos_per_pasang: ongkos ?? 0,
+      ongkos_kerja: ongkos ?? 0,
+      status_aktif: status_aktif ?? 1,
+      ok: true,
+    })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
-})
+}
+router.patch('/tipe-sepatu/:id', adminOnly, updateModelHandler)
+router.put('/tipe-sepatu/:id', adminOnly, updateModelHandler)
+router.patch('/model/:id', adminOnly, updateModelHandler)
+router.put('/model/:id', adminOnly, updateModelHandler)
+
+const deleteModelHandler = async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    await pool.query('UPDATE tipe_sepatu SET status_aktif = 0 WHERE id_sepatu = $1', [id])
+    res.json({ ok: true, success: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+router.delete('/tipe-sepatu/:id', adminOnly, deleteModelHandler)
+router.delete('/model/:id', adminOnly, deleteModelHandler)
 
 // ---------------- UKURAN ----------------
 router.get('/ukuran', async (req, res) => {
@@ -111,10 +206,25 @@ router.patch('/ukuran/:id', adminOnly, async (req, res) => {
 })
 
 // ---------------- PO ----------------
-// Mandor juga boleh menambah PO (target sesuai qty dari customer).
 router.get('/po', async (req, res) => {
   try {
-    res.json(await listPo(req.query.aktif === 'true'))
+    const raw = await listPo(req.query.aktif === 'true')
+    const mapped = raw.map((r) => ({
+      ...r,
+      id: String(r.id_po),
+      id_po: Number(r.id_po),
+      nomor_po: r.no_po,
+      no_po: r.no_po,
+      nama_po: r.nama_customer || r.no_po,
+      nama_customer: r.nama_customer,
+      target_pasang: Number(r.target_qty || 0),
+      target_qty: Number(r.target_qty || 0),
+      selesai_pasang: Number(r.achieved_qty || 0),
+      achieved_qty: Number(r.achieved_qty || 0),
+      status: r.target_qty > 0 && Number(r.achieved_qty) >= Number(r.target_qty) ? 'Selesai' : 'Berjalan',
+      status_aktif: r.status_aktif,
+    }))
+    res.json(mapped)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -122,29 +232,67 @@ router.get('/po', async (req, res) => {
 
 router.post('/po', async (req, res) => {
   try {
-    const noPo = (req.body.no_po || '').trim()
+    const noPo = (req.body.no_po || req.body.nomor_po || '').trim()
     if (!noPo) return res.status(400).json({ error: 'No PO wajib diisi' })
-    const customer = (req.body.nama_customer || '').trim() || null
-    const target = Math.max(0, Math.floor(Number(req.body.target_qty) || 0))
+    const customer = (req.body.nama_customer || req.body.nama_po || '').trim() || null
+    const target = Math.max(0, Math.floor(Number(req.body.target_qty ?? req.body.target_pasang) || 0))
     const { rows } = await pool.query(
       'INSERT INTO master_po (no_po, nama_customer, target_qty) VALUES ($1, $2, $3) RETURNING id_po',
       [noPo, customer, target],
     )
-    res.json({ id_po: Number(rows[0].id_po), no_po: noPo, nama_customer: customer, target_qty: target })
+    const id = Number(rows[0].id_po)
+    res.json({
+      id: String(id),
+      id_po: id,
+      nomor_po: noPo,
+      no_po: noPo,
+      nama_po: customer || noPo,
+      nama_customer: customer,
+      target_pasang: target,
+      target_qty: target,
+      selesai_pasang: 0,
+      achieved_qty: 0,
+      status: 'Berjalan',
+      status_aktif: 1,
+    })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })
 
-router.patch('/po/:id', adminOnly, async (req, res) => {
+const updatePoHandler = async (req, res) => {
   try {
-    const { no_po, nama_customer, target_qty, status_aktif } = req.body ?? {}
+    const { no_po, nomor_po, nama_customer, nama_po, target_qty, target_pasang, status_aktif } = req.body ?? {}
     const id = Number(req.params.id)
-    if (no_po !== undefined) await pool.query('UPDATE master_po SET no_po = $1 WHERE id_po = $2', [String(no_po).trim(), id])
-    if (nama_customer !== undefined) await pool.query('UPDATE master_po SET nama_customer = $1 WHERE id_po = $2', [String(nama_customer).trim() || null, id])
-    if (target_qty !== undefined) await pool.query('UPDATE master_po SET target_qty = $1 WHERE id_po = $2', [Math.max(0, Math.floor(Number(target_qty) || 0)), id])
+    const resolvedNoPo = (no_po || nomor_po || '').trim()
+    if (resolvedNoPo) await pool.query('UPDATE master_po SET no_po = $1 WHERE id_po = $2', [resolvedNoPo, id])
+    const resolvedCust = (nama_customer || nama_po || '').trim()
+    if (resolvedCust) await pool.query('UPDATE master_po SET nama_customer = $1 WHERE id_po = $2', [resolvedCust, id])
+    const resolvedTarget = target_qty !== undefined ? Number(target_qty) : (target_pasang !== undefined ? Number(target_pasang) : undefined)
+    if (resolvedTarget !== undefined) await pool.query('UPDATE master_po SET target_qty = $1 WHERE id_po = $2', [Math.max(0, Math.floor(resolvedTarget)), id])
     if (status_aktif !== undefined) await pool.query('UPDATE master_po SET status_aktif = $1 WHERE id_po = $2', [status_aktif ? 1 : 0, id])
-    res.json({ ok: true })
+    res.json({
+      id: String(id),
+      id_po: id,
+      nomor_po: resolvedNoPo,
+      no_po: resolvedNoPo,
+      nama_customer: resolvedCust,
+      target_qty: resolvedTarget ?? 0,
+      status_aktif: status_aktif ?? 1,
+      ok: true,
+    })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+router.patch('/po/:id', adminOnly, updatePoHandler)
+router.put('/po/:id', adminOnly, updatePoHandler)
+
+router.delete('/po/:id', adminOnly, async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    await pool.query('UPDATE master_po SET status_aktif = 0 WHERE id_po = $1', [id])
+    res.json({ ok: true, success: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

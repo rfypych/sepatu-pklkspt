@@ -9,11 +9,12 @@ export default defineConfig({
     host: true, // bisa diakses dari perangkat lain di jaringan lokal (LAN)
     port: 5173,
     proxy: {
-      // Frontend memakai /api (relative) → Vite teruskan ke backend lokal.
-      // Ini membuat aplikasi jalan dari localhost maupun IP LAN tanpa CORS issue.
+      // Teruskan request /api ke backend serverless yang aktif di Vercel
+      // atau ke http://localhost:3000 jika VITE_API_PROXY disetel lokal.
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_PROXY || 'https://server-eta-six-49.vercel.app',
         changeOrigin: true,
+        secure: false,
       },
     },
   },
@@ -22,8 +23,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_PROXY || 'https://server-eta-six-49.vercel.app',
         changeOrigin: true,
+        secure: false,
       },
     },
   },

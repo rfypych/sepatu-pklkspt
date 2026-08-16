@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   role          VARCHAR(10)  NOT NULL CHECK (role IN ('admin','mandor')),
   nama          VARCHAR(100) NOT NULL,
   status_aktif  SMALLINT     NOT NULL DEFAULT 1,
+  switch_group  INTEGER,                           -- pasangan akun yang boleh saling ganti peran
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
