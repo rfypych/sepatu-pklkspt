@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getDaftarPeriode, getRekapGaji } from '../../lib/api'
+import { getDaftarPeriode, getRekapGaji, getCache } from '../../lib/api'
 import type { RekapGajiRow } from '../../lib/types'
 import { formatAngka, formatRupiah, labelPeriode } from '../../lib/constants'
-import { Card, ErrorBox, SelectInput, Spinner } from '../../components/ui'
+import { Card, ErrorBox, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
+import { downloadExcelWorkbook } from '../../lib/laporan'
 import { Coins, Download, User } from 'lucide-react'
 
 export default function Payroll() {
-  const [periodeList, setPeriodeList] = useState<string[]>([])
+  const [periodeList, setPeriodeList] = useState<string[]>(() => getCache<string[]>('payroll_periods') ?? [])
   const [periode, setPeriode] = useState('')
   const [rows, setRows] = useState<RekapGajiRow[]>([])
   const [view, setView] = useState<ViewMode>('kartu')
@@ -18,7 +19,9 @@ export default function Payroll() {
     try {
       const list = await getDaftarPeriode()
       setPeriodeList(list)
-      if (list.length > 0) setPeriode((prev) => prev || list[0])
+      if (list.length > 0) {
+        setPeriode((prev) => prev || list[0])
+      }
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -32,9 +35,19 @@ export default function Payroll() {
 
   useEffect(() => {
     if (!periode) return
-    setLoading(true)
+    const cached = getCache<RekapGajiRow[]>(`payroll_${periode}`)
+    if (cached) {
+      setRows(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+
     getRekapGaji(periode)
-      .then(setRows)
+      .then((data) => {
+        setRows(data)
+        setError(null)
+      })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [periode])
@@ -50,24 +63,26 @@ export default function Payroll() {
   const grandTotal = Array.from(perPekerja.values()).reduce((a, p) => a + p.total_gaji, 0)
   const totalPasangSemua = rows.reduce((a, r) => a + r.total_pasang, 0)
 
-  function exportCsv() {
-    const header = ['Nama Pekerja', 'Model', 'Total Pasang', 'Total Gaji']
-    const body = rows.map((r) => [
-      r.nama_pekerja,
-      r.nama_model,
-      r.total_pasang,
-      r.total_gaji.toFixed(0),
-    ])
-    const csv = [header, ...body]
-      .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';'))
-      .join('\r\n')
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `payroll-${periode}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+  async function exportExcel() {
+    if (rows.length === 0) return
+    const XLSX = await import('xlsx')
+    const dataRows = rows.map((r) => ({
+      'Nama Pekerja': r.nama_pekerja,
+      Model: r.nama_model,
+      'Total Pasang': r.total_pasang,
+      'Total Gaji (Rp)': r.total_gaji,
+    }))
+    dataRows.push({
+      'Nama Pekerja': 'GRAND TOTAL',
+      Model: '',
+      'Total Pasang': totalPasangSemua,
+      'Total Gaji (Rp)': grandTotal,
+    })
+    const ws = XLSX.utils.json_to_sheet(dataRows)
+    ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 18 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Gaji')
+    downloadExcelWorkbook(XLSX, wb, `payroll-${periode || 'rekap'}.xlsx`)
   }
 
   return (
@@ -81,11 +96,11 @@ export default function Payroll() {
         <div className="flex items-center gap-2">
           {rows.length > 0 && (
             <button
-              onClick={exportCsv}
+              onClick={exportExcel}
               className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-neutral-800"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>Ekspor CSV</span>
+              <span>Ekspor Excel</span>
             </button>
           )}
           <ViewToggle value={view} onChange={setView} />
@@ -106,8 +121,8 @@ export default function Payroll() {
 
       {error && <ErrorBox message={error} />}
 
-      {loading ? (
-        <Spinner />
+      {loading && rows.length === 0 ? (
+        <SkeletonTable rows={5} cols={4} />
       ) : rows.length === 0 ? (
         <Card className="py-12 text-center text-neutral-500">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">

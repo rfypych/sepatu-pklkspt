@@ -151,3 +151,71 @@ export function PillBadge({
     </span>
   )
 }
+
+// ---------------- SKELETON LOADERS ----------------
+export function Skeleton({
+  className = '',
+  rounded = 'rounded-xl',
+}: {
+  className?: string
+  rounded?: string
+}) {
+  return (
+    <div
+      className={`animate-pulse bg-slate-200/80 ${rounded} ${className}`}
+      aria-hidden="true"
+    />
+  )
+}
+
+export function SkeletonCard({ className = '' }: { className?: string }) {
+  return (
+    <div className={`rounded-2xl border-2 border-slate-200/80 bg-white p-5 shadow-xs ${className}`}>
+      <div className="flex items-center justify-between gap-4 mb-3">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-6 w-12 rounded-full" />
+      </div>
+      <Skeleton className="h-8 w-36 mb-2" />
+      <Skeleton className="h-3 w-48" />
+    </div>
+  )
+}
+
+export function SkeletonTable({
+  rows = 5,
+  cols = 5,
+  className = '',
+}: {
+  rows?: number
+  cols?: number
+  className?: string
+}) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-xs ${className}`}>
+      <div className="border-b border-slate-200 bg-slate-50/80 p-3.5 flex gap-4">
+        {Array.from({ length: cols }).map((_, i) => (
+          <Skeleton key={i} className="h-4 flex-1" />
+        ))}
+      </div>
+      <div className="divide-y divide-slate-100">
+        {Array.from({ length: rows }).map((_, r) => (
+          <div key={r} className="flex gap-4 p-4 items-center">
+            {Array.from({ length: cols }).map((_, c) => (
+              <Skeleton key={c} className={`h-4.5 flex-1 ${c === 0 ? 'w-1/3' : ''}`} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function InlineLoadingBadge({ label = 'Menyinkronkan...' }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 animate-pulse">
+      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+      {label}
+    </span>
+  )
+}
+

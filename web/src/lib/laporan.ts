@@ -49,6 +49,23 @@ export function buatBarisLaporan(
   })
 }
 
+export function downloadExcelWorkbook(XLSX: any, wb: any, namaFile: string) {
+  if (typeof window !== 'undefined' && (window as any).AndroidBridge?.saveFileBase64) {
+    try {
+      const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' })
+      ;(window as any).AndroidBridge.saveFileBase64(
+        b64,
+        namaFile,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      )
+      return
+    } catch (err) {
+      console.error('AndroidBridge saveFileBase64 error:', err)
+    }
+  }
+  XLSX.writeFile(wb, namaFile)
+}
+
 export async function exportLaporanHarian(
   rows: ProduksiRow[],
   poList: MasterPo[],
@@ -94,5 +111,5 @@ export async function exportLaporanHarian(
   ]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Laporan Harian')
-  XLSX.writeFile(wb, namaFile)
+  downloadExcelWorkbook(XLSX, wb, namaFile)
 }

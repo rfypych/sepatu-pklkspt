@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getDashboardToday, type TotalPerProduksi } from '../../lib/api'
+import { getDashboardToday, getCache, type TotalPerProduksi } from '../../lib/api'
 import { formatAngka, formatRupiah, tanggalHariIni } from '../../lib/constants'
-import { Card, ErrorBox, PillBadge, Spinner } from '../../components/ui'
+import { Card, ErrorBox, PillBadge, Skeleton, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
 import { BarChart3, User } from 'lucide-react'
 
 export default function Dashboard() {
-  const [rows, setRows] = useState<TotalPerProduksi[]>([])
+  const [rows, setRows] = useState<TotalPerProduksi[]>(() => getCache<TotalPerProduksi[]>('dashboard_today') ?? [])
   const [view, setView] = useState<ViewMode>('kartu')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getCache('dashboard_today'))
   const [error, setError] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -59,30 +59,45 @@ export default function Dashboard() {
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-3xl border-2 border-blue-700 bg-blue-600 p-4 text-white shadow-md">
-          <div className="text-xs font-bold uppercase tracking-wider text-blue-100">
-            Total Pasang Hari Ini
-          </div>
-          <div className="mt-1 text-3xl font-black tracking-tight text-white">
-            {formatAngka(totalPasang)}{' '}
-            <span className="text-sm font-bold text-blue-200">psg</span>
-          </div>
-        </div>
+        {loading && rows.length === 0 ? (
+          <>
+            <div className="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-sm">
+              <Skeleton className="h-3 w-28 mb-2" />
+              <Skeleton className="h-8 w-32" />
+            </div>
+            <div className="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-sm">
+              <Skeleton className="h-3 w-28 mb-2" />
+              <Skeleton className="h-8 w-36" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-3xl border-2 border-blue-700 bg-blue-600 p-4 text-white shadow-md">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-100">
+                Total Pasang Hari Ini
+              </div>
+              <div className="mt-1 text-3xl font-black tracking-tight text-white">
+                {formatAngka(totalPasang)}{' '}
+                <span className="text-sm font-bold text-blue-200">psg</span>
+              </div>
+            </div>
 
-        <div className="rounded-3xl border-2 border-emerald-800 bg-emerald-700 p-4 text-white shadow-md">
-          <div className="text-xs font-bold uppercase tracking-wider text-emerald-100">
-            Estimasi Gaji Hari Ini
-          </div>
-          <div className="mt-1 text-3xl font-black tracking-tight text-white">
-            {formatRupiah(totalGaji)}
-          </div>
-        </div>
+            <div className="rounded-3xl border-2 border-emerald-800 bg-emerald-700 p-4 text-white shadow-md">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-100">
+                Estimasi Gaji Hari Ini
+              </div>
+              <div className="mt-1 text-3xl font-black tracking-tight text-white">
+                {formatRupiah(totalGaji)}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {error && <ErrorBox message={error} />}
 
-      {loading ? (
-        <Spinner label="Memperbarui data realtime..." />
+      {loading && rows.length === 0 ? (
+        <SkeletonTable rows={4} cols={5} />
       ) : rows.length === 0 ? (
         <Card className="py-12 text-center text-slate-500">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">

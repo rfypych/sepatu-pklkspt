@@ -6,31 +6,31 @@ import {
   getPekerjaSemua,
   getUkuranSemua,
   getPoSemua,
+  getCache,
   type ProduksiRow,
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja } from '../../lib/types'
 import { formatAngka, formatRupiah, formatTanggalPendek } from '../../lib/constants'
-import { BigButton, Card, ErrorBox, FieldLabel, PillBadge, SelectInput, Spinner } from '../../components/ui'
+import { BigButton, Card, ErrorBox, FieldLabel, PillBadge, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
 import { exportLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Trash2 } from 'lucide-react'
 
 export default function DataProduksi() {
-  const [rows, setRows] = useState<ProduksiRow[]>([])
-  const [pekerjaList, setPekerjaList] = useState<Pekerja[]>([])
-  const [ukuranList, setUkuranList] = useState<MasterUkuran[]>([])
-  const [poList, setPoList] = useState<MasterPo[]>([])
+  const [rows, setRows] = useState<ProduksiRow[]>(() => getCache<ProduksiRow[]>('produksi_all_all') ?? [])
+  const [pekerjaList, setPekerjaList] = useState<Pekerja[]>(() => getCache<Pekerja[]>('pekerja_semua') ?? [])
+  const [ukuranList, setUkuranList] = useState<MasterUkuran[]>(() => getCache<MasterUkuran[]>('ukuran_semua') ?? [])
+  const [poList, setPoList] = useState<MasterPo[]>(() => getCache<MasterPo[]>('po_semua') ?? [])
   const [tanggal, setTanggal] = useState('')
   const [idPekerja, setIdPekerja] = useState('')
   const [view, setView] = useState<ViewMode>('kartu')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getCache('produksi_all_all'))
   const [error, setError] = useState<string | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
 
   const muat = useCallback(async () => {
-    setLoading(true)
     try {
       const [produksi, pekerja, ukuran, po] = await Promise.all([
         getProduksi(tanggal || undefined, idPekerja || undefined),
@@ -148,8 +148,8 @@ export default function DataProduksi() {
 
       {error && <ErrorBox message={error} />}
 
-      {loading ? (
-        <Spinner />
+      {loading && rows.length === 0 ? (
+        <SkeletonTable rows={5} cols={6} />
       ) : rows.length === 0 ? (
         <Card className="py-12 text-center text-neutral-500">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">

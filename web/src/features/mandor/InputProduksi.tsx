@@ -10,7 +10,7 @@ import {
 import type { ProduksiRow } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
 import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
-import { BigButton, Card, ErrorBox, Spinner } from '../../components/ui'
+import { BigButton, Card, ErrorBox, Skeleton, SkeletonCard, Spinner } from '../../components/ui'
 import PoProgress from '../../components/PoProgress'
 import {
   ArrowLeft,
@@ -394,7 +394,22 @@ export default function InputProduksi() {
     }
   }
 
-  if (loading) return <Spinner />
+  if (loading && pekerjaList.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm">
+          <Skeleton className="h-6 w-32 rounded-full mb-3" />
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-full" />
+        </div>
+        <div className="space-y-3">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    )
+  }
 
   if (!idPekerja) {
     return (

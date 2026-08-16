@@ -6,6 +6,7 @@ import {
   replaceProduksiDetail,
   getUkuranSemua,
   getPoSemua,
+  getCache,
   type ProduksiRow,
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran } from '../../lib/types'
@@ -18,7 +19,7 @@ import {
   tanggalHariIni,
   type PeriodRiwayat,
 } from '../../lib/constants'
-import { BigButton, Card, ErrorBox, PillBadge, Spinner } from '../../components/ui'
+import { BigButton, Card, ErrorBox, PillBadge, SkeletonTable } from '../../components/ui'
 import { Tabel, THead, Th, Td } from '../../components/view'
 import { buatBarisLaporan, exportLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Lock, Trash2 } from 'lucide-react'
@@ -32,17 +33,16 @@ const PERIODE_LIST: { value: PeriodRiwayat; label: string }[] = [
 export default function Riwayat() {
   const [periode, setPeriode] = useState<PeriodRiwayat>('hari')
   const [tanggal, setTanggal] = useState(tanggalHariIni())
-  const [rows, setRows] = useState<ProduksiRow[]>([])
-  const [ukuranList, setUkuranList] = useState<MasterUkuran[]>([])
-  const [poList, setPoList] = useState<MasterPo[]>([])
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState<ProduksiRow[]>(() => getCache<ProduksiRow[]>('produksi_hari_ini') ?? [])
+  const [ukuranList, setUkuranList] = useState<MasterUkuran[]>(() => getCache<MasterUkuran[]>('ukuran_semua') ?? [])
+  const [poList, setPoList] = useState<MasterPo[]>(() => getCache<MasterPo[]>('po_semua') ?? [])
+  const [loading, setLoading] = useState(() => !getCache('produksi_hari_ini'))
   const [error, setError] = useState<string | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
 
   const muat = useCallback(async () => {
-    setLoading(true)
     try {
       const [prod, ukuran, po] = await Promise.all([
         periode === 'hari'
@@ -72,9 +72,9 @@ export default function Riwayat() {
   const today = tanggalHariIni()
   const bisaUbah = (row: ProduksiRow) => String(row.tanggal).slice(0, 10) === today
 
-  function mulaiEdit(row: ProduksiRow) {
-    setEditId(row.id_produksi)
-    setQty(Object.fromEntries(row.detail.map((d) => [String(d.id_ukuran), d.qty])))
+  function mulaiEdit(r: ProduksiRow) {
+    setEditId(r.id_produksi)
+    setQty(Object.fromEntries(r.detail.map((d) => [String(d.id_ukuran), d.qty])))
   }
 
   async function onSimpanEdit(idProduksi: number) {
@@ -95,7 +95,7 @@ export default function Riwayat() {
   }
 
   async function onHapus(idProduksi: number) {
-    if (!window.confirm('Hapus data ini?')) return
+    if (!window.confirm('Hapus baris produksi ini?')) return
     try {
       await hapusProduksi(idProduksi)
       await muat()
@@ -117,9 +117,6 @@ export default function Riwayat() {
   const baris = buatBarisLaporan(rows, poList, ukuranList)
   const totalPasangSemua = baris.reduce((a, b) => a + b.pasang, 0)
   const totalGajiSemua = baris.reduce((a, b) => a + b.subtotal, 0)
-
-  if (loading) return <Spinner />
-  if (error) return <ErrorBox message={error} />
 
   return (
     <div className="space-y-4">
@@ -147,33 +144,38 @@ export default function Riwayat() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 rounded-2xl border-2 border-slate-300 bg-white p-1.5 shadow-sm">
-        {PERIODE_LIST.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => setPeriode(p.value)}
-            className={`flex-1 rounded-xl py-2.5 text-xs font-black tracking-tight transition-all ${
-              periode === p.value
-                ? 'bg-blue-600 text-white shadow-md border-2 border-blue-700'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="space-y-3 rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-xs">
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-neutral-100 p-1">
+          {PERIODE_LIST.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => setPeriode(p.value)}
+              className={`rounded-lg py-1.5 text-xs font-semibold tracking-tight transition-all ${
+                periode === p.value
+                  ? 'bg-white text-neutral-900 shadow-xs'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {periode === 'hari' && (
+          <div>
+            <div className="relative">
+              <input
+                type="date"
+                value={tanggal}
+                onChange={(e) => setTanggal(e.target.value)}
+                className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {periode === 'hari' && (
-        <div className="flex items-center gap-2 rounded-2xl border-2 border-slate-300 bg-white p-3 shadow-xs">
-          <Calendar className="h-5 w-5 text-blue-600 ml-1 shrink-0" />
-          <input
-            type="date"
-            value={tanggal}
-            onChange={(e) => setTanggal(e.target.value)}
-            className="w-full bg-transparent text-base font-bold text-slate-900 focus:outline-none"
-          />
-        </div>
-      )}
+      {error && <ErrorBox message={error} />}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
@@ -191,7 +193,9 @@ export default function Riwayat() {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {loading && rows.length === 0 ? (
+        <SkeletonTable rows={5} cols={6} />
+      ) : rows.length === 0 ? (
         <Card className="py-12 text-center text-slate-500">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <Calendar className="h-6 w-6" />

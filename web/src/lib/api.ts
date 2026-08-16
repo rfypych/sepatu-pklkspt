@@ -57,28 +57,75 @@ export function apiSwitchRole(role: 'admin' | 'mandor') {
   return post<LoginResult>('/auth/switch', { role })
 }
 
+import { getCache, setCache, invalidateCache } from './cache'
+export { getCache, setCache, invalidateCache }
+
 // ---------------- PEKERJA ----------------
-export const getPekerjaAktif = () => get<Pekerja[]>('/pekerja?aktif=true')
-export const getPekerjaSemua = () => get<Pekerja[]>('/pekerja')
-export const tambahPekerja = (nama: string) => post<Pekerja>('/pekerja', { nama })
-export const ubahPekerja = (id: number, body: { nama?: string; status_aktif?: boolean }) =>
-  patch<{ ok: boolean }>(`/pekerja/${id}`, body)
+export const getPekerjaAktif = async () => {
+  const data = await get<Pekerja[]>('/pekerja?aktif=true')
+  setCache('pekerja_aktif', data)
+  return data
+}
+export const getPekerjaSemua = async () => {
+  const data = await get<Pekerja[]>('/pekerja')
+  setCache('pekerja_semua', data)
+  return data
+}
+export const tambahPekerja = async (nama: string) => {
+  const res = await post<Pekerja>('/pekerja', { nama })
+  invalidateCache('pekerja', 'mandor_init', 'dashboard')
+  return res
+}
+export const ubahPekerja = async (id: number, body: { nama?: string; status_aktif?: boolean }) => {
+  const res = await patch<{ ok: boolean }>(`/pekerja/${id}`, body)
+  invalidateCache('pekerja', 'mandor_init', 'dashboard')
+  return res
+}
 
 // ---------------- TIPE SEPATU ----------------
 const normTipe = (m: TipeSepatu): TipeSepatu => ({ ...m, ongkos_kerja: toNum(m.ongkos_kerja) })
-export const getTipeSepatuAktif = async () => (await get<TipeSepatu[]>('/tipe-sepatu?aktif=true')).map(normTipe)
-export const getTipeSepatuSemua = async () => (await get<TipeSepatu[]>('/tipe-sepatu')).map(normTipe)
-export const tambahModel = (nama_model: string, ongkos_kerja: number) =>
-  post<TipeSepatu>('/tipe-sepatu', { nama_model, ongkos_kerja })
-export const ubahTipeSepatu = (id: number, body: { nama_model?: string; ongkos_kerja?: number; status_aktif?: boolean }) =>
-  patch<{ ok: boolean }>(`/tipe-sepatu/${id}`, body)
+export const getTipeSepatuAktif = async () => {
+  const data = (await get<TipeSepatu[]>('/tipe-sepatu?aktif=true')).map(normTipe)
+  setCache('tipe_sepatu_aktif', data)
+  return data
+}
+export const getTipeSepatuSemua = async () => {
+  const data = (await get<TipeSepatu[]>('/tipe-sepatu')).map(normTipe)
+  setCache('tipe_sepatu_semua', data)
+  return data
+}
+export const tambahModel = async (nama_model: string, ongkos_kerja: number) => {
+  const res = await post<TipeSepatu>('/tipe-sepatu', { nama_model, ongkos_kerja })
+  invalidateCache('tipe_sepatu', 'mandor_init', 'dashboard')
+  return res
+}
+export const ubahTipeSepatu = async (id: number, body: { nama_model?: string; ongkos_kerja?: number; status_aktif?: boolean }) => {
+  const res = await patch<{ ok: boolean }>(`/tipe-sepatu/${id}`, body)
+  invalidateCache('tipe_sepatu', 'mandor_init', 'dashboard')
+  return res
+}
 
 // ---------------- UKURAN ----------------
-export const getUkuranAktif = () => get<MasterUkuran[]>('/ukuran?aktif=true')
-export const getUkuranSemua = () => get<MasterUkuran[]>('/ukuran')
-export const tambahUkuran = (label_ukuran: string) => post<MasterUkuran>('/ukuran', { label_ukuran })
-export const ubahUkuran = (id: number, status_aktif: boolean) =>
-  patch<{ ok: boolean }>(`/ukuran/${id}`, { status_aktif })
+export const getUkuranAktif = async () => {
+  const data = await get<MasterUkuran[]>('/ukuran?aktif=true')
+  setCache('ukuran_aktif', data)
+  return data
+}
+export const getUkuranSemua = async () => {
+  const data = await get<MasterUkuran[]>('/ukuran')
+  setCache('ukuran_semua', data)
+  return data
+}
+export const tambahUkuran = async (label_ukuran: string) => {
+  const res = await post<MasterUkuran>('/ukuran', { label_ukuran })
+  invalidateCache('ukuran', 'mandor_init')
+  return res
+}
+export const ubahUkuran = async (id: number, status_aktif: boolean) => {
+  const res = await patch<{ ok: boolean }>(`/ukuran/${id}`, { status_aktif })
+  invalidateCache('ukuran', 'mandor_init')
+  return res
+}
 
 // ---------------- PO ----------------
 const normPo = (p: MasterPo): MasterPo => ({
@@ -86,12 +133,31 @@ const normPo = (p: MasterPo): MasterPo => ({
   target_qty: toNum(p.target_qty),
   achieved_qty: toNum(p.achieved_qty),
 })
-export const getPoAktif = async () => (await get<MasterPo[]>('/po?aktif=true')).map(normPo)
-export const getPoSemua = async () => (await get<MasterPo[]>('/po')).map(normPo)
-export const tambahPo = (no_po: string, nama_customer: string, target_qty: number) =>
-  post<MasterPo>('/po', { no_po, nama_customer, target_qty })
-export const ubahPo = (id: number, body: { no_po?: string; nama_customer?: string; target_qty?: number; status_aktif?: boolean }) =>
-  patch<{ ok: boolean }>(`/po/${id}`, body)
+export const getPoAktif = async () => {
+  const data = (await get<MasterPo[]>('/po?aktif=true')).map(normPo)
+  setCache('po_aktif', data)
+  return data
+}
+export const getPoSemua = async () => {
+  const data = (await get<MasterPo[]>('/po')).map(normPo)
+  setCache('po_semua', data)
+  return data
+}
+export const tambahPo = async (no_po: string, nama_customer: string, target_qty: number) => {
+  const res = await post<MasterPo>('/po', { no_po, nama_customer, target_qty })
+  invalidateCache('po', 'mandor_init', 'dashboard')
+  return res
+}
+export const ubahPo = async (id: number, body: { no_po?: string; nama_customer?: string; target_qty?: number; status_aktif?: boolean }) => {
+  const res = await patch<{ ok: boolean }>(`/po/${id}`, body)
+  invalidateCache('po', 'mandor_init', 'dashboard')
+  return res
+}
+export const hapusPo = async (id: number) => {
+  const res = await del<{ ok: boolean }>(`/po/${id}`)
+  invalidateCache('po', 'mandor_init', 'dashboard')
+  return res
+}
 
 // ---------------- PRODUKSI ----------------
 export interface SimpanInput {
@@ -130,27 +196,39 @@ export interface MandorInitData {
 
 export const getMandorInit = async (): Promise<MandorInitData> => {
   const data = await get<MandorInitData>('/produksi/mandor-init')
-  return {
+  const res: MandorInitData = {
     ...data,
     todayProduksi: (data.todayProduksi ?? []).map(normProduksi),
   }
+  setCache('mandor_init', res)
+  return res
 }
 
-export const getProduksiHariIni = async () => (await get<ProduksiRow[]>('/produksi/hari-ini')).map(normProduksi)
+export const getProduksiHariIni = async () => {
+  const data = (await get<ProduksiRow[]>('/produksi/hari-ini')).map(normProduksi)
+  setCache('produksi_hari_ini', data)
+  return data
+}
 export const getProduksi = async (tanggal?: string, idPekerja?: string) => {
   const params = new URLSearchParams()
   if (tanggal) params.set('tanggal', tanggal)
   if (idPekerja) params.set('pekerja', idPekerja)
   const qs = params.toString()
-  return (await get<ProduksiRow[]>(`/produksi${qs ? `?${qs}` : ''}`)).map(normProduksi)
+  const data = (await get<ProduksiRow[]>(`/produksi${qs ? `?${qs}` : ''}`)).map(normProduksi)
+  setCache(`produksi_${tanggal || 'all'}_${idPekerja || 'all'}`, data)
+  return data
 }
 export const getProduksiRentang = async (dari: string, sampai: string) => {
   const qs = new URLSearchParams({ dari, sampai })
-  return (await get<ProduksiRow[]>(`/produksi?${qs}`)).map(normProduksi)
+  const data = (await get<ProduksiRow[]>(`/produksi?${qs}`)).map(normProduksi)
+  setCache(`produksi_rentang_${dari}_${sampai}`, data)
+  return data
 }
-export const simpanProduksi = (
-  input: SimpanInput,
-) => post<{ id_produksi: number }>('/produksi', input)
+export const simpanProduksi = async (input: SimpanInput) => {
+  const res = await post<{ id_produksi: number }>('/produksi', input)
+  invalidateCache('produksi', 'mandor_init', 'dashboard', 'payroll', 'po')
+  return res
+}
 
 export interface SimpanBatchItem {
   id_sepatu: number
@@ -163,13 +241,24 @@ export interface SimpanBatchInput {
   id_po: number | null
   items: SimpanBatchItem[]
 }
-export const simpanProduksiBatch = (input: SimpanBatchInput) =>
-  post<{ jumlah: number; id_produksi_list: number[] }>('/produksi/batch', input)
-export const replaceProduksiDetail = (
+export const simpanProduksiBatch = async (input: SimpanBatchInput) => {
+  const res = await post<{ jumlah: number; id_produksi_list: number[] }>('/produksi/batch', input)
+  invalidateCache('produksi', 'mandor_init', 'dashboard', 'payroll', 'po')
+  return res
+}
+export const replaceProduksiDetail = async (
   id: number,
   qtyPerUkuran: { id_ukuran: string; qty: number }[],
-) => put<{ ok: boolean }>(`/produksi/${id}/detail`, { qtyPerUkuran })
-export const hapusProduksi = (id: number) => del<{ ok: boolean }>(`/produksi/${id}`)
+) => {
+  const res = await put<{ ok: boolean }>(`/produksi/${id}/detail`, { qtyPerUkuran })
+  invalidateCache('produksi', 'mandor_init', 'dashboard', 'payroll', 'po')
+  return res
+}
+export const hapusProduksi = async (id: number) => {
+  const res = await del<{ ok: boolean }>(`/produksi/${id}`)
+  invalidateCache('produksi', 'mandor_init', 'dashboard', 'payroll', 'po')
+  return res
+}
 
 // ---------------- PAYROLL ----------------
 export const getDaftarPeriode = () => get<string[]>('/payroll/periods')
@@ -178,8 +267,11 @@ const normRekap = (r: RekapGajiRow): RekapGajiRow => ({
   total_pasang: toNum(r.total_pasang),
   total_gaji: toNum(r.total_gaji),
 })
-export const getRekapGaji = async (periode: string) =>
-  (await get<RekapGajiRow[]>(`/payroll/rekap?${new URLSearchParams({ periode })}`)).map(normRekap)
+export const getRekapGaji = async (periode: string) => {
+  const data = (await get<RekapGajiRow[]>(`/payroll/rekap?${new URLSearchParams({ periode })}`)).map(normRekap)
+  setCache(`payroll_${periode}`, data)
+  return data
+}
 
 // ---------------- DASHBOARD ----------------
 export interface TotalPerProduksi {
@@ -197,4 +289,8 @@ const normTotal = (r: TotalPerProduksi): TotalPerProduksi => ({
   total_pasang: toNum(r.total_pasang),
   subtotal_gaji: toNum(r.subtotal_gaji),
 })
-export const getDashboardToday = async () => (await get<TotalPerProduksi[]>('/dashboard/today')).map(normTotal)
+export const getDashboardToday = async () => {
+  const data = (await get<TotalPerProduksi[]>('/dashboard/today')).map(normTotal)
+  setCache('dashboard_today', data)
+  return data
+}

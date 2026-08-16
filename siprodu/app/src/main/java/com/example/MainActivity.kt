@@ -1,7 +1,9 @@
 package com.example
 
 import android.annotation.SuppressLint
+import android.app.DownloadManager
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
@@ -34,6 +36,61 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.Slate100
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate900
+import android.content.ContentValues
+import android.content.Context
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
+import android.util.Base64
+import android.widget.Toast
+import java.io.File
+import java.io.FileOutputStream
+
+class WebAppInterface(private val context: Context) {
+    @JavascriptInterface
+    fun saveFileBase64(base64Data: String, filename: String, mimeType: String) {
+        try {
+            val cleanBase64 = if (base64Data.contains(",")) {
+                base64Data.substringAfter(",")
+            } else {
+                base64Data
+            }
+            val bytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                if (uri != null) {
+                    resolver.openOutputStream(uri)?.use { out ->
+                        out.write(bytes)
+                    }
+                }
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                val file = File(downloadsDir, filename)
+                FileOutputStream(file).use { out ->
+                    out.write(bytes)
+                }
+            }
+
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(context, "✅ Berhasil download ke folder Unduhan:\n$filename", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(context, "❌ Gagal mengunduh file: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -88,6 +145,28 @@ fun WebContainer(url: String) {
                     val cookieManager = CookieManager.getInstance()
                     cookieManager.setAcceptCookie(true)
                     cookieManager.setAcceptThirdPartyCookies(this, true)
+
+                    addJavascriptInterface(WebAppInterface(context), "AndroidBridge")
+
+                    setDownloadListener { downloadUrl, userAgent, contentDisposition, mimetype, _ ->
+                        try {
+                            val filename = URLUtil.guessFileName(downloadUrl, contentDisposition, mimetype)
+                            val request = DownloadManager.Request(Uri.parse(downloadUrl)).apply {
+                                setMimeType(mimetype)
+                                addRequestHeader("cookie", CookieManager.getInstance().getCookie(downloadUrl))
+                                addRequestHeader("User-Agent", userAgent)
+                                setDescription("Mengunduh $filename...")
+                                setTitle(filename)
+                                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                            }
+                            val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                            dm.enqueue(request)
+                            Toast.makeText(context, "Memulai unduhan: $filename", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
 
                     settings.apply {
                         javaScriptEnabled = true
