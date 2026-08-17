@@ -381,10 +381,10 @@ export default function InputProduksi() {
     const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
     if (hasUnsaved) {
       requestConfirm({
-        title: 'Ada Data yang Belum Disimpan',
-        message: 'Bapak masih ada ketikan jumlah sepatu yang belum disimpan. Kalau ganti pekerja sekarang, data yang belum disimpan akan hilang. Tetap mau ganti pekerja?',
-        confirmLabel: 'Ya, Ganti Pekerja',
-        cancelLabel: 'Batal (Lanjut Isi)',
+        title: 'Perubahan Belum Disimpan',
+        message: 'Terdapat isian data yang belum disimpan. Jika berpindah pekerja sekarang, data yang belum disimpan akan hilang.',
+        confirmLabel: 'Ganti Pekerja',
+        cancelLabel: 'Batal',
         isDestructive: true,
         onConfirm: () => {
           setConfirmState(null)
@@ -413,9 +413,9 @@ export default function InputProduksi() {
     const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
     if (hasUnsaved) {
       requestConfirm({
-        title: 'Ada Data yang Belum Disimpan',
-        message: 'Ada ketikan jumlah sepatu yang belum disimpan. Kalau ganti shift sekarang, data yang belum disimpan akan hilang. Tetap mau ganti shift?',
-        confirmLabel: 'Ya, Ganti Shift',
+        title: 'Perubahan Belum Disimpan',
+        message: 'Terdapat isian data yang belum disimpan. Jika mengganti shift sekarang, data yang belum disimpan akan hilang.',
+        confirmLabel: 'Ganti Shift',
         cancelLabel: 'Batal',
         isDestructive: true,
         onConfirm: () => {
@@ -446,9 +446,9 @@ export default function InputProduksi() {
 
   function hapusLocked(r: ProduksiRow) {
     requestConfirm({
-      title: 'Hapus Catatan Sepatu Ini?',
-      message: `Bapak yakin mau menghapus catatan hasil kerja ${r.nama_model ?? 'sepatu'} ini? Data yang sudah dihapus tidak bisa dikembalikan lagi.`,
-      confirmLabel: 'Ya, Hapus Data Ini',
+      title: 'Hapus Catatan Produksi?',
+      message: `Hapus catatan hasil kerja ${r.nama_model ?? 'item'} ini? Data yang telah dihapus tidak dapat dikembalikan.`,
+      confirmLabel: 'Hapus Data',
       cancelLabel: 'Batal',
       isDestructive: true,
       onConfirm: async () => {
@@ -731,10 +731,10 @@ export default function InputProduksi() {
             const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
             if (hasUnsaved) {
               requestConfirm({
-                title: 'Ada Data yang Belum Disimpan',
-                message: 'Bapak sedang mengisi data baru tapi belum disimpan. Mau kembali dan batalkan ketikan tadi?',
-                confirmLabel: 'Ya, Batalkan & Kembali',
-                cancelLabel: 'Lanjut Mengisi',
+                title: 'Perubahan Belum Disimpan',
+                message: 'Terdapat isian data baru yang belum disimpan. Yakin ingin kembali dan membatalkan input?',
+                confirmLabel: 'Kembali',
+                cancelLabel: 'Batal',
                 isDestructive: true,
                 onConfirm: () => {
                   setConfirmState(null)

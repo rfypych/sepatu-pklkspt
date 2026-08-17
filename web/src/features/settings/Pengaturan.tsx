@@ -57,7 +57,7 @@ export default function Pengaturan() {
       isOpen: true,
       title: 'Kosongkan Catatan Hasil Kerja?',
       message:
-        'Bapak yakin mau menghapus semua catatan hasil kerja yang pernah dicatat? Hitungan gaji pekerja akan kembali ke Rp 0. Daftar nama pekerja, harga model sepatu, dan nomor PO tetap aman dan TIDAK AKAN HILANG.',
+        'Semua riwayat hasil produksi harian dan hitungan gaji akan dihapus kembali ke 0. Data master pekerja, model sepatu, dan nomor PO tetap aman tersimpan.',
       confirmLabel: 'Ya, Kosongkan Catatan',
       cancelLabel: 'Batal',
       isDestructive: true,
@@ -81,10 +81,10 @@ export default function Pengaturan() {
   function promptFactoryReset() {
     setConfirmDialog({
       isOpen: true,
-      title: 'PERINGATAN: Hapus Bersih Semua Data Pabrik?',
+      title: 'Hapus Bersih Semua Data Pabrik?',
       message:
-        'Perhatian Pak: Semua nama pekerja, harga model sepatu, nomor PO pesanan, dan catatan hasil kerja akan TERHAPUS BERSIH dari sistem. Bapak harus mendaftarkan ulang nama pekerja dan model sepatu dari awal. Mau dilanjutkan?',
-      confirmLabel: 'Ya, Hapus Bersih Semua',
+        'PERINGATAN: Semua data pekerja, tarif model sepatu, nomor PO, dan catatan hasil kerja akan dihapus permanen. Akun login Admin & Mandor tetap ada.',
+      confirmLabel: 'Ya, Hapus Semua Data',
       cancelLabel: 'Batal',
       isDestructive: true,
       action: async () => {
