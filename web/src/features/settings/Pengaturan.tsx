@@ -55,10 +55,10 @@ export default function Pengaturan() {
   function promptResetProduksi() {
     setConfirmDialog({
       isOpen: true,
-      title: 'Reset Seluruh Data Produksi?',
+      title: 'Kosongkan Catatan Hasil Kerja?',
       message:
-        'Tindakan ini akan mengosongkan seluruh riwayat dan transaksi produksi harian di database. Rekap gaji akan kembali ke 0. Data master pekerja, model sepatu, dan PO tetap aman tersimpan.',
-      confirmLabel: 'Ya, Kosongkan Produksi',
+        'Bapak yakin mau menghapus semua catatan hasil kerja yang pernah dicatat? Hitungan gaji pekerja akan kembali ke Rp 0. Daftar nama pekerja, harga model sepatu, dan nomor PO tetap aman dan TIDAK AKAN HILANG.',
+      confirmLabel: 'Ya, Kosongkan Catatan',
       cancelLabel: 'Batal',
       isDestructive: true,
       action: async () => {
@@ -67,7 +67,7 @@ export default function Pengaturan() {
         setSuccess(null)
         try {
           const res = await resetDatabase('produksi_only')
-          setSuccess(res.message || 'Seluruh data transaksi produksi harian berhasil dibersihkan!')
+          setSuccess(res.message || 'Semua catatan hasil kerja berhasil dikosongkan!')
         } catch (e) {
           setError((e as Error).message)
         } finally {
@@ -81,10 +81,10 @@ export default function Pengaturan() {
   function promptFactoryReset() {
     setConfirmDialog({
       isOpen: true,
-      title: 'PERINGATAN: Reset Total Pabrik?',
+      title: 'PERINGATAN: Hapus Bersih Semua Data Pabrik?',
       message:
-        'PERHATIAN: Semua data produksi harian, daftar karyawan/pekerja, model sepatu & tarif upah, serta nomor PO akan DIHAPUS PERMANEN dari database. Akun login Admin & Mandor tetap ada. Anda harus menginput master data dari awal. Lanjutkan?',
-      confirmLabel: 'Ya, Hapus Semua Data Pabrik',
+        'Perhatian Pak: Semua nama pekerja, harga model sepatu, nomor PO pesanan, dan catatan hasil kerja akan TERHAPUS BERSIH dari sistem. Bapak harus mendaftarkan ulang nama pekerja dan model sepatu dari awal. Mau dilanjutkan?',
+      confirmLabel: 'Ya, Hapus Bersih Semua',
       cancelLabel: 'Batal',
       isDestructive: true,
       action: async () => {
@@ -93,7 +93,7 @@ export default function Pengaturan() {
         setSuccess(null)
         try {
           const res = await resetDatabase('factory_reset')
-          setSuccess(res.message || 'Seluruh data produksi, PO, model, dan pekerja berhasil dibersihkan!')
+          setSuccess(res.message || 'Seluruh data pabrik berhasil dibersihkan total!')
         } catch (e) {
           setError((e as Error).message)
         } finally {
@@ -177,17 +177,17 @@ export default function Pengaturan() {
                 <Database className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-black text-slate-900">Pembersihan & Reset Database</h2>
-                <p className="text-xs font-semibold text-slate-500">Opsi pembersihan data untuk pemilik pabrik</p>
+                <h2 className="text-base font-black text-slate-900">Hapus & Bersihkan Data Pabrik</h2>
+                <p className="text-xs font-semibold text-slate-500">Pilihan untuk mengosongkan data lama atau mulai buku baru</p>
               </div>
             </div>
 
             <div className="space-y-2.5 pt-1">
               <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-black text-amber-950">1. Reset Data Transaksi Produksi</div>
+                  <div className="text-sm font-black text-amber-950">1. Kosongkan Catatan Hasil Kerja (Buku Baru)</div>
                   <div className="text-xs font-semibold text-amber-800 leading-snug mt-0.5">
-                    Mengosongkan seluruh riwayat kerja & detail pasang harian. Master pekerja, model, dan PO tetap utuh.
+                    Semua catatan pasang sepatu dan gaji harian akan dikosongkan (kembali ke 0). Nama pekerja, model sepatu, dan nomor PO <b>tetap aman</b>.
                   </div>
                 </div>
                 <button
@@ -196,15 +196,15 @@ export default function Pengaturan() {
                   className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400 bg-amber-200/80 px-3.5 py-2 text-xs font-black text-amber-950 hover:bg-amber-300 active:bg-amber-400 transition-colors"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  Reset Produksi
+                  Kosongkan Catatan
                 </button>
               </div>
 
               <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-black text-rose-950">2. Reset Total Pabrik (Mulai dari Nol)</div>
+                  <div className="text-sm font-black text-rose-950">2. Hapus Bersih Semua Data (Mulai Pabrik Baru)</div>
                   <div className="text-xs font-semibold text-rose-800 leading-snug mt-0.5">
-                    Menghapus seluruh transaksi, PO, data pekerja, dan model sepatu. Bersih total dari awal.
+                    Menghapus SEMUA data termasuk nama pekerja, model sepatu, nomor PO, dan catatan kerja. Bersih total dari awal.
                   </div>
                 </div>
                 <button
@@ -213,7 +213,7 @@ export default function Pengaturan() {
                   className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-black text-white hover:bg-rose-700 active:bg-rose-800 shadow-xs transition-colors"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Factory Reset
+                  Hapus Bersih Semua
                 </button>
               </div>
             </div>

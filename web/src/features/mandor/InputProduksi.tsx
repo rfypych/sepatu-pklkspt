@@ -381,10 +381,10 @@ export default function InputProduksi() {
     const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
     if (hasUnsaved) {
       requestConfirm({
-        title: 'Ada Item Belum Disimpan',
-        message: 'Anda memiliki data pasang sepatu yang belum disimpan. Yakin ingin berganti pekerja dan membuang perubahan?',
+        title: 'Ada Data yang Belum Disimpan',
+        message: 'Bapak masih ada ketikan jumlah sepatu yang belum disimpan. Kalau ganti pekerja sekarang, data yang belum disimpan akan hilang. Tetap mau ganti pekerja?',
         confirmLabel: 'Ya, Ganti Pekerja',
-        cancelLabel: 'Batal',
+        cancelLabel: 'Batal (Lanjut Isi)',
         isDestructive: true,
         onConfirm: () => {
           setConfirmState(null)
@@ -413,8 +413,8 @@ export default function InputProduksi() {
     const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
     if (hasUnsaved) {
       requestConfirm({
-        title: 'Ada Item Belum Disimpan',
-        message: 'Ada isian data yang belum disimpan. Yakin ingin mengganti shift dan membuang data yang belum disimpan?',
+        title: 'Ada Data yang Belum Disimpan',
+        message: 'Ada ketikan jumlah sepatu yang belum disimpan. Kalau ganti shift sekarang, data yang belum disimpan akan hilang. Tetap mau ganti shift?',
         confirmLabel: 'Ya, Ganti Shift',
         cancelLabel: 'Batal',
         isDestructive: true,
@@ -446,9 +446,9 @@ export default function InputProduksi() {
 
   function hapusLocked(r: ProduksiRow) {
     requestConfirm({
-      title: 'Hapus Catatan Produksi?',
-      message: `Yakin ingin menghapus data ${r.nama_model ?? 'item'} yang sudah tersimpan ini? Tindakan ini tidak dapat dibatalkan.`,
-      confirmLabel: 'Hapus Data',
+      title: 'Hapus Catatan Sepatu Ini?',
+      message: `Bapak yakin mau menghapus catatan hasil kerja ${r.nama_model ?? 'sepatu'} ini? Data yang sudah dihapus tidak bisa dikembalikan lagi.`,
+      confirmLabel: 'Ya, Hapus Data Ini',
       cancelLabel: 'Batal',
       isDestructive: true,
       onConfirm: async () => {
@@ -731,10 +731,10 @@ export default function InputProduksi() {
             const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
             if (hasUnsaved) {
               requestConfirm({
-                title: 'Ada Item Belum Disimpan',
-                message: 'Anda sedang menginput item baru yang belum disimpan. Yakin ingin kembali dan membuang perubahan?',
-                confirmLabel: 'Kembali & Buang',
-                cancelLabel: 'Batal',
+                title: 'Ada Data yang Belum Disimpan',
+                message: 'Bapak sedang mengisi data baru tapi belum disimpan. Mau kembali dan batalkan ketikan tadi?',
+                confirmLabel: 'Ya, Batalkan & Kembali',
+                cancelLabel: 'Lanjut Mengisi',
                 isDestructive: true,
                 onConfirm: () => {
                   setConfirmState(null)
