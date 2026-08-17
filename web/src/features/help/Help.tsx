@@ -1,24 +1,28 @@
 import { useState, useMemo } from 'react'
-import { PillBadge } from '../../components/ui'
+import { useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import {
   BookOpen,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   Coins,
+  Database,
+  Edit3,
   FileSpreadsheet,
+  HardHat,
   HelpCircle,
   Layers,
-  LogIn,
   Search,
+  ShieldCheck,
   Smartphone,
+  Trash2,
   UserCheck,
 } from 'lucide-react'
 
 interface HelpTopic {
   id: string
-  category: 'mandor' | 'admin' | 'konsep' | 'faq'
-  icon: typeof LogIn
+  icon: typeof Smartphone
   title: string
   subtitle: string
   content: React.ReactNode
@@ -29,12 +33,16 @@ function AccordionItem({
   topic,
   isOpen,
   onToggle,
+  color = 'emerald',
 }: {
   topic: HelpTopic
   isOpen: boolean
   onToggle: () => void
+  color?: 'emerald' | 'blue'
 }) {
   const Icon = topic.icon
+  const isBlue = color === 'blue'
+
   return (
     <div className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-xs transition-all">
       <button
@@ -42,7 +50,13 @@ function AccordionItem({
         className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold border ${
+              isBlue
+                ? 'bg-blue-100 text-blue-800 border-blue-300'
+                : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+            }`}
+          >
             <Icon className="h-5 w-5" />
           </div>
           <div>
@@ -54,14 +68,8 @@ function AccordionItem({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {topic.category === 'mandor' && <PillBadge color="emerald">Mandor</PillBadge>}
-          {topic.category === 'admin' && <PillBadge color="blue">Admin</PillBadge>}
-          {topic.category === 'konsep' && <PillBadge color="amber">Sistem</PillBadge>}
-          {topic.category === 'faq' && <PillBadge color="neutral">FAQ</PillBadge>}
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </div>
       </button>
 
@@ -74,10 +82,25 @@ function AccordionItem({
   )
 }
 
-function Step({ nomor, judul, deskripsi }: { nomor: string; judul: string; deskripsi: string }) {
+function Step({
+  nomor,
+  judul,
+  deskripsi,
+  color = 'emerald',
+}: {
+  nomor: string
+  judul: string
+  deskripsi: string
+  color?: 'emerald' | 'blue'
+}) {
+  const isBlue = color === 'blue'
   return (
     <div className="flex gap-3">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-black text-white shadow-xs">
+      <div
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black text-white shadow-xs ${
+          isBlue ? 'bg-blue-700' : 'bg-emerald-700'
+        }`}
+      >
         {nomor}
       </div>
       <div>
@@ -88,10 +111,20 @@ function Step({ nomor, judul, deskripsi }: { nomor: string; judul: string; deskr
   )
 }
 
-export default function Help() {
+export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }) {
+  const location = useLocation()
+  const { user } = useAuth()
   const [search, setSearch] = useState('')
-  const [filterCat, setFilterCat] = useState<'semua' | 'mandor' | 'admin' | 'konsep' | 'faq'>('semua')
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set(['login', 'input_produksi']))
+
+  // Tentukan apakah menampilkan panduan Mandor atau Admin
+  const isMandor =
+    forcedRole === 'mandor' ||
+    location.pathname.includes('/mandor') ||
+    (!forcedRole && user?.role === 'mandor')
+
+  const [openIds, setOpenIds] = useState<Set<string>>(
+    new Set(isMandor ? ['input_produksi', 'edit_data'] : ['dashboard_admin', 'payroll_admin'])
+  )
 
   const toggleItem = (id: string) => {
     setOpenIds((prev) => {
@@ -102,101 +135,143 @@ export default function Help() {
     })
   }
 
-  const topics: HelpTopic[] = [
+  // ---------------- PANDUAN KHUSUS MANDOR ----------------
+  const mandorTopics: HelpTopic[] = [
     {
-      id: 'login',
-      category: 'konsep',
-      icon: LogIn,
-      title: '1. Akses & Login Sistem',
-      subtitle: 'Cara masuk ke akun mandor atau admin',
+      id: 'input_produksi',
+      icon: Smartphone,
+      title: '1. Cara Mengisi & Menyimpan Hasil Kerja',
+      subtitle: 'Alur pencatatan pasang sepatu harian per tukang sepatu',
       content: (
         <div className="space-y-3">
-          <Step
-            nomor="1"
-            judul="Buka Aplikasi atau Browser"
-            deskripsi="Buka aplikasi Android APK Siprodu atau kunjungi alamat website resmi pabrik."
-          />
-          <Step
-            nomor="2"
-            judul="Otomatisasi Mandor"
-            deskripsi="Pada aplikasi Android APK mandor, login dan sesi tersimpan otomatis di perangkat agar mandor dapat langsung menginput data tanpa login berulang."
-          />
-          <Step
-            nomor="3"
-            judul="Login Admin"
-            deskripsi="Untuk membuka panel Admin, gunakan akun admin untuk mengakses Dashboard, Data Produksi, Rekap Gaji, dan Master Data."
-          />
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
-            ⚠️ Bila lupa password atau ingin mengganti akun, hubungi administrator sistem.
+          <p className="font-semibold text-slate-800">
+            Di menu <b>Input Produksi</b>, ikuti langkah berikut:
+          </p>
+          <div className="space-y-2.5">
+            <Step nomor="1" judul="Pilih Nama Pekerja" deskripsi="Ketuk nama pekerja dari daftar yang tersedia." />
+            <Step nomor="2" judul="Pilih Shift Kerja" deskripsi="Pilih Shift 1 (Pagi) atau Shift 2 (Siang/Malam)." />
+            <Step nomor="3" judul="Pilih Nomor PO (Pesanan)" deskripsi="Bisa dipilih nomor PO yang dikerjakan, atau lewati jika pekerjaan reguler umum." />
+            <Step nomor="4" judul="Tambah Model & Isi Ukuran" deskripsi="Pilih model sepatu, lalu masukkan jumlah pasang di nomor ukuran yang dikerjakan (nomor 36 s/d 44)." />
+            <Step nomor="5" judul="Tekan Simpan" deskripsi="Tekan tombol 'Simpan Hasil Produksi'. Data otomatis tersimpan dan lembar kerja pekerja tersebut terkunci." />
+          </div>
+          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-xs font-semibold text-emerald-900">
+            ✅ Total pasang sepatu dan perkiraan upah langsung dihitung otomatis oleh aplikasi.
           </div>
         </div>
       ),
     },
     {
-      id: 'input_produksi',
-      category: 'mandor',
-      icon: Smartphone,
-      title: '2. Panduan Mandor: Input Hasil Produksi',
-      subtitle: 'Alur pencatatan pasang sepatu harian di lapangan',
+      id: 'edit_data',
+      icon: Edit3,
+      title: '2. Cara Memperbaiki / Edit Data yang Salah Ketik',
+      subtitle: 'Mengubah jumlah pasang ukuran yang sudah disimpan',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Melalui menu <b>INPUT PRODUKSI</b>, mandor mencatat hasil kerja per karyawan:
+            Jika ada kesalahan jumlah ukuran pada data yang sudah disimpan hari ini:
           </p>
           <div className="space-y-2.5">
-            <Step nomor="1" judul="Pilih Nama Pekerja" deskripsi="Ketuk nama pekerja yang hari ini menyetorkan hasil pekerjaan." />
-            <Step nomor="2" judul="Pilih Shift Kerja" deskripsi="Pilih Shift 1 (pagi) atau Shift 2 (siang/malam)." />
-            <Step nomor="3" judul="Pilih PO (Opsional)" deskripsi="Bisa dipilih nomor PO yang dikerjakan, atau lewati jika pekerjaan reguler umum." />
-            <Step nomor="4" judul="Tambah Model & Isi Ukuran" deskripsi="Tekan + Tambah Model, lalu masukkan jumlah pasang per ukuran. Biarkan 0 untuk ukuran yang kosong." />
-            <Step nomor="5" judul="Simpan Data" deskripsi="Tekan tombol 'Simpan Hasil Produksi'. Data otomatis tersimpan dan lembar kerja pekerja tersebut akan terkunci agar tidak terinput ganda." />
+            <Step nomor="1" judul="Buka Lembar Kerja Pekerja" deskripsi="Pilih nama pekerja yang datanya ingin diperbaiki." />
+            <Step nomor="2" judul="Tekan Tombol Edit (Ikon Pensil)" deskripsi="Pada kartu sepatu yang tersimpan di bawah, tekan tombol ikon pensil biru." />
+            <Step nomor="3" judul="Sesuaikan Jumlah Ukuran" deskripsi="Ubah angka pasang pada ukuran yang keliru menggunakan tombol + / - atau ketik angkanya." />
+            <Step nomor="4" judul="Simpan Perubahan" deskripsi="Tekan tombol 'Simpan Perubahan'. Total pasang dan upah akan langsung ter-update otomatis." />
           </div>
-          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-xs font-semibold text-emerald-900">
-            ✅ Total pasang dan estimasi gaji dihitung otomatis secara instan oleh sistem.
+        </div>
+      ),
+    },
+    {
+      id: 'hapus_data',
+      icon: Trash2,
+      title: '3. Cara Menghapus Catatan Kerja yang Keliru / Batal',
+      subtitle: 'Membatalkan item yang tidak sengaja terinput',
+      content: (
+        <div className="space-y-3">
+          <p className="font-semibold text-slate-800">
+            Untuk menghapus catatan kerja sepatu:
+          </p>
+          <div className="space-y-2">
+            <p className="text-xs sm:text-sm text-slate-700">
+              1. Buka kartu pekerja atau masuk ke menu <b>Riwayat Kerja</b>.<br />
+              2. Tekan tombol <b>Ikon Sampah (Hapus)</b> pada baris data yang ingin dibuang.<br />
+              3. Pada jendela konfirmasi, tekan <b>"Ya, Hapus Data Ini"</b>.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+            ⚠️ Mandor hanya dapat menghapus atau mengedit data <b>hari ini</b> sebelum tutup buku.
           </div>
         </div>
       ),
     },
     {
       id: 'riwayat_mandor',
-      category: 'mandor',
       icon: ClipboardList,
-      title: '3. Panduan Mandor: Riwayat & Koreksi',
-      subtitle: 'Melihat ringkasan dan mengedit data harian yang salah ketik',
+      title: '4. Memantau Riwayat Kerja & Ekspor Excel',
+      subtitle: 'Melihat rekap total harian dan download file laporan ke HP',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>RIWAYAT</b> digunakan untuk memantau data yang sudah diinput:
+            Menu <b>Riwayat Kerja</b> digunakan untuk memantau semua hasil kerja:
           </p>
-          <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-slate-700">
-            <li><b>Edit Data:</b> Tekan tombol pensil pada baris data untuk memperbaiki jumlah pasang bila ada kesalahan input.</li>
-            <li><b>Hapus Data:</b> Tekan tombol sampah bila ada data dobel/tidak sesuai.</li>
-            <li><b>Ekspor Excel:</b> Mandor bisa langsung mengunduh rekap spreadsheet (.xlsx) harian/bulanan langsung ke folder Unduhan HP.</li>
+          <ul className="list-disc list-inside space-y-1.5 text-xs sm:text-sm text-slate-700">
+            <li><b>Total Pasang Harian:</b> Memantau akumulasi hasil kerja seluruh tukang sepatu pada hari ini.</li>
+            <li><b>Filter Shift:</b> Memisahkan pantauan hasil kerja Shift 1 dan Shift 2.</li>
+            <li><b>Tombol Ekspor Excel:</b> Mengunduh file spreadsheet (.xlsx) laporan produksi langsung ke folder <b>Unduhan (Download)</b> di HP Anda.</li>
           </ul>
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
-            ⚠️ Demi integritas data, mandor hanya dapat mengedit/menghapus data <b>hari ini</b>. Data tanggal sebelumnya dikunci dan hanya dapat disesuaikan oleh Admin.
-          </div>
         </div>
       ),
     },
     {
+      id: 'faq_mandor',
+      icon: HelpCircle,
+      title: '5. Tanya Jawab (FAQ) Mandor',
+      subtitle: 'Solusi untuk kendala umum di lapangan',
+      content: (
+        <div className="space-y-3 text-xs sm:text-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+            <div className="font-bold text-slate-900">Nama pekerja tidak muncul di pilihan?</div>
+            <p className="mt-1 text-slate-600">Pastikan admin sudah mendaftarkan nama pekerja dan mengaktifkan statusnya di Master Data.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+            <div className="font-bold text-slate-900">Apakah harus login ulang setiap kali buka aplikasi HP?</div>
+            <p className="mt-1 text-slate-600">Tidak. Aplikasi mandor sudah otomatis menyimpan sesi sehingga bisa langsung dipakai mencatat.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+            <div className="font-bold text-slate-900">Di mana file Excel yang diunduh tersimpan?</div>
+            <p className="mt-1 text-slate-600">File tersimpan langsung di folder <b>Unduhan / Downloads</b> pada memori HP.</p>
+          </div>
+        </div>
+      ),
+    },
+  ]
+
+  // ---------------- PANDUAN KHUSUS ADMIN ----------------
+  const adminTopics: HelpTopic[] = [
+    {
       id: 'dashboard_admin',
-      category: 'admin',
       icon: Layers,
-      title: '4. Panduan Admin: Dashboard Realtime',
-      subtitle: 'Memantau produktivitas pabrik secara langsung',
+      title: '1. Dashboard Produksi Realtime',
+      subtitle: 'Memantau produktivitas dan pengeluaran upah pabrik',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Dashboard</b> menampilkan performa pabrik yang diperbarui otomatis setiap 5 detik:
+            Menu <b>Dashboard</b> menampilkan performa pabrik yang diperbarui secara realtime:
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <span className="font-black text-slate-900 block">Total Pasang Hari Ini</span>
-              Akumulasi jumlah pasang sepatu yang diselesaikan seluruh pekerja hari ini.
+              Akumulasi jumlah pasang sepatu yang diselesaikan seluruh pekerja pada hari ini.
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-black text-slate-900 block">Estimasi Gaji Hari Ini</span>
-              Perkiraan kewajiban upah harian sesuai ongkos tarif model masing-masing.
+              <span className="font-black text-slate-900 block">Estimasi Upah Hari Ini</span>
+              Total kewajiban gaji harian yang harus dibayarkan sesuai tarif ongkos model sepatu.
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <span className="font-black text-slate-900 block">Breakdown Shift 1 & 2</span>
+              Perbandingan hasil pasang antara Shift 1 (Pagi) dan Shift 2 (Siang/Malam).
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <span className="font-black text-slate-900 block">Model Terbanyak Dikerjakan</span>
+              Informasi model sepatu yang sedang paling banyak diproduksi hari ini.
             </div>
           </div>
         </div>
@@ -204,160 +279,165 @@ export default function Help() {
     },
     {
       id: 'data_produksi_admin',
-      category: 'admin',
       icon: FileSpreadsheet,
-      title: '5. Panduan Admin: Manajemen Data Produksi',
-      subtitle: 'Filter lengkap, audit input mandor, dan ekspor laporan Excel',
+      title: '2. Pusat Data Produksi & Audit Koreksi',
+      subtitle: 'Melihat seluruh riwayat produksi semua tanggal dan ekspor Excel',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Data Produksi</b> adalah pusat kendali riwayat produksi pabrik:
+            Menu <b>Data Produksi</b> adalah pusat arsip hasil kerja seluruh pabrik:
           </p>
-          <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-slate-700">
-            <li><b>Filter Tanggal & Karyawan:</b> Cek hasil produksi pekerja tertentu atau pada tanggal tertentu.</li>
-            <li><b>Koreksi Penuh:</b> Admin memiliki wewenang mengoreksi maupun menghapus data produksi kapan saja.</li>
-            <li><b>Ekspor Excel:</b> Laporan harian/rentang dapat diekspor menjadi file .xlsx berformat rapi.</li>
+          <ul className="list-disc list-inside space-y-1.5 text-xs sm:text-sm text-slate-700">
+            <li><b>Filter Tanggal & Pekerja:</b> Memeriksa hasil kerja karyawan tertentu pada tanggal atau rentang tanggal tertentu.</li>
+            <li><b>Koreksi Penuh:</b> Admin memiliki wewenang mengoreksi maupun menghapus data produksi kapan saja (termasuk tanggal lampau).</li>
+            <li><b>Ekspor Excel:</b> Mengunduh laporan data produksi berformat spreadsheet (.xlsx) rapi untuk arsip pembukuan.</li>
           </ul>
         </div>
       ),
     },
     {
       id: 'payroll_admin',
-      category: 'admin',
       icon: Coins,
-      title: '6. Panduan Admin: Rekap Upah (Payroll)',
-      subtitle: 'Perhitungan upah kerja otomatis per periode cut-off',
+      title: '3. Hitung & Rekap Gaji (Payroll)',
+      subtitle: 'Perhitungan upah otomatis per periode cut-off (1-15 & 16-akhir bulan)',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Payroll</b> memproses perhitungan upah kerja tanpa rumus manual:
+            Menu <b>Rekap Gaji</b> menghitung kewajiban upah kerja secara otomatis:
           </p>
           <div className="space-y-2 text-xs sm:text-sm text-slate-700">
             <p>• <b>Periode Cut-Off:</b> Otomatis terbagi menjadi periode 1–15 dan periode 16–akhir bulan.</p>
-            <p>• <b>Rincian per Pekerja:</b> Menampilkan breakdown tiap model yang dikerjakan beserta nominal subtotal dan grand total.</p>
-            <p>• <b>Unduh Excel:</b> Tekan tombol "Ekspor Excel" untuk mencetak slip atau mengolah data payroll di spreadsheet.</p>
+            <p>• <b>Rincian per Pekerja:</b> Menampilkan breakdown tiap model yang dikerjakan beserta total pasang dan total upah rupiah.</p>
+            <p>• <b>Unduh Excel / Slip Gaji:</b> Tekan tombol "Ekspor Excel" untuk mencetak slip atau mengolah data gaji di Excel.</p>
           </div>
         </div>
       ),
     },
     {
       id: 'master_data',
-      category: 'admin',
       icon: UserCheck,
-      title: '7. Panduan Admin: Master Data',
-      subtitle: 'Pengaturan master pekerja, tarif upah model, ukuran, dan PO',
+      title: '4. Kelola Master Data Pabrik',
+      subtitle: 'Pengaturan pekerja, tarif upah model, ukuran sepatu, dan nomor PO',
       content: (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <span className="font-bold text-slate-900 block">👷 Master Pekerja</span>
-              Tambah nama karyawan baru atau nonaktifkan karyawan yang sudah tidak aktif.
+              Tambah nama karyawan baru atau nonaktifkan karyawan yang sudah berhenti.
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-bold text-slate-900 block">👟 Model & Ongkos</span>
-              Tambah model sepatu baru dan tentukan tarif ongkos upah per pasang (Rp).
+              <span className="font-bold text-slate-900 block">👟 Model & Tarif Upah</span>
+              Tambah model sepatu baru dan tentukan nominal ongkos kerja per pasang (Rp).
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <span className="font-bold text-slate-900 block">📏 Master Ukuran</span>
-              Tambah ukuran baru atau klik untuk menonaktifkan ukuran yang tidak diproduksi.
+              Kelola nomor ukuran sepatu aktif (misal No 36 s/d 44).
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-bold text-slate-900 block">📦 Master PO</span>
-              Kelola nomor PO customer beserta target jumlah pasang yang dipesan.
+              <span className="font-bold text-slate-900 block">📦 Master PO Pesanan</span>
+              Kelola nomor pesanan customer beserta target pasang yang harus dipenuhi.
             </div>
           </div>
         </div>
       ),
     },
     {
-      id: 'faq',
-      category: 'faq',
+      id: 'reset_db',
+      icon: Database,
+      title: '5. Pembersihan & Reset Database',
+      subtitle: 'Mengosongkan riwayat kerja untuk buku baru atau reset total',
+      content: (
+        <div className="space-y-3">
+          <p className="font-semibold text-slate-800">
+            Di menu <b>Pengaturan</b>, tersedia 2 opsi pembersihan data:
+          </p>
+          <div className="space-y-2 text-xs sm:text-sm text-slate-700">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <b className="text-amber-950 block">1. Kosongkan Catatan Hasil Kerja (Buku Baru)</b>
+              Menghapus semua riwayat catatan pasang sepatu dan hitungan gaji harian agar kembali ke 0. Nama pekerja, model sepatu, dan nomor PO tetap aman.
+            </div>
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3">
+              <b className="text-rose-950 block">2. Hapus Bersih Semua Data Pabrik</b>
+              Menghapus SEMUA data termasuk nama pekerja, model sepatu, nomor PO, dan catatan kerja untuk memulai pabrik bersih dari awal.
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'faq_admin',
       icon: HelpCircle,
-      title: '8. Tanya Jawab (FAQ) & Solusi Cepat',
-      subtitle: 'Pertanyaan yang paling sering ditanyakan',
+      title: '6. Tanya Jawab (FAQ) Admin',
+      subtitle: 'Pertanyaan umum seputar administrasi sistem',
       content: (
         <div className="space-y-3 text-xs sm:text-sm">
           <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
-            <div className="font-bold text-slate-900">Kenapa nama pekerja tidak muncul di pilihan mandor?</div>
-            <p className="mt-1 text-slate-600">Pastikan pekerja berstatus <b>Aktif</b> di menu Master Data → tab Pekerja.</p>
+            <div className="font-bold text-slate-900">Jika tarif ongkos model diubah hari ini, apakah gaji periode lalu ikut berubah?</div>
+            <p className="mt-1 text-slate-600">Tidak. Sistem mengunci harga saat data diinput (snapshot harga), sehingga arsip gaji periode lampau tetap aman dan akurat.</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
-            <div className="font-bold text-slate-900">Jika ongkos kerja model diubah, apakah gaji periode lalu ikut berubah?</div>
-            <p className="mt-1 text-slate-600">Tidak. Sistem menerapkan metode <i>snapshot</i> harga saat data diinput, sehingga upah periode lama tetap terkunci aman dan akurat.</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
-            <div className="font-bold text-slate-900">Di mana file Excel hasil ekspor tersimpan pada HP Android?</div>
-            <p className="mt-1 text-slate-600">File tersimpan langsung di folder <b>Unduhan (Downloads)</b> pada penyimpanan internal HP Anda.</p>
+            <div className="font-bold text-slate-900">Bagaimana jika ingin berpindah ke mode Mandor untuk mengecek input lapangan?</div>
+            <p className="mt-1 text-slate-600">Buka menu <b>Pengaturan</b>, lalu klik <b>Mode Mandor Lapangan</b> untuk berpindah seketika tanpa perlu logout.</p>
           </div>
         </div>
       ),
     },
   ]
 
+  const activeTopics = isMandor ? mandorTopics : adminTopics
+
   const filteredTopics = useMemo(() => {
-    return topics.filter((t) => {
-      const matchCat = filterCat === 'semua' || t.category === filterCat
+    return activeTopics.filter((t) => {
       const matchSearch =
         search.trim() === '' ||
         t.title.toLowerCase().includes(search.toLowerCase()) ||
         t.subtitle.toLowerCase().includes(search.toLowerCase())
-      return matchCat && matchSearch
+      return matchSearch
     })
-  }, [topics, filterCat, search])
+  }, [activeTopics, search])
 
   return (
     <div className="space-y-4">
       {/* Header Banner */}
       <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 sm:p-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 text-xl border border-sky-300">
-            📖
+          <div
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl border ${
+              isMandor
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                : 'bg-blue-100 text-blue-800 border-blue-300'
+            }`}
+          >
+            {isMandor ? <HardHat className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-tight">
-              Pusat Bantuan & Panduan
+              {isMandor ? 'Panduan Mandor Lapangan' : 'Panduan Admin & Pemilik'}
             </h1>
             <p className="text-xs sm:text-sm font-semibold text-slate-600">
-              Dokumentasi operasional lengkap dan solusi cepat penggunaan sistem.
+              {isMandor
+                ? 'Panduan praktis pencatatan hasil kerja, shift, edit data, dan ekspor excel.'
+                : 'Panduan memantau dashboard, kelola master data, payroll gaji, dan database.'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Search & Category Tabs */}
-      <div className="space-y-3 rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-xs">
+      {/* Search Input */}
+      <div className="rounded-3xl border-2 border-slate-200 bg-white p-3.5 shadow-xs">
         <div className="relative">
           <input
             type="text"
-            placeholder="Cari topik bantuan (cth: input, gaji, excel, po)..."
+            placeholder={
+              isMandor
+                ? 'Cari panduan mandor (cth: input, edit, ukuran, shift)...'
+                : 'Cari panduan admin (cth: dashboard, gaji, master, reset)...'
+            }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-3 pl-10 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-slate-800 focus:bg-white focus:outline-none transition-colors"
+            className="w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-2.5 pl-10 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-slate-800 focus:bg-white focus:outline-none transition-colors"
           />
-          <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-        </div>
-
-        {/* Filter Badges */}
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: 'semua', label: 'Semua Topik' },
-            { id: 'mandor', label: 'Panduan Mandor' },
-            { id: 'admin', label: 'Panduan Admin' },
-            { id: 'konsep', label: 'Sistem & PO' },
-            { id: 'faq', label: 'FAQ' },
-          ].map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setFilterCat(c.id as any)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-black transition-all ${
-                filterCat === c.id
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
         </div>
       </div>
 
@@ -374,6 +454,7 @@ export default function Help() {
             <AccordionItem
               key={topic.id}
               topic={topic}
+              color={isMandor ? 'emerald' : 'blue'}
               isOpen={openIds.has(topic.id)}
               onToggle={() => toggleItem(topic.id)}
             />
