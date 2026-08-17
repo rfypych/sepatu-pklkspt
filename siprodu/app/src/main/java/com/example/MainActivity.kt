@@ -168,6 +168,10 @@ fun WebContainer(url: String) {
                         }
                     }
 
+                    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                    isVerticalScrollBarEnabled = false
+                    isHorizontalScrollBarEnabled = false
+
                     settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true
@@ -182,12 +186,19 @@ fun WebContainer(url: String) {
                         allowContentAccess = true
                         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         userAgentString = "$userAgentString SepatuMandorApp/1.0"
+                        loadsImagesAutomatically = true
+                        blockNetworkImage = false
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            offscreenPreRaster = true
+                        }
                     }
 
                     webChromeClient = object : WebChromeClient() {
                         override fun onProgressChanged(view: WebView?, newProgress: Int) {
                             progressVal = newProgress / 100f
-                            isLoading = newProgress < 100
+                            if (newProgress >= 70) {
+                                isLoading = false
+                            }
                         }
                     }
 
@@ -195,6 +206,11 @@ fun WebContainer(url: String) {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             super.onPageStarted(view, url, favicon)
                             isError = false
+                        }
+
+                        override fun onPageCommitVisible(view: WebView?, url: String?) {
+                            super.onPageCommitVisible(view, url)
+                            isLoading = false
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {

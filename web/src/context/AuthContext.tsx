@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { apiLogin, apiMe, apiSwitchRole } from '../lib/api'
+import { apiLogin, apiMe, apiSwitchRole, prefetchCoreData } from '../lib/api'
 import { getToken, setToken } from '../lib/config'
 import type { UserProfile } from '../lib/types'
 
@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { token, user } = await apiLogin(username.trim(), password)
       setToken(token)
       setUser(user)
+      prefetchCoreData(user.role)
       return { error: null }
     } catch (e) {
       return { error: (e as Error).message }
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apiMe()
       .then(({ user }) => {
         setUser(user)
+        prefetchCoreData(user.role)
       })
       .catch(() => {
         setToken(null)
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { token, user } = await apiSwitchRole(role)
       setToken(token)
       setUser(user)
+      prefetchCoreData(user.role)
       return { error: null }
     } catch (e) {
       return { error: (e as Error).message }

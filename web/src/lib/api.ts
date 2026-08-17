@@ -294,3 +294,24 @@ export const getDashboardToday = async () => {
   setCache('dashboard_today', data)
   return data
 }
+
+// ---------------- BACKGROUND PREFETCH (0ms Sat Set Navigation) ----------------
+export function prefetchCoreData(role?: string) {
+  if (typeof window === 'undefined') return
+  setTimeout(() => {
+    if (role === 'admin') {
+      getDashboardToday().catch(() => {})
+      getPekerjaSemua().catch(() => {})
+      getTipeSepatuSemua().catch(() => {})
+      getUkuranSemua().catch(() => {})
+      getPoSemua().catch(() => {})
+    } else {
+      getMandorInit().catch(() => {})
+      getPekerjaAktif().catch(() => {})
+      getTipeSepatuAktif().catch(() => {})
+      getUkuranAktif().catch(() => {})
+      getPoSemua().catch(() => {})
+      getProduksiHariIni().catch(() => {})
+    }
+  }, 50)
+}
