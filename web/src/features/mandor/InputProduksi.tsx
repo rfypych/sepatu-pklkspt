@@ -8,6 +8,7 @@ import {
   getPoSemua,
   getProduksiHariIni,
   hapusProduksi,
+  replaceProduksiDetail,
   simpanProduksiBatch,
   tambahPo,
   getCache,
@@ -17,7 +18,16 @@ import { useAuth } from '../../context/AuthContext'
 import type { ProduksiRow } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
 import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
-import { BigButton, Card, ErrorBox, Skeleton, SkeletonCard, Spinner } from '../../components/ui'
+import {
+  BigButton,
+  Card,
+  ConfirmModal,
+  ErrorBox,
+  Modal,
+  Skeleton,
+  SkeletonCard,
+  Spinner,
+} from '../../components/ui'
 import PoProgress from '../../components/PoProgress'
 import {
   ArrowLeft,
@@ -25,6 +35,7 @@ import {
   Calendar,
   CheckCircle2,
   ChevronRight,
+  Edit3,
   Layers,
   Package,
   Plus,
@@ -297,12 +308,95 @@ export default function InputProduksi() {
     }
   }, [today, lastPoId])
 
+  // In-App Confirm Dialog State
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean
+    title?: string
+    message: string
+    confirmLabel?: string
+    cancelLabel?: string
+    isDestructive?: boolean
+    onConfirm: () => void
+  } | null>(null)
+
+  function requestConfirm(opts: {
+    title?: string
+    message: string
+    confirmLabel?: string
+    cancelLabel?: string
+    isDestructive?: boolean
+    onConfirm: () => void
+  }) {
+    setConfirmState({
+      isOpen: true,
+      ...opts,
+    })
+  }
+
+  // Edit Saved Production Item State
+  const [editingRow, setEditingRow] = useState<ProduksiRow | null>(null)
+  const [editQty, setEditQty] = useState<Record<string, number>>({})
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  function bukaEdit(r: ProduksiRow) {
+    setEditingRow(r)
+    setEditError(null)
+    const initialQty: Record<string, number> = {}
+    for (const u of ukuranList) {
+      initialQty[String(u.id_ukuran)] = 0
+    }
+    for (const d of r.detail ?? []) {
+      initialQty[String(d.id_ukuran)] = Number(d.qty || 0)
+    }
+    setEditQty(initialQty)
+  }
+
+  async function simpanEdit() {
+    if (!editingRow) return
+    setSavingEdit(true)
+    setEditError(null)
+    try {
+      const payload = ukuranList.map((u) => ({
+        id_ukuran: String(u.id_ukuran),
+        qty: editQty[String(u.id_ukuran)] ?? 0,
+      }))
+      await replaceProduksiDetail(editingRow.id_produksi, payload)
+      setEditingRow(null)
+      if (idPekerja) {
+        await Promise.all([
+          reloadSaved(idPekerja, shift, idPo),
+          getProduksiHariIni(),
+          reloadPo(),
+        ])
+      }
+    } catch (e) {
+      setEditError((e as Error).message)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   function pilihPekerja(id: number) {
     const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
-    if (hasUnsaved && !window.confirm('Ada item baru yang belum disimpan. Yakin ingin ganti pekerja?')) {
+    if (hasUnsaved) {
+      requestConfirm({
+        title: 'Ada Item Belum Disimpan',
+        message: 'Anda memiliki data pasang sepatu yang belum disimpan. Yakin ingin berganti pekerja dan membuang perubahan?',
+        confirmLabel: 'Ya, Ganti Pekerja',
+        cancelLabel: 'Batal',
+        isDestructive: true,
+        onConfirm: () => {
+          setConfirmState(null)
+          lanjutPilihPekerja(id)
+        },
+      })
       return
     }
+    lanjutPilihPekerja(id)
+  }
 
+  function lanjutPilihPekerja(id: number) {
     const s = shiftMap[id] ?? 1
     // Prioritas PO: PO yang pernah dipilih untuk pekerja ini -> PO terakhir yang aktif -> null
     const targetPo = poMap[id] !== undefined ? poMap[id] : (idPo ?? lastPoId ?? null)
@@ -317,10 +411,24 @@ export default function InputProduksi() {
 
   function gantiShift(s: 1 | 2) {
     const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
-    if (hasUnsaved && !window.confirm('Ada item baru yang belum disimpan. Yakin ingin ganti shift?')) {
+    if (hasUnsaved) {
+      requestConfirm({
+        title: 'Ada Item Belum Disimpan',
+        message: 'Ada isian data yang belum disimpan. Yakin ingin mengganti shift dan membuang data yang belum disimpan?',
+        confirmLabel: 'Ya, Ganti Shift',
+        cancelLabel: 'Batal',
+        isDestructive: true,
+        onConfirm: () => {
+          setConfirmState(null)
+          lanjutGantiShift(s)
+        },
+      })
       return
     }
+    lanjutGantiShift(s)
+  }
 
+  function lanjutGantiShift(s: 1 | 2) {
     setShift(s)
     setNewItems([])
     setError(null)
@@ -336,24 +444,33 @@ export default function InputProduksi() {
     setPilihPo(false)
   }
 
-  async function hapusLocked(r: ProduksiRow) {
-    if (!window.confirm(`Hapus data ${r.nama_model ?? 'item'} ini?`)) return
-    try {
-      await hapusProduksi(r.id_produksi)
-      setSavedList((prev) => prev.filter((x) => x.id_produksi !== r.id_produksi))
-      const [updatedToday] = await Promise.all([getProduksiHariIni(), reloadPo()])
-      const dbShiftMap: Record<number, 1 | 2> = {}
-      const dbPoMap: Record<number, number | null> = {}
-      for (const row of updatedToday) {
-        if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
-        if (row.id_po != null) dbPoMap[row.id_pekerja] = row.id_po
-      }
-      setShiftMap((prev) => ({ ...prev, ...dbShiftMap }))
-      setPoMap((prev) => ({ ...prev, ...dbPoMap }))
-      setError(null)
-    } catch (e) {
-      setError((e as Error).message)
-    }
+  function hapusLocked(r: ProduksiRow) {
+    requestConfirm({
+      title: 'Hapus Catatan Produksi?',
+      message: `Yakin ingin menghapus data ${r.nama_model ?? 'item'} yang sudah tersimpan ini? Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: 'Hapus Data',
+      cancelLabel: 'Batal',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmState(null)
+        try {
+          await hapusProduksi(r.id_produksi)
+          setSavedList((prev) => prev.filter((x) => x.id_produksi !== r.id_produksi))
+          const [updatedToday] = await Promise.all([getProduksiHariIni(), reloadPo()])
+          const dbShiftMap: Record<number, 1 | 2> = {}
+          const dbPoMap: Record<number, number | null> = {}
+          for (const row of updatedToday) {
+            if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
+            if (row.id_po != null) dbPoMap[row.id_pekerja] = row.id_po
+          }
+          setShiftMap((prev) => ({ ...prev, ...dbShiftMap }))
+          setPoMap((prev) => ({ ...prev, ...dbPoMap }))
+          setError(null)
+        } catch (e) {
+          setError((e as Error).message)
+        }
+      },
+    })
   }
 
   async function simpan() {
@@ -612,7 +729,19 @@ export default function InputProduksi() {
         <button
           onClick={() => {
             const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
-            if (hasUnsaved && !window.confirm('Ada item baru yang belum disimpan. Yakin ingin ganti pekerja?')) {
+            if (hasUnsaved) {
+              requestConfirm({
+                title: 'Ada Item Belum Disimpan',
+                message: 'Anda sedang menginput item baru yang belum disimpan. Yakin ingin kembali dan membuang perubahan?',
+                confirmLabel: 'Kembali & Buang',
+                cancelLabel: 'Batal',
+                isDestructive: true,
+                onConfirm: () => {
+                  setConfirmState(null)
+                  setNewItems([])
+                  setIdPekerja(null)
+                },
+              })
               return
             }
             setIdPekerja(null)
@@ -735,10 +864,17 @@ export default function InputProduksi() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <span className="text-base font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-xl">
                           {sum} pasang
                         </span>
+                        <button
+                          onClick={() => bukaEdit(r)}
+                          className="rounded-xl p-2 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200"
+                          title="Edit data ini"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => hapusLocked(r)}
                           className="rounded-xl p-2 text-rose-600 hover:bg-rose-100 transition-colors border border-rose-200"
@@ -878,6 +1014,134 @@ export default function InputProduksi() {
           '✓ SEMUA DATA SUDAH TERSIMPAN'
         )}
       </BigButton>
+
+      {/* Modal Edit Item Tersimpan */}
+      {editingRow && (
+        <Modal
+          isOpen={true}
+          onClose={() => setEditingRow(null)}
+          title={`Edit Produksi: ${editingRow.nama_model ?? 'Model'}`}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-slate-100 border border-slate-300 px-3 py-1 text-xs font-bold text-slate-800">
+                👤 {pekerja?.nama}
+              </span>
+              <span className="rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-xs font-bold text-amber-900">
+                {editingRow.shift === 1 ? '☀️ Shift 1' : '🌙 Shift 2'}
+              </span>
+              {editingRow.no_po && (
+                <span className="rounded-full bg-sky-100 border border-sky-300 px-3 py-1 text-xs font-bold text-sky-900">
+                  📦 {editingRow.no_po}
+                </span>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Ubah Jumlah per Nomor Ukuran:
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {ukuranList.map((u) => {
+                  const val = editQty[String(u.id_ukuran)] || 0
+                  return (
+                    <div
+                      key={u.id_ukuran}
+                      className="rounded-xl border border-slate-200 bg-white p-2 text-center shadow-xs"
+                    >
+                      <div className="text-xs font-black text-slate-500">No {u.label_ukuran}</div>
+                      <div className="mt-1 flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditQty((prev) => ({
+                              ...prev,
+                              [String(u.id_ukuran)]: Math.max(0, (prev[String(u.id_ukuran)] || 0) - 1),
+                            }))
+                          }
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 text-xs font-black"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={val === 0 ? '' : val}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value, 10)
+                            setEditQty((prev) => ({
+                              ...prev,
+                              [String(u.id_ukuran)]: isNaN(n) ? 0 : Math.max(0, n),
+                            }))
+                          }}
+                          className="w-12 text-center text-base font-black text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 rounded"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditQty((prev) => ({
+                              ...prev,
+                              [String(u.id_ukuran)]: (prev[String(u.id_ukuran)] || 0) + 1,
+                            }))
+                          }
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 text-xs font-black"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Total Pasang in Edit Modal */}
+            <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-white">
+              <span className="text-xs font-bold uppercase text-slate-300">Total Pasang:</span>
+              <span className="text-xl font-black text-emerald-400">
+                {Object.values(editQty).reduce((a, b) => a + (Number(b) || 0), 0)} Pasang
+              </span>
+            </div>
+
+            {editError && <ErrorBox message={editError} />}
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <BigButton
+                variant="ghost"
+                type="button"
+                className="py-3 text-sm font-bold"
+                onClick={() => setEditingRow(null)}
+                disabled={savingEdit}
+              >
+                Batal
+              </BigButton>
+              <BigButton
+                variant="primary"
+                type="button"
+                className="py-3 text-sm font-black"
+                onClick={simpanEdit}
+                disabled={savingEdit}
+              >
+                {savingEdit ? 'Menyimpan...' : '✓ Simpan Perubahan'}
+              </BigButton>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* In-App Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(confirmState?.isOpen)}
+        title={confirmState?.title}
+        message={confirmState?.message ?? ''}
+        confirmLabel={confirmState?.confirmLabel}
+        cancelLabel={confirmState?.cancelLabel}
+        isDestructive={confirmState?.isDestructive}
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }

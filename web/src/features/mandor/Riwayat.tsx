@@ -19,7 +19,7 @@ import {
   tanggalHariIni,
   type PeriodRiwayat,
 } from '../../lib/constants'
-import { BigButton, Card, ErrorBox, PillBadge, SkeletonTable } from '../../components/ui'
+import { BigButton, Card, ConfirmModal, ErrorBox, PillBadge, SkeletonTable } from '../../components/ui'
 import { Tabel, THead, Th, Td } from '../../components/view'
 import { buatBarisLaporan, exportLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Lock, Trash2 } from 'lucide-react'
@@ -94,10 +94,18 @@ export default function Riwayat() {
     }
   }
 
-  async function onHapus(idProduksi: number) {
-    if (!window.confirm('Hapus baris produksi ini?')) return
+  const [hapusTarget, setHapusTarget] = useState<number | null>(null)
+
+  function onHapus(idProduksi: number) {
+    setHapusTarget(idProduksi)
+  }
+
+  async function eksekusiHapus() {
+    if (!hapusTarget) return
+    const id = hapusTarget
+    setHapusTarget(null)
     try {
-      await hapusProduksi(idProduksi)
+      await hapusProduksi(id)
       await muat()
     } catch (e) {
       setError((e as Error).message)
@@ -296,6 +304,17 @@ export default function Riwayat() {
           </Tabel>
         </>
       )}
+
+      <ConfirmModal
+        isOpen={hapusTarget !== null}
+        title="Hapus Catatan Produksi?"
+        message="Yakin ingin menghapus baris produksi ini? Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus Data"
+        cancelLabel="Batal"
+        isDestructive={true}
+        onConfirm={eksekusiHapus}
+        onCancel={() => setHapusTarget(null)}
+      />
     </div>
   )
 }

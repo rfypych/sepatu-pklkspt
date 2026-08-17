@@ -219,3 +219,103 @@ export function InlineLoadingBadge({ label = 'Menyinkronkan...' }: { label?: str
   )
 }
 
+// ---------------- MODAL & CONFIRM DIALOG ----------------
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = 'max-w-lg',
+}: {
+  isOpen: boolean
+  onClose: () => void
+  title?: string
+  children: ReactNode
+  maxWidth?: string
+}) {
+  if (!isOpen) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className={`w-full ${maxWidth} max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border-2 border-slate-200 space-y-4 animate-in zoom-in-95 duration-150`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {title && (
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-lg font-black tracking-tight text-slate-900">{title}</h2>
+            <button
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 text-sm font-bold transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        <div>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+export function ConfirmModal({
+  isOpen,
+  title = 'Konfirmasi Tindakan',
+  message,
+  confirmLabel = 'Ya, Lanjutkan',
+  cancelLabel = 'Batal',
+  isDestructive = false,
+  onConfirm,
+  onCancel,
+}: {
+  isOpen: boolean
+  title?: string
+  message: string
+  confirmLabel?: string
+  cancelLabel?: string
+  isDestructive?: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  if (!isOpen) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border-2 border-slate-200 text-center space-y-4 animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 text-2xl border border-amber-300">
+          ⚠️
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-lg font-black tracking-tight text-slate-900">{title}</h3>
+          <p className="text-sm font-semibold text-slate-600 leading-relaxed">{message}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          <button
+            onClick={onCancel}
+            className="rounded-2xl border-2 border-slate-200 bg-slate-100 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200 active:bg-slate-300 transition-colors"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`rounded-2xl py-3 text-sm font-black text-white shadow-md transition-colors ${
+              isDestructive
+                ? 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 border border-rose-700'
+                : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700'
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
