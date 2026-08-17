@@ -298,4 +298,28 @@ router.delete('/po/:id', adminOnly, async (req, res) => {
   }
 })
 
+// ---------------- RESET / BERSIHKAN DATABASE (ADMIN ONLY) ----------------
+router.post('/reset-database', adminOnly, async (req, res) => {
+  const client = await pool.connect()
+  try {
+    const { mode } = req.body || {} // 'produksi_only' | 'factory_reset'
+    await client.query('BEGIN')
+
+    if (mode === 'factory_reset') {
+      await client.query('TRUNCATE TABLE produksi_detail, produksi_harian, master_po, tipe_sepatu, pekerja RESTART IDENTITY CASCADE')
+      await client.query('COMMIT')
+      return res.json({ ok: true, mode: 'factory_reset', message: 'Semua data produksi, PO, model, dan pekerja berhasil dibersihkan!' })
+    } else {
+      await client.query('TRUNCATE TABLE produksi_detail, produksi_harian RESTART IDENTITY CASCADE')
+      await client.query('COMMIT')
+      return res.json({ ok: true, mode: 'produksi_only', message: 'Seluruh data transaksi produksi harian berhasil dibersihkan!' })
+    }
+  } catch (e) {
+    await client.query('ROLLBACK')
+    res.status(500).json({ error: e.message })
+  } finally {
+    client.release()
+  }
+})
+
 export default router

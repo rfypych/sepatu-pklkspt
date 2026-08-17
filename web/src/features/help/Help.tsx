@@ -1,8 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { PillBadge } from '../../components/ui'
 import {
-  ArrowLeft,
   BookOpen,
   ChevronDown,
   ChevronRight,
@@ -91,7 +89,6 @@ function Step({ nomor, judul, deskripsi }: { nomor: string; judul: string; deskr
 }
 
 export default function Help() {
-  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState<'semua' | 'mandor' | 'admin' | 'konsep' | 'faq'>('semua')
   const [openIds, setOpenIds] = useState<Set<string>>(new Set(['login', 'input_produksi']))
@@ -309,84 +306,79 @@ export default function Help() {
   }, [topics, filterCat, search])
 
   return (
-    <div className="min-h-full bg-[#F5F5F5]">
-      {/* Header — sama persis dengan Pengaturan */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-neutral-200/80 bg-white/90 px-4 py-3 backdrop-blur-md">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <span className="text-sm font-semibold tracking-tight text-neutral-900">Pusat Bantuan</span>
-        <div className="w-9" />
-      </header>
+    <div className="space-y-4">
+      {/* Header Banner */}
+      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 sm:p-5 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 text-xl border border-sky-300">
+            📖
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-tight">
+              Pusat Bantuan & Panduan
+            </h1>
+            <p className="text-xs sm:text-sm font-semibold text-slate-600">
+              Dokumentasi operasional lengkap dan solusi cepat penggunaan sistem.
+            </p>
+          </div>
+        </div>
+      </div>
 
-      <div className="mx-auto max-w-xl p-4 md:p-6 space-y-4">
-        {/* Page Title */}
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Pusat Bantuan</h1>
-          <p className="text-xs text-neutral-500">
-            Panduan operasional dan dokumentasi lengkap sistem produksi sepatu.
-          </p>
+      {/* Search & Category Tabs */}
+      <div className="space-y-3 rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-xs">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Cari topik bantuan (cth: input, gaji, excel, po)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-3 pl-10 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-slate-800 focus:bg-white focus:outline-none transition-colors"
+          />
+          <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
         </div>
 
-        {/* Search & Category Tabs */}
-        <div className="space-y-3 rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-xs">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Cari topik bantuan (cth: input, gaji, excel, po)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2.5 pl-10 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
+        {/* Filter Badges */}
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { id: 'semua', label: 'Semua Topik' },
+            { id: 'mandor', label: 'Panduan Mandor' },
+            { id: 'admin', label: 'Panduan Admin' },
+            { id: 'konsep', label: 'Sistem & PO' },
+            { id: 'faq', label: 'FAQ' },
+          ].map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setFilterCat(c.id as any)}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-black transition-all ${
+                filterCat === c.id
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Topics List */}
+      <div className="space-y-3">
+        {filteredTopics.length === 0 ? (
+          <div className="rounded-3xl border-2 border-slate-200 bg-white p-8 text-center shadow-xs">
+            <BookOpen className="mx-auto mb-2 h-10 w-10 text-slate-400" />
+            <p className="text-sm font-bold text-slate-700">Topik tidak ditemukan</p>
+            <p className="text-xs text-slate-500">Coba ketik kata kunci pencarian yang lain.</p>
+          </div>
+        ) : (
+          filteredTopics.map((topic) => (
+            <AccordionItem
+              key={topic.id}
+              topic={topic}
+              isOpen={openIds.has(topic.id)}
+              onToggle={() => toggleItem(topic.id)}
             />
-            <Search className="absolute left-3.5 top-3 h-4 w-4 text-neutral-400" />
-          </div>
-
-          {/* Filter Badges */}
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { id: 'semua', label: 'Semua Topik' },
-              { id: 'mandor', label: 'Panduan Mandor' },
-              { id: 'admin', label: 'Panduan Admin' },
-              { id: 'konsep', label: 'Sistem & PO' },
-              { id: 'faq', label: 'FAQ' },
-            ].map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setFilterCat(c.id as any)}
-                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
-                  filterCat === c.id
-                    ? 'bg-neutral-900 text-white shadow-xs'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Topics List */}
-        <div className="space-y-3">
-          {filteredTopics.length === 0 ? (
-            <div className="rounded-2xl border border-neutral-200/90 bg-white p-8 text-center shadow-xs">
-              <BookOpen className="mx-auto mb-2 h-10 w-10 text-neutral-400" />
-              <p className="text-sm font-bold text-neutral-700">Topik tidak ditemukan</p>
-              <p className="text-xs text-neutral-500">Coba ketik kata kunci pencarian yang lain.</p>
-            </div>
-          ) : (
-            filteredTopics.map((topic) => (
-              <AccordionItem
-                key={topic.id}
-                topic={topic}
-                isOpen={openIds.has(topic.id)}
-                onToggle={() => toggleItem(topic.id)}
-              />
-            ))
-          )}
-        </div>
+          ))
+        )}
       </div>
     </div>
   )

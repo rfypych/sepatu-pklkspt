@@ -15,7 +15,7 @@ const navItems = [
   { to: '/admin/produksi', label: 'Data Produksi', icon: ClipboardList, end: false },
   { to: '/admin/payroll', label: 'Rekap Gaji', icon: Coins, end: false },
   { to: '/admin/master', label: 'Master Data', icon: SlidersHorizontal, end: false },
-  { to: '/help', label: 'Bantuan', icon: HelpCircle, end: false },
+  { to: '/admin/bantuan', label: 'Bantuan', icon: HelpCircle, end: false },
 ]
 
 export default function AdminLayout() {

@@ -171,6 +171,7 @@ fun WebContainer(url: String) {
                     setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
+                    clearCache(true)
 
                     settings.apply {
                         javaScriptEnabled = true

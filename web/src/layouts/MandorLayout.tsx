@@ -13,7 +13,7 @@ export function LogoIcon({ className = 'w-6 h-6' }: { className?: string }) {
 const navItems = [
   { to: '/mandor', label: 'Input Produksi', icon: PenTool, end: true },
   { to: '/mandor/riwayat', label: 'Riwayat Kerja', icon: Clock, end: false },
-  { to: '/help', label: 'Bantuan', icon: HelpCircle, end: false },
+  { to: '/mandor/bantuan', label: 'Bantuan', icon: HelpCircle, end: false },
 ]
 
 export default function MandorLayout() {

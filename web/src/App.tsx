@@ -37,18 +37,18 @@ function ProtectedAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function HelpRedirect() {
+  const { user, loading } = useAuth()
+  if (loading) return <Spinner />
+  if (!user) return <Navigate to="/login" replace />
+  return <Navigate to={user.role === 'admin' ? '/admin/bantuan' : '/mandor/bantuan'} replace />
+}
+
 function Router() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route
-        path="/help"
-        element={
-          <ProtectedAuth>
-            <Help />
-          </ProtectedAuth>
-        }
-      />
+      <Route path="/help" element={<HelpRedirect />} />
       <Route path="/" element={<HomeRedirect />} />
       <Route
         path="/pengaturan"
@@ -68,6 +68,7 @@ function Router() {
       >
         <Route index element={<InputProduksi />} />
         <Route path="riwayat" element={<Riwayat />} />
+        <Route path="bantuan" element={<Help />} />
       </Route>
       <Route
         path="/admin"
@@ -81,6 +82,7 @@ function Router() {
         <Route path="produksi" element={<DataProduksi />} />
         <Route path="payroll" element={<Payroll />} />
         <Route path="master" element={<Master />} />
+        <Route path="bantuan" element={<Help />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

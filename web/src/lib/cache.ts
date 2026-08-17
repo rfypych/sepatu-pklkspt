@@ -76,3 +76,23 @@ export function invalidateCache(...patterns: string[]): void {
     }
   }
 }
+
+export function clearAllCache(): void {
+  memoryCache.clear()
+  if (typeof window !== 'undefined') {
+    try {
+      const keysToRemove: string[] = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i)
+        if (k && k.startsWith('sp_cache_')) {
+          keysToRemove.push(k)
+        }
+      }
+      for (const k of keysToRemove) {
+        sessionStorage.removeItem(k)
+      }
+    } catch {
+      // Abaikan
+    }
+  }
+}

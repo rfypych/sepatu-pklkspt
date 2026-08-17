@@ -1,4 +1,6 @@
 import { API_URL, getToken } from './config'
+import { getCache, setCache, invalidateCache, clearAllCache } from './cache'
+export { getCache, setCache, invalidateCache, clearAllCache }
 import type {
   MasterPo,
   MasterUkuran,
@@ -57,8 +59,7 @@ export function apiSwitchRole(role: 'admin' | 'mandor') {
   return post<LoginResult>('/auth/switch', { role })
 }
 
-import { getCache, setCache, invalidateCache } from './cache'
-export { getCache, setCache, invalidateCache }
+
 
 // ---------------- PEKERJA ----------------
 export const getPekerjaAktif = async () => {
@@ -257,6 +258,11 @@ export const replaceProduksiDetail = async (
 export const hapusProduksi = async (id: number) => {
   const res = await del<{ ok: boolean }>(`/produksi/${id}`)
   invalidateCache('produksi', 'mandor_init', 'dashboard', 'payroll', 'po')
+  return res
+}
+export const resetDatabase = async (mode: 'produksi_only' | 'factory_reset' = 'produksi_only') => {
+  const res = await post<{ ok: boolean; mode: string; message: string }>('/reset-database', { mode })
+  clearAllCache()
   return res
 }
 
