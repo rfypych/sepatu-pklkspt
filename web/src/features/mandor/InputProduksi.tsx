@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   getMandorInit,
+  getPekerjaAktif,
+  getTipeSepatuAktif,
+  getUkuranAktif,
   getPoAktif,
+  getPoSemua,
   getProduksiHariIni,
   hapusProduksi,
   simpanProduksiBatch,
   tambahPo,
+  getCache,
+  setCache,
 } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import type { ProduksiRow } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
 import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
@@ -21,6 +28,7 @@ import {
   Layers,
   Package,
   Plus,
+  RotateCw,
   Trash2,
   User,
 } from 'lucide-react'
@@ -47,46 +55,13 @@ function labelTanggalHariIni(): string {
 }
 
 export default function InputProduksi() {
-  const [pekerjaList, setPekerjaList] = useState<Pekerja[]>(() => {
-    try {
-      const c = localStorage.getItem('cache_pekerja')
-      return c ? JSON.parse(c) : []
-    } catch {
-      return []
-    }
-  })
-  const [modelList, setModelList] = useState<TipeSepatu[]>(() => {
-    try {
-      const c = localStorage.getItem('cache_model')
-      return c ? JSON.parse(c) : []
-    } catch {
-      return []
-    }
-  })
-  const [ukuranList, setUkuranList] = useState<MasterUkuran[]>(() => {
-    try {
-      const c = localStorage.getItem('cache_ukuran')
-      return c ? JSON.parse(c) : []
-    } catch {
-      return []
-    }
-  })
-  const [poList, setPoList] = useState<MasterPo[]>(() => {
-    try {
-      const c = localStorage.getItem('cache_po')
-      return c ? JSON.parse(c) : []
-    } catch {
-      return []
-    }
-  })
+  const { user } = useAuth()
+  const [pekerjaList, setPekerjaList] = useState<Pekerja[]>(() => getCache<Pekerja[]>('pekerja_aktif') ?? [])
+  const [modelList, setModelList] = useState<TipeSepatu[]>(() => getCache<TipeSepatu[]>('tipe_sepatu_aktif') ?? [])
+  const [ukuranList, setUkuranList] = useState<MasterUkuran[]>(() => getCache<MasterUkuran[]>('ukuran_aktif') ?? [])
+  const [poList, setPoList] = useState<MasterPo[]>(() => getCache<MasterPo[]>('po_semua') ?? [])
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(() => {
-    try {
-      return !localStorage.getItem('cache_pekerja')
-    } catch {
-      return true
-    }
-  })
+  const [loading, setLoading] = useState(() => !getCache('pekerja_aktif'))
 
   const [idPekerja, setIdPekerja] = useState<number | null>(null)
   const [shift, setShift] = useState<1 | 2>(1)
@@ -118,9 +93,7 @@ export default function InputProduksi() {
     try {
       const pos = await getPoAktif()
       setPoList(pos)
-      try {
-        localStorage.setItem('cache_po', JSON.stringify(pos))
-      } catch {}
+      setCache('po_semua', pos)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -155,8 +128,10 @@ export default function InputProduksi() {
     [],
   )
 
-  // Muat master data via batch init + pulihkan "lembar kerja" dari localStorage (hanya berlaku hari ini)
-  useEffect(() => {
+  const muatData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
     let restored: { idPekerja: number; shift: 1 | 2; idPo: number | null } | null = null
     let restoredMap: Record<number, 1 | 2> = {}
     let restoredPoMap: Record<number, number | null> = {}
@@ -199,56 +174,86 @@ export default function InputProduksi() {
       // abaikan
     }
 
-    getMandorInit()
-      .then((data) => {
-        const { pekerja: p, model: m, ukuran: u, po, todayProduksi: todayProd } = data
-        setPekerjaList(p)
-        setModelList(m)
-        setUkuranList(u)
-        setPoList(po)
+    try {
+      let p: Pekerja[] = []
+      let m: TipeSepatu[] = []
+      let u: MasterUkuran[] = []
+      let po: MasterPo[] = []
+      let todayProd: ProduksiRow[] = []
 
-        // Simpan cache master data untuk pemuatan instan
-        try {
-          localStorage.setItem('cache_pekerja', JSON.stringify(p))
-          localStorage.setItem('cache_model', JSON.stringify(m))
-          localStorage.setItem('cache_ukuran', JSON.stringify(u))
-          localStorage.setItem('cache_po', JSON.stringify(po))
-        } catch {}
+      try {
+        const data = await getMandorInit()
+        p = data.pekerja
+        m = data.model
+        u = data.ukuran
+        po = data.po
+        todayProd = data.todayProduksi ?? []
+      } catch {
+        const [resP, resM, resU, resPo, resProd] = await Promise.all([
+          getPekerjaAktif(),
+          getTipeSepatuAktif(),
+          getUkuranAktif(),
+          getPoSemua(),
+          getProduksiHariIni().catch(() => []),
+        ])
+        p = resP
+        m = resM
+        u = resU
+        po = resPo
+        todayProd = resProd
+      }
 
-        // Ambil data Shift & PO yang sudah tersimpan di database hari ini
-        const dbShiftMap: Record<number, 1 | 2> = {}
-        const dbPoMap: Record<number, number | null> = {}
-        for (const row of todayProd) {
-          if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
-          if (row.id_po != null) dbPoMap[row.id_pekerja] = row.id_po
-        }
+      setPekerjaList(p)
+      setModelList(m)
+      setUkuranList(u)
+      setPoList(po)
 
-        // Gabungkan: prioritas data database > localStorage
-        const mergedShiftMap = { ...restoredMap, ...dbShiftMap }
-        const mergedPoMap = { ...restoredPoMap, ...dbPoMap }
+      // Simpan ke unified cache
+      setCache('pekerja_aktif', p)
+      setCache('tipe_sepatu_aktif', m)
+      setCache('ukuran_aktif', u)
+      setCache('po_semua', po)
 
-        setShiftMap(mergedShiftMap)
-        setPoMap(mergedPoMap)
-        setLastPoId(restoredLastPo)
+      // Ambil data Shift & PO yang sudah tersimpan di database hari ini
+      const dbShiftMap: Record<number, 1 | 2> = {}
+      const dbPoMap: Record<number, number | null> = {}
+      for (const row of todayProd) {
+        if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
+        if (row.id_po != null) dbPoMap[row.id_pekerja] = row.id_po
+      }
 
-        if (restored) {
-          setIdPekerja(restored.idPekerja)
-          const resolvedShift = dbShiftMap[restored.idPekerja] ?? restored.shift
-          const resolvedPo =
-            dbPoMap[restored.idPekerja] ?? restored.idPo ?? restoredPoMap[restored.idPekerja] ?? restoredLastPo
-          setShift(resolvedShift)
-          setIdPo(resolvedPo)
+      // Gabungkan: prioritas data database > localStorage
+      const mergedShiftMap = { ...restoredMap, ...dbShiftMap }
+      const mergedPoMap = { ...restoredPoMap, ...dbPoMap }
 
-          const forThisWorker = todayProd.filter(
-            (r) => Number(r.id_pekerja) === restored.idPekerja && Number(r.shift) === resolvedShift,
-          )
-          setSavedList(forThisWorker)
-        }
-      })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+      setShiftMap(mergedShiftMap)
+      setPoMap(mergedPoMap)
+      setLastPoId(restoredLastPo)
+
+      if (restored) {
+        setIdPekerja(restored.idPekerja)
+        const resolvedShift = dbShiftMap[restored.idPekerja] ?? restored.shift
+        const resolvedPo =
+          dbPoMap[restored.idPekerja] ?? restored.idPo ?? restoredPoMap[restored.idPekerja] ?? restoredLastPo
+        setShift(resolvedShift)
+        setIdPo(resolvedPo)
+
+        const forThisWorker = todayProd.filter(
+          (r) => Number(r.id_pekerja) === restored.idPekerja && Number(r.shift) === resolvedShift,
+        )
+        setSavedList(forThisWorker)
+      }
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }, [today])
+
+  // Muat master data saat mount atau saat user login/berubah
+  useEffect(() => {
+    muatData()
+  }, [muatData, user])
 
   // simpan lembar kerja ke localStorage
   useEffect(() => {
@@ -473,8 +478,29 @@ export default function InputProduksi() {
             )
           })}
         </div>
-        {pekerjaList.length === 0 && (
-          <Card className="text-center text-slate-500 py-10">Belum ada pekerja aktif.</Card>
+        {error && (
+          <div className="space-y-2">
+            <ErrorBox message={error} />
+            <button
+              onClick={() => muatData()}
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              <span>Coba Muat Ulang</span>
+            </button>
+          </div>
+        )}
+        {!loading && pekerjaList.length === 0 && !error && (
+          <Card className="text-center text-slate-500 py-10 space-y-3">
+            <p>Belum ada pekerja aktif.</p>
+            <button
+              onClick={() => muatData()}
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              <span>Segarkan Data</span>
+            </button>
+          </Card>
         )}
       </div>
     )
