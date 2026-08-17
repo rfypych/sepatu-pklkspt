@@ -6,12 +6,12 @@ import { todayStr } from '../date.js'
 const router = Router()
 router.use(authRequired, attachUser)
 
-router.get('/today', async (req, res) => {
+const getDashboardHandler = async (req, res) => {
   try {
     const today = todayStr()
     const { rows } = await pool.query('SELECT * FROM v_total_per_produksi WHERE tanggal = $1 ORDER BY shift', [today])
 
-    if (req.headers['user-agent']?.includes('okhttp') || req.query.format === 'summary') {
+    if (req.headers['user-agent']?.includes('okhttp') || req.query.format === 'summary' || req.path === '/summary') {
       const { rows: workers } = await pool.query('SELECT COUNT(*) AS cnt FROM pekerja WHERE status_aktif = 1')
       const { rows: pos } = await pool.query('SELECT COUNT(*) AS cnt FROM master_po WHERE status_aktif = 1')
 
@@ -58,6 +58,10 @@ router.get('/today', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
-})
+}
+
+router.get('/today', getDashboardHandler)
+router.get('/summary', getDashboardHandler)
+router.get('/', getDashboardHandler)
 
 export default router

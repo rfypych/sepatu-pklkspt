@@ -64,7 +64,7 @@ async function formatProduksiRows(rows, cachedUkuran = null) {
 }
 
 // Batch Init Endpoint: Menyatukan seluruh master data & produksi hari ini dalam 1 HTTP roundtrip
-router.get('/mandor-init', async (req, res) => {
+const mandorInitHandler = async (req, res) => {
   try {
     const today = todayStr()
     const [pekerja, model, ukuran, po, todayProdRows] = await Promise.all([
@@ -119,7 +119,9 @@ router.get('/mandor-init', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
-})
+}
+router.get('/mandor-init', mandorInitHandler)
+router.get('/init', mandorInitHandler)
 
 // Hari ini (semua pengguna melihat data hari ini)
 router.get('/hari-ini', async (req, res) => {
@@ -143,7 +145,7 @@ router.get('/hari-ini', async (req, res) => {
 })
 
 // List dengan filter
-router.get('/', async (req, res) => {
+const listProduksiHandler = async (req, res) => {
   try {
     const { tanggal, pekerja, pekerja_id, dari, sampai, po_id } = req.query
     const params = []
@@ -183,7 +185,10 @@ router.get('/', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
-})
+}
+router.get('/', listProduksiHandler)
+router.get('/riwayat', listProduksiHandler)
+router.get('/terbaru', listProduksiHandler)
 
 // Simpan produksi single
 router.post('/', async (req, res) => {
