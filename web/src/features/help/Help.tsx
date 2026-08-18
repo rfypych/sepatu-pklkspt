@@ -418,7 +418,7 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">
-              {isMandor ? 'Panduan Mandor Lapangan' : 'Panduan Admin & Pemilik'}
+              {isMandor ? 'Panduan Mandor Lapangan' : 'Panduan Admin'}
             </h1>
             <p className="text-xs sm:text-sm font-semibold opacity-80 mt-0.5">
               {isMandor

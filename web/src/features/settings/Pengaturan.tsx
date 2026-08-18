@@ -165,7 +165,7 @@ export default function Pengaturan() {
         </div>
 
         <div className="space-y-2.5">
-          {tombol('admin', 'Mode Admin / Pemilik', 'Kelola dashboard produksi, rekap gaji, dan master data.', ShieldCheck)}
+          {tombol('admin', 'Mode Admin', 'Kelola dashboard produksi, rekap gaji, dan master data.', ShieldCheck)}
           {tombol('mandor', 'Mode Mandor Lapangan', 'Input hasil produksi harian dan lihat riwayat.', HardHat)}
         </div>
 
