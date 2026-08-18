@@ -13,7 +13,7 @@ import type { MasterPo, MasterUkuran, Pekerja } from '../../lib/types'
 import { formatAngka, formatRupiah, formatTanggalPendek } from '../../lib/constants'
 import { BigButton, Card, ConfirmModal, ErrorBox, ExportSuccessModal, FieldLabel, PillBadge, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
-import { exportLaporanHarian } from '../../lib/laporan'
+import { exportLaporanHarian, shareLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Trash2 } from 'lucide-react'
 
 export default function DataProduksi() {
@@ -331,6 +331,7 @@ export default function DataProduksi() {
         isOpen={exportedName !== null}
         onClose={() => setExportedName(null)}
         filename={exportedName ?? ''}
+        onShare={() => shareLaporanHarian(rows, poList, ukuranList, exportedName || `laporan-harian-${tanggal || 'semua-tanggal'}.xlsx`)}
       />
     </div>
   )

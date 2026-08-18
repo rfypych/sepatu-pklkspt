@@ -4,7 +4,7 @@ import type { RekapGajiRow } from '../../lib/types'
 import { formatAngka, formatRupiah, labelPeriode } from '../../lib/constants'
 import { Card, ErrorBox, ExportSuccessModal, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
-import { downloadExcelWorkbook } from '../../lib/laporan'
+import { downloadExcelWorkbook, shareExcelWorkbook } from '../../lib/laporan'
 import { Coins, Download, User } from 'lucide-react'
 
 export default function Payroll() {
@@ -91,6 +91,33 @@ export default function Payroll() {
       setExportedName(namaFile)
     } finally {
       setExporting(false)
+    }
+  }
+
+  async function bagikanPayroll() {
+    if (rows.length === 0) return
+    const namaFile = exportedName || `payroll-${periode || 'rekap'}.xlsx`
+    try {
+      const XLSX = await import('xlsx')
+      const dataRows = rows.map((r) => ({
+        'Nama Pekerja': r.nama_pekerja,
+        Model: r.nama_model,
+        'Total Pasang': r.total_pasang,
+        'Total Gaji (Rp)': r.total_gaji,
+      }))
+      dataRows.push({
+        'Nama Pekerja': 'GRAND TOTAL',
+        Model: '',
+        'Total Pasang': totalPasangSemua,
+        'Total Gaji (Rp)': grandTotal,
+      })
+      const ws = XLSX.utils.json_to_sheet(dataRows)
+      ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 18 }]
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Gaji')
+      shareExcelWorkbook(XLSX, wb, namaFile)
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -247,6 +274,7 @@ export default function Payroll() {
         isOpen={exportedName !== null}
         onClose={() => setExportedName(null)}
         filename={exportedName ?? ''}
+        onShare={bagikanPayroll}
       />
     </div>
   )

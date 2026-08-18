@@ -66,6 +66,46 @@ export function downloadExcelWorkbook(XLSX: any, wb: any, namaFile: string) {
   XLSX.writeFile(wb, namaFile)
 }
 
+export function shareExcelWorkbook(XLSX: any, wb: any, namaFile: string): boolean {
+  const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+  // 1. Android Bridge Share
+  if (typeof window !== 'undefined' && (window as any).AndroidBridge?.shareFileBase64) {
+    try {
+      const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' })
+      ;(window as any).AndroidBridge.shareFileBase64(b64, namaFile, mimeType)
+      return true
+    } catch (err) {
+      console.error('AndroidBridge shareFileBase64 error:', err)
+    }
+  }
+
+  // 2. Web Share API (Mobile Browsers / Desktop with share support)
+  try {
+    const wbout = XLSX.write(wb, { bookType: 'array', type: 'array' })
+    const blob = new Blob([wbout], { type: mimeType })
+    const file = new File([blob], namaFile, { type: mimeType })
+    if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator
+        .share({
+          files: [file],
+          title: namaFile,
+          text: `Laporan: ${namaFile}`,
+        })
+        .catch(() => {
+          // user cancelled share
+        })
+      return true
+    }
+  } catch (err) {
+    console.error('Web Share error:', err)
+  }
+
+  // 3. Fallback: Download file
+  downloadExcelWorkbook(XLSX, wb, namaFile)
+  return false
+}
+
 export async function exportLaporanHarian(
   rows: ProduksiRow[],
   poList: MasterPo[],
@@ -112,4 +152,52 @@ export async function exportLaporanHarian(
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Laporan Harian')
   downloadExcelWorkbook(XLSX, wb, namaFile)
+}
+
+export async function shareLaporanHarian(
+  rows: ProduksiRow[],
+  poList: MasterPo[],
+  ukuranList: MasterUkuran[],
+  namaFile: string,
+) {
+  if (rows.length === 0) return
+  const XLSX = await import('xlsx')
+  const baris = buatBarisLaporan(rows, poList, ukuranList)
+  const data = baris.map((b) => ({
+    Karyawan: b.row.nama_pekerja,
+    Tanggal: formatTanggalPendek(b.row.tanggal),
+    Model: b.row.nama_model,
+    PO: b.row.no_po ?? '—',
+    'Target PO': b.target ?? '',
+    'Rincian Size': b.rincianSize,
+    'Ongkos × Pasang': `${formatAngka(b.ongkos)} × ${b.pasang}`,
+    Subtotal: b.subtotal,
+    'Progress PO': b.row.id_po != null && b.target ? `${b.harianProgress}/${formatAngka(b.target)}` : '—',
+  }))
+  data.push({
+    Karyawan: 'TOTAL',
+    Tanggal: '',
+    Model: '',
+    PO: '',
+    'Target PO': '',
+    'Rincian Size': `${rows.reduce((a, r) => a + totalPasang(r), 0)} pasang`,
+    'Ongkos × Pasang': '',
+    Subtotal: rows.reduce((a, r) => a + totalGaji(r), 0),
+    'Progress PO': '',
+  })
+  const ws = XLSX.utils.json_to_sheet(data)
+  ws['!cols'] = [
+    { wch: 16 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 10 },
+    { wch: 22 },
+    { wch: 16 },
+    { wch: 12 },
+    { wch: 14 },
+  ]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Laporan Harian')
+  shareExcelWorkbook(XLSX, wb, namaFile)
 }

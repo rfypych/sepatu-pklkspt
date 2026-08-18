@@ -21,7 +21,7 @@ import {
 } from '../../lib/constants'
 import { BigButton, Card, ConfirmModal, ErrorBox, ExportSuccessModal, PillBadge, SkeletonTable } from '../../components/ui'
 import { Tabel, THead, Th, Td } from '../../components/view'
-import { buatBarisLaporan, exportLaporanHarian } from '../../lib/laporan'
+import { buatBarisLaporan, exportLaporanHarian, shareLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Lock, Trash2 } from 'lucide-react'
 
 const PERIODE_LIST: { value: PeriodRiwayat; label: string }[] = [
@@ -355,6 +355,7 @@ export default function Riwayat() {
         isOpen={exportedName !== null}
         onClose={() => setExportedName(null)}
         filename={exportedName ?? ''}
+        onShare={() => shareLaporanHarian(rows, poList, ukuranList, exportedName || `laporan-harian-${tanggal}.xlsx`)}
       />
     </div>
   )

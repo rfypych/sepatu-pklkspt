@@ -329,10 +329,12 @@ export function ExportSuccessModal({
   isOpen,
   onClose,
   filename,
+  onShare,
 }: {
   isOpen: boolean
   onClose: () => void
   filename: string
+  onShare?: () => void
 }) {
   if (!isOpen) return null
   return (
@@ -362,16 +364,27 @@ export function ExportSuccessModal({
             File tersimpan di <b>Folder Download (Unduhan)</b> HP Anda.
           </p>
           <p className="text-slate-500 text-[11px] leading-relaxed pt-1 border-t border-emerald-200/60">
-            💡 Bisa dibuka dengan aplikasi <b>Excel / WPS Office</b> atau langsung dikirimkan lewat WhatsApp.
+            💡 Anda bisa membuka file ini atau langsung mengirimkannya ke grup WhatsApp.
           </p>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full rounded-full bg-slate-900 hover:bg-slate-800 active:bg-black py-3.5 text-sm font-black text-white shadow-sm transition-colors"
-        >
-          Siap, Mengerti
-        </button>
+        <div className="space-y-2 pt-1">
+          {onShare && (
+            <button
+              onClick={onShare}
+              className="w-full flex items-center justify-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 py-3.5 text-sm font-black text-white shadow-sm transition-colors"
+            >
+              <span>📤</span>
+              <span>Kirim / Bagikan (WhatsApp, dll)</span>
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="w-full rounded-full border border-slate-300 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 py-3 text-sm font-bold text-slate-700 transition-colors"
+          >
+            Tutup
+          </button>
+        </div>
       </div>
     </div>
   )

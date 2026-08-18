@@ -109,6 +109,45 @@ class WebAppInterface(private val context: Context) {
             }
         }
     }
+
+    @JavascriptInterface
+    fun shareFileBase64(base64Data: String, filename: String, mimeType: String) {
+        try {
+            val cleanBase64 = if (base64Data.contains(",")) {
+                base64Data.substringAfter(",")
+            } else {
+                base64Data
+            }
+            val bytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+
+            val cacheFile = File(context.cacheDir, filename)
+            FileOutputStream(cacheFile).use { it.write(bytes) }
+
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                cacheFile
+            )
+
+            Handler(Looper.getMainLooper()).post {
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = mimeType
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Laporan Excel: $filename")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                val chooser = Intent.createChooser(shareIntent, "Bagikan File Excel via:").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(chooser)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(context, "❌ Gagal membagikan file: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 }
 
 class MainActivity : ComponentActivity() {
