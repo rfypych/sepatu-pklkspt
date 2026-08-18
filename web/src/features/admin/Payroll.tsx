@@ -90,14 +90,14 @@ export default function Payroll() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Rekap Gaji (Payroll)</h1>
-          <p className="text-xs text-neutral-500">Perhitungan upah kerja otomatis per periode cut-off.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Rekap Gaji (Payroll)</h1>
+          <p className="text-xs font-semibold text-slate-500">Perhitungan upah kerja otomatis per periode cut-off.</p>
         </div>
         <div className="flex items-center gap-2">
           {rows.length > 0 && (
             <button
               onClick={exportExcel}
-              className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-neutral-800"
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Ekspor Excel</span>
@@ -107,8 +107,8 @@ export default function Payroll() {
         </div>
       </div>
 
-      {/* Periode Selector */}
-      <div className="rounded-2xl border border-neutral-200/90 bg-white p-3 shadow-xs">
+      {/* Periode Selector (M3 Card) */}
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-xs">
         <SelectInput value={periode} onChange={(e) => setPeriode(e.target.value)} className="py-2.5 text-sm">
           {periodeList.length === 0 && <option value="">Belum ada data periode</option>}
           {periodeList.map((p) => (
@@ -124,32 +124,32 @@ export default function Payroll() {
       {loading && rows.length === 0 ? (
         <SkeletonTable rows={5} cols={4} />
       ) : rows.length === 0 ? (
-        <Card className="py-12 text-center text-neutral-500">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
+        <Card className="py-12 text-center text-slate-500">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <Coins className="h-6 w-6" />
           </div>
-          <p className="text-sm font-semibold text-neutral-700">Belum ada data pada periode ini.</p>
-          <p className="mt-0.5 text-xs text-neutral-400">Pilih periode penggajian lain di atas.</p>
+          <p className="text-sm font-bold text-slate-700">Belum ada data pada periode ini.</p>
+          <p className="mt-0.5 text-xs text-slate-400">Pilih periode penggajian lain di atas.</p>
         </Card>
       ) : (
         <>
-          {/* Summary Metric Cards */}
+          {/* Summary Metric Cards (M3 Tonal Containers) */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-3xl border-2 border-blue-700 bg-blue-600 p-4 text-white shadow-md">
-              <div className="text-xs font-bold uppercase tracking-wider text-blue-100">
+            <div className="rounded-3xl border border-blue-200/90 bg-blue-50/90 p-4.5 sm:p-5 text-blue-950 shadow-2xs">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-800">
                 Total Pasang Periode
               </div>
-              <div className="mt-1 text-2xl font-black tracking-tight text-white">
+              <div className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-blue-950">
                 {formatAngka(totalPasangSemua)}{' '}
-                <span className="text-xs font-bold text-blue-200">psg</span>
+                <span className="text-xs sm:text-sm font-bold text-blue-700">psg</span>
               </div>
             </div>
 
-            <div className="rounded-3xl border-2 border-emerald-800 bg-emerald-700 p-4 text-white shadow-md">
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-100">
+            <div className="rounded-3xl border border-emerald-200/90 bg-emerald-50/90 p-4.5 sm:p-5 text-emerald-950 shadow-2xs">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-800">
                 Total Pengeluaran Gaji
               </div>
-              <div className="mt-1 text-2xl font-black tracking-tight text-white">
+              <div className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">
                 {formatRupiah(grandTotal)}
               </div>
             </div>

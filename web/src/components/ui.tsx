@@ -1,33 +1,36 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
+// ---------------- M3 BUTTONS ----------------
 export function BigButton({
   variant = 'primary',
   className = '',
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'blue' | 'dark' | 'danger' | 'ghost' | 'pill'
+  variant?: 'primary' | 'secondary' | 'tonal' | 'blue' | 'dark' | 'danger' | 'ghost' | 'pill'
 }) {
   const styles: Record<string, string> = {
     primary:
-      'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-md border border-emerald-700',
+      'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-sm border border-emerald-600/30',
     secondary:
-      'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-md border border-blue-700',
+      'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-sm border border-blue-600/30',
+    tonal:
+      'bg-emerald-100/90 text-emerald-950 hover:bg-emerald-200 active:bg-emerald-300 disabled:bg-slate-100 disabled:text-slate-400 border border-emerald-200/60',
     blue:
-      'bg-sky-600 text-white hover:bg-sky-700 active:bg-sky-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-md border border-sky-700',
+      'bg-sky-600 text-white hover:bg-sky-700 active:bg-sky-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-sm border border-sky-600/30',
     dark:
-      'bg-slate-900 text-white hover:bg-slate-800 active:bg-black disabled:bg-slate-200 disabled:text-slate-400 shadow-md border border-slate-950',
+      'bg-slate-900 text-white hover:bg-slate-800 active:bg-black disabled:bg-slate-200 disabled:text-slate-400 shadow-sm border border-slate-900/40',
     danger:
-      'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-md border border-rose-700',
+      'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 disabled:bg-slate-200 disabled:text-slate-400 shadow-sm border border-rose-600/30',
     ghost:
-      'bg-white text-slate-800 border-2 border-slate-300 hover:bg-slate-50 active:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 shadow-xs',
+      'bg-white text-slate-800 border border-slate-300/80 hover:bg-slate-50 active:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 shadow-2xs',
     pill:
-      'bg-emerald-600 text-white rounded-full hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-slate-200 shadow-md border border-emerald-700',
+      'bg-emerald-600 text-white rounded-full hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-slate-200 shadow-sm border border-emerald-600/30',
   }
 
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-base font-bold tracking-tight transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${styles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm sm:text-base font-black tracking-tight transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${styles[variant]} ${className}`}
       {...props}
     >
       {children}
@@ -35,6 +38,7 @@ export function BigButton({
   )
 }
 
+// ---------------- M3 CARDS ----------------
 export function Card({
   children,
   className = '',
@@ -46,19 +50,19 @@ export function Card({
 }) {
   const colorClass =
     color === 'dark' || color === 'slate'
-      ? 'bg-slate-900 text-white border-slate-800 shadow-lg'
+      ? 'bg-slate-900 text-white border-slate-800 shadow-sm'
       : color === 'emerald'
-        ? 'bg-emerald-700 text-white border-emerald-800 shadow-md'
+        ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
         : color === 'blue'
-          ? 'bg-blue-700 text-white border-blue-800 shadow-md'
+          ? 'bg-blue-700 text-white border-blue-800 shadow-sm'
           : color === 'amber'
-            ? 'bg-amber-50 text-amber-950 border-amber-300 shadow-xs'
+            ? 'bg-amber-50 text-amber-950 border-amber-200/80 shadow-2xs'
             : color === 'subtle'
-              ? 'bg-slate-100 text-slate-900 border-slate-200'
-              : 'bg-white text-slate-900 border-2 border-slate-200/90 shadow-sm'
+              ? 'bg-[#F0F4F9] text-slate-900 border-transparent'
+              : 'bg-white text-slate-900 border border-slate-200/80 shadow-xs'
 
   return (
-    <div className={`rounded-2xl border p-4 transition-all ${colorClass} ${className}`}>
+    <div className={`rounded-3xl p-4.5 sm:p-5 transition-all ${colorClass} ${className}`}>
       {children}
     </div>
   )
@@ -66,19 +70,20 @@ export function Card({
 
 export function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <label className="mb-1.5 block text-sm font-bold text-slate-800 tracking-tight">
+    <label className="mb-1.5 block text-xs sm:text-sm font-bold text-slate-800 tracking-tight">
       {children}
     </label>
   )
 }
 
+// ---------------- M3 INPUTS ----------------
 export function TextInput({
   className = '',
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 transition-colors ${className}`}
+      className={`w-full rounded-2xl border border-slate-300 bg-slate-50/70 px-4 py-3 text-base font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-900/10 transition-all ${className}`}
       {...props}
     />
   )
@@ -91,7 +96,7 @@ export function SelectInput({
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base font-bold text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 transition-colors ${className}`}
+      className={`w-full rounded-2xl border border-slate-300 bg-slate-50/70 px-4 py-3 text-base font-bold text-slate-900 focus:bg-white focus:border-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-900/10 transition-all ${className}`}
       {...props}
     >
       {children}
@@ -110,7 +115,7 @@ export function Spinner({ label = 'Memuat...' }: { label?: string }) {
 
 export function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-4 text-sm font-bold text-rose-900 shadow-xs">
+    <div className="flex items-start gap-3 rounded-3xl border border-rose-200 bg-rose-50/90 p-4 text-xs sm:text-sm font-bold text-rose-950 shadow-2xs">
       <span className="shrink-0 text-xl">⚠️</span>
       <div className="flex-1 leading-snug">{message}</div>
     </div>
@@ -119,13 +124,14 @@ export function ErrorBox({ message }: { message: string }) {
 
 export function SuccessBox({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 text-sm font-bold text-emerald-900 shadow-xs">
+    <div className="flex items-start gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/90 p-4 text-xs sm:text-sm font-bold text-emerald-950 shadow-2xs">
       <span className="shrink-0 text-xl">✅</span>
       <div className="flex-1 leading-snug">{message}</div>
     </div>
   )
 }
 
+// ---------------- M3 TONAL BADGES / CHIPS ----------------
 export function PillBadge({
   children,
   color = 'neutral',
@@ -136,11 +142,11 @@ export function PillBadge({
   className?: string
 }) {
   const styles = {
-    neutral: 'bg-slate-100 text-slate-800 border-slate-300',
-    emerald: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
-    blue: 'bg-blue-100 text-blue-900 border-blue-300 font-bold',
-    amber: 'bg-amber-100 text-amber-950 border-amber-300 font-bold',
-    rose: 'bg-rose-100 text-rose-900 border-rose-300 font-bold',
+    neutral: 'bg-slate-100 text-slate-800 border-slate-200/80',
+    emerald: 'bg-emerald-100/90 text-emerald-900 border-emerald-200/80 font-bold',
+    blue: 'bg-blue-100/90 text-blue-900 border-blue-200/80 font-bold',
+    amber: 'bg-amber-100/90 text-amber-950 border-amber-200/80 font-bold',
+    rose: 'bg-rose-100/90 text-rose-900 border-rose-200/80 font-bold',
     dark: 'bg-slate-900 text-white border-slate-950 font-bold',
   }
   return (
@@ -155,7 +161,7 @@ export function PillBadge({
 // ---------------- SKELETON LOADERS ----------------
 export function Skeleton({
   className = '',
-  rounded = 'rounded-xl',
+  rounded = 'rounded-2xl',
 }: {
   className?: string
   rounded?: string
@@ -170,7 +176,7 @@ export function Skeleton({
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
-    <div className={`rounded-2xl border-2 border-slate-200/80 bg-white p-5 shadow-xs ${className}`}>
+    <div className={`rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs ${className}`}>
       <div className="flex items-center justify-between gap-4 mb-3">
         <Skeleton className="h-4 w-28" />
         <Skeleton className="h-6 w-12 rounded-full" />
@@ -191,8 +197,8 @@ export function SkeletonTable({
   className?: string
 }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-xs ${className}`}>
-      <div className="border-b border-slate-200 bg-slate-50/80 p-3.5 flex gap-4">
+    <div className={`overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs ${className}`}>
+      <div className="border-b border-slate-200 bg-slate-50/80 p-4 flex gap-4">
         {Array.from({ length: cols }).map((_, i) => (
           <Skeleton key={i} className="h-4 flex-1" />
         ))}
@@ -212,14 +218,14 @@ export function SkeletonTable({
 
 export function InlineLoadingBadge({ label = 'Menyinkronkan...' }: { label?: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 animate-pulse">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 animate-pulse">
       <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
       {label}
     </span>
   )
 }
 
-// ---------------- MODAL & CONFIRM DIALOG ----------------
+// ---------------- M3 DIALOG & MODALS ----------------
 export function Modal({
   isOpen,
   onClose,
@@ -236,11 +242,11 @@ export function Modal({
   if (!isOpen) return null
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className={`w-full ${maxWidth} max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border-2 border-slate-200 space-y-4 animate-in zoom-in-95 duration-150`}
+        className={`w-full ${maxWidth} max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200/90 space-y-4 animate-in zoom-in-95 duration-150`}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
@@ -282,33 +288,33 @@ export function ConfirmModal({
   if (!isOpen) return null
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border-2 border-slate-200 text-center space-y-4 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-200/90 text-center space-y-4 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 text-2xl border border-amber-300">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-2xl border border-amber-200">
           ⚠️
         </div>
         <div className="space-y-1">
           <h3 className="text-lg font-black tracking-tight text-slate-900">{title}</h3>
-          <p className="text-sm font-semibold text-slate-600 leading-relaxed">{message}</p>
+          <p className="text-xs sm:text-sm font-semibold text-slate-600 leading-relaxed">{message}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 pt-2">
+        <div className="grid grid-cols-2 gap-2.5 pt-2">
           <button
             onClick={onCancel}
-            className="rounded-2xl border-2 border-slate-200 bg-slate-100 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200 active:bg-slate-300 transition-colors"
+            className="rounded-full border border-slate-300 bg-slate-100 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200 active:bg-slate-300 transition-colors"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`rounded-2xl py-3 text-sm font-black text-white shadow-md transition-colors ${
+            className={`rounded-full py-3 text-sm font-black text-white shadow-sm transition-colors ${
               isDestructive
-                ? 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 border border-rose-700'
-                : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700'
+                ? 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800'
+                : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800'
             }`}
           >
             {confirmLabel}

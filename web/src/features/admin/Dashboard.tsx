@@ -41,52 +41,51 @@ export default function Dashboard() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 px-3 py-0.5 text-xs font-black text-emerald-900 border border-emerald-200/80">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Realtime (5s)
             </span>
-            <span className="text-xs font-semibold text-emerald-700">Live Realtime (5s)</span>
           </div>
-          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
             Dashboard Produksi
           </h1>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs font-semibold text-slate-500">
             Ringkasan harian pabrik · {tanggalHariIni()}
           </p>
         </div>
         <ViewToggle value={view} onChange={setView} />
       </div>
 
-      {/* Metric Cards */}
+      {/* Metric Cards (M3 Tonal Containers) */}
       <div className="grid grid-cols-2 gap-3">
         {loading && rows.length === 0 ? (
           <>
-            <div className="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs">
               <Skeleton className="h-3 w-28 mb-2" />
               <Skeleton className="h-8 w-32" />
             </div>
-            <div className="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs">
               <Skeleton className="h-3 w-28 mb-2" />
               <Skeleton className="h-8 w-36" />
             </div>
           </>
         ) : (
           <>
-            <div className="rounded-3xl border-2 border-blue-700 bg-blue-600 p-4 text-white shadow-md">
-              <div className="text-xs font-bold uppercase tracking-wider text-blue-100">
+            <div className="rounded-3xl border border-blue-200/90 bg-blue-50/90 p-4.5 sm:p-5 text-blue-950 shadow-2xs">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-800">
                 Total Pasang Hari Ini
               </div>
-              <div className="mt-1 text-3xl font-black tracking-tight text-white">
+              <div className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-blue-950">
                 {formatAngka(totalPasang)}{' '}
-                <span className="text-sm font-bold text-blue-200">psg</span>
+                <span className="text-xs sm:text-sm font-bold text-blue-700">psg</span>
               </div>
             </div>
 
-            <div className="rounded-3xl border-2 border-emerald-800 bg-emerald-700 p-4 text-white shadow-md">
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-100">
+            <div className="rounded-3xl border border-emerald-200/90 bg-emerald-50/90 p-4.5 sm:p-5 text-emerald-950 shadow-2xs">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-800">
                 Estimasi Gaji Hari Ini
               </div>
-              <div className="mt-1 text-3xl font-black tracking-tight text-white">
+              <div className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">
                 {formatRupiah(totalGaji)}
               </div>
             </div>

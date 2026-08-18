@@ -30,47 +30,47 @@ export default function AdminLayout() {
   return (
     <div className="flex h-full flex-col bg-slate-100">
       {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b-2 border-slate-800 bg-slate-900 px-4 py-3 text-white shadow-md">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200/80 bg-slate-900 px-4 py-3 text-white shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500 text-white text-xl font-bold shadow-xs">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500 text-white text-xl font-bold shadow-2xs">
             👔
           </div>
           <div>
             <div className="text-base font-black tracking-tight text-white leading-tight">
               {user?.nama ?? 'Admin'}
             </div>
-            <div className="text-xs font-bold text-sky-300">Admin</div>
+            <div className="text-xs font-bold text-sky-300">Admin Pabrik</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <NavLink
             to="/pengaturan"
-            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-800 text-slate-200 hover:bg-slate-700 active:bg-slate-600 border border-slate-700"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-slate-200 hover:bg-slate-700 active:bg-slate-600 border border-slate-700/80 transition-colors"
             title="Pengaturan & Ganti Akun"
           >
             <Settings className="h-5 w-5" />
           </NavLink>
           <button
             onClick={keluar}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 border border-rose-700"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-600/90 text-white hover:bg-rose-700 active:bg-rose-800 border border-rose-600/50 transition-colors"
             title="Keluar / Logout"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24">
+      <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 pb-24">
         <div className="mx-auto max-w-4xl">
           <Outlet />
         </div>
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t-2 border-slate-300 bg-white px-2 py-2 shadow-2xl">
-        <div className="mx-auto grid max-w-4xl grid-cols-5 gap-1.5">
+      {/* Material Design 3 Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200/80 bg-white/95 backdrop-blur-md px-2 py-2 shadow-lg">
+        <div className="mx-auto grid max-w-4xl grid-cols-5 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon
             return (
@@ -79,15 +79,25 @@ export default function AdminLayout() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center gap-1 rounded-2xl py-2 text-[11px] font-black tracking-tight transition-all ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-md border-2 border-blue-700 scale-[1.02]'
-                      : 'text-slate-700 hover:bg-slate-100 active:bg-slate-200 border-2 border-transparent'
+                  `flex flex-col items-center justify-center gap-1 py-1 text-[11px] font-bold tracking-tight transition-all ${
+                    isActive ? 'text-blue-950 font-black' : 'text-slate-500 hover:text-slate-800'
                   }`
                 }
               >
-                <Icon className="h-4.5 w-4.5" />
-                <span className="truncate">{item.label}</span>
+                {({ isActive }) => (
+                  <>
+                    <div
+                      className={`flex h-8 w-14 items-center justify-center rounded-full transition-all duration-200 ${
+                        isActive
+                          ? 'bg-blue-100 text-blue-900 scale-105 shadow-2xs'
+                          : 'bg-transparent text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="truncate">{item.label}</span>
+                  </>
+                )}
               </NavLink>
             )
           })}

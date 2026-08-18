@@ -11,7 +11,7 @@ import {
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja } from '../../lib/types'
 import { formatAngka, formatRupiah, formatTanggalPendek } from '../../lib/constants'
-import { BigButton, Card, ErrorBox, FieldLabel, PillBadge, SelectInput, SkeletonTable } from '../../components/ui'
+import { BigButton, Card, ConfirmModal, ErrorBox, FieldLabel, PillBadge, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
 import { exportLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Trash2 } from 'lucide-react'
@@ -29,6 +29,7 @@ export default function DataProduksi() {
   const [editId, setEditId] = useState<number | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
+  const [hapusTarget, setHapusTarget] = useState<number | null>(null)
 
   const muat = useCallback(async () => {
     try {
@@ -87,10 +88,12 @@ export default function DataProduksi() {
     }
   }
 
-  async function onHapus(idProduksi: number) {
-    if (!window.confirm('Hapus data produksi ini? Rekap gaji akan ikut berubah.')) return
+  async function eksekusiHapus() {
+    if (!hapusTarget) return
+    const id = hapusTarget
+    setHapusTarget(null)
     try {
-      await hapusProduksi(idProduksi)
+      await hapusProduksi(id)
       await muat()
     } catch (e) {
       setError((e as Error).message)
@@ -102,14 +105,14 @@ export default function DataProduksi() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Data Produksi</h1>
-          <p className="text-xs text-neutral-500">Kelola dan koreksi seluruh data input produksi pabrik.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Data Produksi</h1>
+          <p className="text-xs font-semibold text-slate-500">Kelola dan koreksi seluruh data input produksi pabrik.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={exportExcel}
             disabled={rows.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500"
+            className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Ekspor Excel</span>
@@ -118,8 +121,8 @@ export default function DataProduksi() {
         </div>
       </div>
 
-      {/* Filter Card */}
-      <div className="rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-xs">
+      {/* Filter Card (M3 Elevated) */}
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-4.5 sm:p-5 shadow-xs">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <FieldLabel>Pilih Tanggal</FieldLabel>
@@ -128,7 +131,7 @@ export default function DataProduksi() {
                 type="date"
                 value={tanggal}
                 onChange={(e) => setTanggal(e.target.value)}
-                className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50/70 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
               />
             </div>
           </div>
@@ -211,8 +214,8 @@ export default function DataProduksi() {
                         <Edit3 className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => onHapus(row.id_produksi)}
-                        className="rounded-lg p-1 text-neutral-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        onClick={() => setHapusTarget(row.id_produksi)}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                         title="Hapus"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -241,8 +244,8 @@ export default function DataProduksi() {
               <Card key={row.id_produksi}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="text-base font-semibold text-neutral-900">{row.nama_pekerja}</div>
-                    <div className="flex items-center gap-2 pt-0.5 text-xs text-neutral-500">
+                    <div className="text-base font-bold text-slate-900">{row.nama_pekerja}</div>
+                    <div className="flex items-center gap-2 pt-0.5 text-xs text-slate-500">
                       <span>{row.nama_model}</span>
                       <span>·</span>
                       <PillBadge color={row.shift === 1 ? 'neutral' : 'emerald'}>
@@ -254,19 +257,19 @@ export default function DataProduksi() {
                         </PillBadge>
                       )}
                     </div>
-                    <div className="mt-1 text-[11px] text-neutral-400">{formatTanggalPendek(row.tanggal)}</div>
+                    <div className="mt-1 text-[11px] font-semibold text-slate-400">{formatTanggalPendek(row.tanggal)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-base font-bold text-neutral-900">{formatAngka(totalPasang(row))} psg</div>
-                    <div className="text-xs font-semibold text-neutral-600">{formatRupiah(totalGaji(row))}</div>
+                    <div className="text-base font-black text-slate-900">{formatAngka(totalPasang(row))} psg</div>
+                    <div className="text-xs font-bold text-slate-600">{formatRupiah(totalGaji(row))}</div>
                   </div>
                 </div>
-                <div className="mt-3 flex gap-2 border-t border-neutral-100 pt-3">
+                <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
                   <BigButton variant="ghost" className="flex-1 py-2 text-xs" onClick={() => mulaiEdit(row)}>
                     <Edit3 className="h-3.5 w-3.5 mr-1" />
                     Edit
                   </BigButton>
-                  <BigButton variant="danger" className="flex-1 py-2 text-xs" onClick={() => onHapus(row.id_produksi)}>
+                  <BigButton variant="danger" className="flex-1 py-2 text-xs" onClick={() => setHapusTarget(row.id_produksi)}>
                     <Trash2 className="h-3.5 w-3.5 mr-1" />
                     Hapus
                   </BigButton>
@@ -276,6 +279,18 @@ export default function DataProduksi() {
           </div>
         </>
       )}
+
+      {/* In-App M3 Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={hapusTarget !== null}
+        title="Hapus Catatan Produksi?"
+        message="Hapus data produksi ini? Rekap gaji dan total pasang akan otomatis disesuaikan kembali."
+        confirmLabel="Ya, Hapus Data"
+        cancelLabel="Batal"
+        isDestructive={true}
+        onConfirm={eksekusiHapus}
+        onCancel={() => setHapusTarget(null)}
+      />
     </div>
   )
 }

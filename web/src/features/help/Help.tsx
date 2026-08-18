@@ -398,23 +398,29 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
 
   return (
     <div className="space-y-4">
-      {/* Header Banner */}
-      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 sm:p-5 shadow-sm">
-        <div className="flex items-center gap-3">
+      {/* Header Banner (M3 Tonal Container) */}
+      <div
+        className={`rounded-3xl border p-4.5 sm:p-5 shadow-xs transition-all ${
+          isMandor
+            ? 'bg-emerald-50/80 border-emerald-200/80 text-emerald-950'
+            : 'bg-blue-50/80 border-blue-200/80 text-blue-950'
+        }`}
+      >
+        <div className="flex items-center gap-3.5">
           <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl border ${
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl shadow-2xs ${
               isMandor
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                : 'bg-blue-100 text-blue-800 border-blue-300'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-blue-600 text-white'
             }`}
           >
             {isMandor ? <HardHat className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-tight">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">
               {isMandor ? 'Panduan Mandor Lapangan' : 'Panduan Admin & Pemilik'}
             </h1>
-            <p className="text-xs sm:text-sm font-semibold text-slate-600">
+            <p className="text-xs sm:text-sm font-semibold opacity-80 mt-0.5">
               {isMandor
                 ? 'Panduan praktis pencatatan hasil kerja, shift, edit data, dan ekspor excel.'
                 : 'Panduan memantau dashboard, kelola master data, payroll gaji, dan database.'}
@@ -423,28 +429,26 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="rounded-3xl border-2 border-slate-200 bg-white p-3.5 shadow-xs">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder={
-              isMandor
-                ? 'Cari panduan mandor (cth: input, edit, ukuran, shift)...'
-                : 'Cari panduan admin (cth: dashboard, gaji, master, reset)...'
-            }
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-2.5 pl-10 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-slate-800 focus:bg-white focus:outline-none transition-colors"
-          />
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-        </div>
+      {/* Floating M3 Search Bar */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={
+            isMandor
+              ? 'Cari panduan mandor (cth: input, edit, ukuran, shift)...'
+              : 'Cari panduan admin (cth: dashboard, gaji, master, reset)...'
+          }
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-full border border-slate-300 bg-slate-50/80 px-5 py-3.5 pl-11 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-slate-900/10 shadow-2xs transition-all"
+        />
+        <Search className="absolute left-4 top-4 h-4 w-4 text-slate-400" />
       </div>
 
       {/* Topics List */}
       <div className="space-y-3">
         {filteredTopics.length === 0 ? (
-          <div className="rounded-3xl border-2 border-slate-200 bg-white p-8 text-center shadow-xs">
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-8 text-center shadow-xs">
             <BookOpen className="mx-auto mb-2 h-10 w-10 text-slate-400" />
             <p className="text-sm font-bold text-slate-700">Topik tidak ditemukan</p>
             <p className="text-xs text-slate-500">Coba ketik kata kunci pencarian yang lain.</p>

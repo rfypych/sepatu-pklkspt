@@ -32,20 +32,20 @@ export default function Master() {
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Master Data</h1>
-        <p className="text-xs text-neutral-500">
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">Master Data</h1>
+        <p className="text-xs font-semibold text-slate-500">
           Kelola master pekerja, model sepatu & ongkos, ukuran, serta PO customer.
         </p>
       </div>
 
       {error && <ErrorBox message={error} />}
 
-      {/* Segmented Tab */}
-      <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-neutral-100 p-1.5 shadow-inner">
+      {/* M3 Segmented Tab */}
+      <div className="grid grid-cols-4 gap-1 rounded-full bg-slate-200/70 p-1.5 border border-slate-300/60 shadow-2xs">
         <button
           onClick={() => setTab('pekerja')}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
-            tab === 'pekerja' ? 'bg-white text-neutral-900 shadow-xs' : 'text-neutral-600 hover:text-neutral-900'
+          className={`flex items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-bold transition-all ${
+            tab === 'pekerja' ? 'bg-white text-slate-950 font-black shadow-xs scale-[1.02]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <User className="h-3.5 w-3.5" />
@@ -53,8 +53,8 @@ export default function Master() {
         </button>
         <button
           onClick={() => setTab('model')}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
-            tab === 'model' ? 'bg-white text-neutral-900 shadow-xs' : 'text-neutral-600 hover:text-neutral-900'
+          className={`flex items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-bold transition-all ${
+            tab === 'model' ? 'bg-white text-slate-950 font-black shadow-xs scale-[1.02]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Layers className="h-3.5 w-3.5" />
@@ -62,8 +62,8 @@ export default function Master() {
         </button>
         <button
           onClick={() => setTab('ukuran')}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
-            tab === 'ukuran' ? 'bg-white text-neutral-900 shadow-xs' : 'text-neutral-600 hover:text-neutral-900'
+          className={`flex items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-bold transition-all ${
+            tab === 'ukuran' ? 'bg-white text-slate-950 font-black shadow-xs scale-[1.02]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Ruler className="h-3.5 w-3.5" />
@@ -71,8 +71,8 @@ export default function Master() {
         </button>
         <button
           onClick={() => setTab('po')}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
-            tab === 'po' ? 'bg-white text-neutral-900 shadow-xs' : 'text-neutral-600 hover:text-neutral-900'
+          className={`flex items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-bold transition-all ${
+            tab === 'po' ? 'bg-white text-slate-950 font-black shadow-xs scale-[1.02]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Package className="h-3.5 w-3.5" />
