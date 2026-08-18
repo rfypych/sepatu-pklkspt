@@ -4,19 +4,19 @@ export type ViewMode = 'kartu' | 'tabel'
 
 export function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
   const opts: { id: ViewMode; label: string }[] = [
-    { id: 'kartu', label: 'Kartu' },
     { id: 'tabel', label: 'Tabel' },
+    { id: 'kartu', label: 'Kartu' },
   ]
   return (
-    <div className="flex shrink-0 gap-1 rounded-full bg-neutral-200/80 p-1">
+    <div className="flex shrink-0 gap-1 rounded-full bg-slate-200/80 p-1 border border-slate-300/60 shadow-2xs">
       {opts.map((o) => (
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
-          className={`rounded-full px-3.5 py-1 text-xs font-semibold tracking-tight transition-all ${
+          className={`rounded-full px-3.5 py-1 text-xs font-bold tracking-tight transition-all ${
             value === o.id
-              ? 'bg-neutral-900 text-white shadow-xs'
-              : 'text-neutral-600 hover:text-neutral-900 active:bg-neutral-300'
+              ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
+              : 'text-slate-600 hover:text-slate-900 active:bg-slate-300'
           }`}
         >
           {o.label}

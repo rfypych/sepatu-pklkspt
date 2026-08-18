@@ -23,7 +23,7 @@ export default function DataProduksi() {
   const [poList, setPoList] = useState<MasterPo[]>(() => getCache<MasterPo[]>('po_semua') ?? [])
   const [tanggal, setTanggal] = useState('')
   const [idPekerja, setIdPekerja] = useState('')
-  const [view, setView] = useState<ViewMode>('kartu')
+  const [view, setView] = useState<ViewMode>('tabel')
   const [loading, setLoading] = useState(() => !getCache('produksi_all_all'))
   const [error, setError] = useState<string | null>(null)
   const [editId, setEditId] = useState<number | null>(null)

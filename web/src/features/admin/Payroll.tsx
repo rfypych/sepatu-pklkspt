@@ -11,7 +11,7 @@ export default function Payroll() {
   const [periodeList, setPeriodeList] = useState<string[]>(() => getCache<string[]>('payroll_periods') ?? [])
   const [periode, setPeriode] = useState('')
   const [rows, setRows] = useState<RekapGajiRow[]>([])
-  const [view, setView] = useState<ViewMode>('kartu')
+  const [view, setView] = useState<ViewMode>('tabel')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

@@ -7,7 +7,7 @@ import { BarChart3, User } from 'lucide-react'
 
 export default function Dashboard() {
   const [rows, setRows] = useState<TotalPerProduksi[]>(() => getCache<TotalPerProduksi[]>('dashboard_today') ?? [])
-  const [view, setView] = useState<ViewMode>('kartu')
+  const [view, setView] = useState<ViewMode>('tabel')
   const [loading, setLoading] = useState(() => !getCache('dashboard_today'))
   const [error, setError] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
