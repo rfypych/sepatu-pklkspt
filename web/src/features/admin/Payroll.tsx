@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getDaftarPeriode, getRekapGaji, getCache } from '../../lib/api'
 import type { RekapGajiRow } from '../../lib/types'
 import { formatAngka, formatRupiah, labelPeriode } from '../../lib/constants'
-import { Card, ErrorBox, SelectInput, SkeletonTable } from '../../components/ui'
+import { Card, ErrorBox, ExportSuccessModal, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
 import { downloadExcelWorkbook } from '../../lib/laporan'
 import { Coins, Download, User } from 'lucide-react'
@@ -14,6 +14,8 @@ export default function Payroll() {
   const [view, setView] = useState<ViewMode>('tabel')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportedName, setExportedName] = useState<string | null>(null)
 
   const muatPeriode = useCallback(async () => {
     try {
@@ -65,24 +67,31 @@ export default function Payroll() {
 
   async function exportExcel() {
     if (rows.length === 0) return
-    const XLSX = await import('xlsx')
-    const dataRows = rows.map((r) => ({
-      'Nama Pekerja': r.nama_pekerja,
-      Model: r.nama_model,
-      'Total Pasang': r.total_pasang,
-      'Total Gaji (Rp)': r.total_gaji,
-    }))
-    dataRows.push({
-      'Nama Pekerja': 'GRAND TOTAL',
-      Model: '',
-      'Total Pasang': totalPasangSemua,
-      'Total Gaji (Rp)': grandTotal,
-    })
-    const ws = XLSX.utils.json_to_sheet(dataRows)
-    ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 18 }]
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Gaji')
-    downloadExcelWorkbook(XLSX, wb, `payroll-${periode || 'rekap'}.xlsx`)
+    setExporting(true)
+    const namaFile = `payroll-${periode || 'rekap'}.xlsx`
+    try {
+      const XLSX = await import('xlsx')
+      const dataRows = rows.map((r) => ({
+        'Nama Pekerja': r.nama_pekerja,
+        Model: r.nama_model,
+        'Total Pasang': r.total_pasang,
+        'Total Gaji (Rp)': r.total_gaji,
+      }))
+      dataRows.push({
+        'Nama Pekerja': 'GRAND TOTAL',
+        Model: '',
+        'Total Pasang': totalPasangSemua,
+        'Total Gaji (Rp)': grandTotal,
+      })
+      const ws = XLSX.utils.json_to_sheet(dataRows)
+      ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 18 }]
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Gaji')
+      downloadExcelWorkbook(XLSX, wb, namaFile)
+      setExportedName(namaFile)
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -97,10 +106,20 @@ export default function Payroll() {
           {rows.length > 0 && (
             <button
               onClick={exportExcel}
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-colors"
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
             >
-              <Download className="h-3.5 w-3.5" />
-              <span>Ekspor Excel</span>
+              {exporting ? (
+                <>
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Menyiapkan File...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Ekspor Excel</span>
+                </>
+              )}
             </button>
           )}
           <ViewToggle value={view} onChange={setView} />
@@ -223,6 +242,12 @@ export default function Payroll() {
           )}
         </>
       )}
+
+      <ExportSuccessModal
+        isOpen={exportedName !== null}
+        onClose={() => setExportedName(null)}
+        filename={exportedName ?? ''}
+      />
     </div>
   )
 }

@@ -19,7 +19,7 @@ import {
   tanggalHariIni,
   type PeriodRiwayat,
 } from '../../lib/constants'
-import { BigButton, Card, ConfirmModal, ErrorBox, PillBadge, SkeletonTable } from '../../components/ui'
+import { BigButton, Card, ConfirmModal, ErrorBox, ExportSuccessModal, PillBadge, SkeletonTable } from '../../components/ui'
 import { Tabel, THead, Th, Td } from '../../components/view'
 import { buatBarisLaporan, exportLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Lock, Trash2 } from 'lucide-react'
@@ -41,6 +41,8 @@ export default function Riwayat() {
   const [editId, setEditId] = useState<number | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportedName, setExportedName] = useState<string | null>(null)
 
   const muat = useCallback(async () => {
     try {
@@ -131,13 +133,19 @@ export default function Riwayat() {
   }
 
   async function exportExcel() {
+    setExporting(true)
     const nama =
       periode === 'hari'
         ? `laporan-harian-${tanggal}.xlsx`
         : periode === 'bulan'
           ? `laporan-bulanan-${tanggalHariIni().slice(0, 7)}.xlsx`
           : `laporan-tahunan-${tanggalHariIni().slice(0, 4)}.xlsx`
-    await exportLaporanHarian(rows, poList, ukuranList, nama)
+    try {
+      await exportLaporanHarian(rows, poList, ukuranList, nama)
+      setExportedName(nama)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const baris = buatBarisLaporan(rows, poList, ukuranList)
@@ -149,8 +157,8 @@ export default function Riwayat() {
       {/* Header & Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Riwayat Produksi</h1>
-          <p className="text-xs text-neutral-500">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Riwayat Produksi</h1>
+          <p className="text-xs font-semibold text-slate-500">
             {periode === 'hari'
               ? `Data ${formatTanggalPendek(tanggal)} · Hanya data hari ini yang bisa diedit.`
               : 'Semua data periode berjalan.'}
@@ -160,11 +168,20 @@ export default function Riwayat() {
         <div className="flex items-center gap-2">
           <button
             onClick={exportExcel}
-            disabled={rows.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500"
+            disabled={rows.length === 0 || exporting}
+            className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
           >
-            <Download className="h-3.5 w-3.5" />
-            <span>Ekspor Excel</span>
+            {exporting ? (
+              <>
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>Menyiapkan File...</span>
+              </>
+            ) : (
+              <>
+                <Download className="h-3.5 w-3.5" />
+                <span>Ekspor Excel</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -332,6 +349,12 @@ export default function Riwayat() {
         isDestructive={true}
         onConfirm={eksekusiHapus}
         onCancel={() => setHapusTarget(null)}
+      />
+
+      <ExportSuccessModal
+        isOpen={exportedName !== null}
+        onClose={() => setExportedName(null)}
+        filename={exportedName ?? ''}
       />
     </div>
   )

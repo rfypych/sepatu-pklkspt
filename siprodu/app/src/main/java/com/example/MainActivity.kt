@@ -38,6 +38,7 @@ import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate900
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
@@ -57,6 +58,7 @@ class WebAppInterface(private val context: Context) {
                 base64Data
             }
             val bytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+            var savedUri: Uri? = null
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val contentValues = ContentValues().apply {
@@ -70,6 +72,7 @@ class WebAppInterface(private val context: Context) {
                     resolver.openOutputStream(uri)?.use { out ->
                         out.write(bytes)
                     }
+                    savedUri = uri
                 }
             } else {
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -78,10 +81,26 @@ class WebAppInterface(private val context: Context) {
                 FileOutputStream(file).use { out ->
                     out.write(bytes)
                 }
+                savedUri = Uri.fromFile(file)
             }
 
             Handler(Looper.getMainLooper()).post {
-                Toast.makeText(context, "✅ Berhasil download ke folder Unduhan:\n$filename", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "✅ File Excel berhasil disimpan di folder Unduhan", Toast.LENGTH_SHORT).show()
+                if (savedUri != null) {
+                    try {
+                        val openIntent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(savedUri, mimeType)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        val chooser = Intent.createChooser(openIntent, "Buka / Bagikan File Excel").apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(chooser)
+                    } catch (ignored: Exception) {
+                        // Jika tidak ada app atau dibatalkan, file tetap aman di folder Download
+                    }
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

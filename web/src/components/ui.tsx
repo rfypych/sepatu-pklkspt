@@ -325,3 +325,55 @@ export function ConfirmModal({
   )
 }
 
+export function ExportSuccessModal({
+  isOpen,
+  onClose,
+  filename,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  filename: string
+}) {
+  if (!isOpen) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-200/90 text-center space-y-4 animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-800 text-3xl border border-emerald-200 shadow-2xs">
+          📊
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-lg font-black tracking-tight text-slate-900">File Excel Berhasil Disimpan!</h3>
+          <div className="inline-block rounded-xl bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-800 break-all mt-1">
+            📁 {filename}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-left text-xs font-semibold text-emerald-950 space-y-1.5">
+          <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+            <span>📍 Lokasi File:</span>
+          </div>
+          <p className="text-slate-700 leading-relaxed">
+            File tersimpan di <b>Folder Download (Unduhan)</b> HP Anda.
+          </p>
+          <p className="text-slate-500 text-[11px] leading-relaxed pt-1 border-t border-emerald-200/60">
+            💡 Bisa dibuka dengan aplikasi <b>Excel / WPS Office</b> atau langsung dikirimkan lewat WhatsApp.
+          </p>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full rounded-full bg-slate-900 hover:bg-slate-800 active:bg-black py-3.5 text-sm font-black text-white shadow-sm transition-colors"
+        >
+          Siap, Mengerti
+        </button>
+      </div>
+    </div>
+  )
+}
+

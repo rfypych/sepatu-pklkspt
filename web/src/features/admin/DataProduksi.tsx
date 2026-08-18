@@ -11,7 +11,7 @@ import {
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja } from '../../lib/types'
 import { formatAngka, formatRupiah, formatTanggalPendek } from '../../lib/constants'
-import { BigButton, Card, ConfirmModal, ErrorBox, FieldLabel, PillBadge, SelectInput, SkeletonTable } from '../../components/ui'
+import { BigButton, Card, ConfirmModal, ErrorBox, ExportSuccessModal, FieldLabel, PillBadge, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
 import { exportLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Trash2 } from 'lucide-react'
@@ -30,6 +30,8 @@ export default function DataProduksi() {
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [hapusTarget, setHapusTarget] = useState<number | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportedName, setExportedName] = useState<string | null>(null)
 
   const muat = useCallback(async () => {
     try {
@@ -80,7 +82,14 @@ export default function DataProduksi() {
   }
 
   async function exportExcel() {
-    await exportLaporanHarian(rows, poList, ukuranList, `laporan-harian-${tanggal || 'semua-tanggal'}.xlsx`)
+    setExporting(true)
+    const nama = `laporan-harian-${tanggal || 'semua-tanggal'}.xlsx`
+    try {
+      await exportLaporanHarian(rows, poList, ukuranList, nama)
+      setExportedName(nama)
+    } finally {
+      setExporting(false)
+    }
   }
 
   function mulaiEdit(row: ProduksiRow) {
@@ -128,11 +137,20 @@ export default function DataProduksi() {
         <div className="flex items-center gap-2">
           <button
             onClick={exportExcel}
-            disabled={rows.length === 0}
+            disabled={rows.length === 0 || exporting}
             className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
           >
-            <Download className="h-3.5 w-3.5" />
-            <span>Ekspor Excel</span>
+            {exporting ? (
+              <>
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>Menyiapkan File...</span>
+              </>
+            ) : (
+              <>
+                <Download className="h-3.5 w-3.5" />
+                <span>Ekspor Excel</span>
+              </>
+            )}
           </button>
           <ViewToggle value={view} onChange={setView} />
         </div>
@@ -307,6 +325,12 @@ export default function DataProduksi() {
         isDestructive={true}
         onConfirm={eksekusiHapus}
         onCancel={() => setHapusTarget(null)}
+      />
+
+      <ExportSuccessModal
+        isOpen={exportedName !== null}
+        onClose={() => setExportedName(null)}
+        filename={exportedName ?? ''}
       />
     </div>
   )
