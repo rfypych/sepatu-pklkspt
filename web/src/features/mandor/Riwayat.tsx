@@ -67,7 +67,25 @@ export default function Riwayat() {
 
   useEffect(() => {
     muat()
-  }, [muat])
+    const timer = setInterval(() => {
+      // Hanya auto-refresh jika user tidak sedang membuka dialog edit
+      if (editId === null) {
+        muat()
+      }
+    }, 5000)
+
+    const onFocus = () => {
+      if (editId === null) muat()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [muat, editId])
 
   const today = tanggalHariIni()
   const bisaUbah = (row: ProduksiRow) => String(row.tanggal).slice(0, 10) === today

@@ -27,8 +27,13 @@ export default function Dashboard() {
   useEffect(() => {
     muat()
     timer.current = setInterval(muat, 5000)
+    const onFocus = () => muat()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
     return () => {
       if (timer.current) clearInterval(timer.current)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
     }
   }, [muat])
 

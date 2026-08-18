@@ -53,7 +53,24 @@ export default function DataProduksi() {
 
   useEffect(() => {
     muat()
-  }, [muat])
+    const timer = setInterval(() => {
+      if (editId === null) {
+        muat()
+      }
+    }, 5000)
+
+    const onFocus = () => {
+      if (editId === null) muat()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [muat, editId])
 
   function totalPasang(row: ProduksiRow) {
     return row.detail.reduce((a, d) => a + d.qty, 0)

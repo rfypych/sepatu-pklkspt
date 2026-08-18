@@ -266,6 +266,58 @@ export default function InputProduksi() {
     muatData()
   }, [muatData, user])
 
+  // Realtime background sync (5 detik) antar perangkat secara live
+  useEffect(() => {
+    let active = true
+    async function syncRealtime() {
+      try {
+        const [todayProd, pos] = await Promise.all([
+          getProduksiHariIni(),
+          getPoAktif(),
+        ])
+        if (!active) return
+
+        setPoList(pos)
+        setCache('po_semua', pos)
+
+        const dbShiftMap: Record<number, 1 | 2> = {}
+        const dbPoMap: Record<number, number> = {}
+        for (const r of todayProd) {
+          const pid = Number(r.id_pekerja)
+          if (!dbShiftMap[pid] && r.shift) {
+            dbShiftMap[pid] = Number(r.shift) as 1 | 2
+          }
+          if (!dbPoMap[pid] && r.id_po) {
+            dbPoMap[pid] = Number(r.id_po)
+          }
+        }
+        setShiftMap((prev) => ({ ...prev, ...dbShiftMap }))
+        setPoMap((prev) => ({ ...prev, ...dbPoMap }))
+
+        if (idPekerja) {
+          const forThisWorker = todayProd.filter(
+            (r) => Number(r.id_pekerja) === idPekerja && Number(r.shift) === shift,
+          )
+          setSavedList(forThisWorker)
+        }
+      } catch {
+        // Silent in background
+      }
+    }
+
+    const timer = setInterval(syncRealtime, 5000)
+    const onFocus = () => syncRealtime()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+
+    return () => {
+      active = false
+      clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [idPekerja, shift])
+
   // simpan lembar kerja ke localStorage
   useEffect(() => {
     try {
