@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { getDaftarPeriode, getRekapGaji, getCache } from '../../lib/api'
 import type { RekapGajiRow } from '../../lib/types'
 import { formatAngka, formatRupiah, labelPeriode } from '../../lib/constants'
-import { Card, ErrorBox, ExportSuccessModal, Modal, SelectInput, SkeletonTable } from '../../components/ui'
+import { Card, ErrorBox, ExportSuccessModal, SelectInput, SkeletonTable } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
 import { downloadExcelWorkbook, shareExcelWorkbook } from '../../lib/laporan'
-import { Coins, Download, Printer, User } from 'lucide-react'
+import { Coins, Download, User } from 'lucide-react'
 
 export default function Payroll() {
   const [periodeList, setPeriodeList] = useState<string[]>(() => getCache<string[]>('payroll_periods') ?? [])
@@ -16,7 +16,6 @@ export default function Payroll() {
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportedName, setExportedName] = useState<string | null>(null)
-  const [slipWorkerId, setSlipWorkerId] = useState<number | 'all' | null>(null)
 
   const muatPeriode = useCallback(async () => {
     try {
@@ -132,32 +131,23 @@ export default function Payroll() {
         </div>
         <div className="flex items-center gap-2">
           {rows.length > 0 && (
-            <>
-              <button
-                onClick={() => setSlipWorkerId('all')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
-              >
-                <Printer className="h-3.5 w-3.5 text-slate-600" />
-                <span>Cetak Slip</span>
-              </button>
-              <button
-                onClick={exportExcel}
-                disabled={exporting}
-                className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
-              >
-                {exporting ? (
-                  <>
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    <span>Menyiapkan File...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Ekspor Excel</span>
-                  </>
-                )}
-              </button>
-            </>
+            <button
+              onClick={exportExcel}
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
+            >
+              {exporting ? (
+                <>
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Menyiapkan File...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Ekspor Excel</span>
+                </>
+              )}
+            </button>
           )}
           <ViewToggle value={view} onChange={setView} />
         </div>
@@ -218,7 +208,6 @@ export default function Payroll() {
                 <Th>Model</Th>
                 <Th className="text-right">Total Pasang</Th>
                 <Th className="text-right">Total Gaji</Th>
-                <Th className="text-right w-24">Aksi</Th>
               </THead>
               <tbody>
                 {rows.map((r, i) => (
@@ -227,16 +216,6 @@ export default function Payroll() {
                     <Td className="font-semibold text-slate-800">{r.nama_model}</Td>
                     <Td className="text-right font-black text-slate-900">{formatAngka(r.total_pasang)} psg</Td>
                     <Td className="text-right font-black text-emerald-700">{formatRupiah(r.total_gaji)}</Td>
-                    <Td className="text-right">
-                      <button
-                        onClick={() => setSlipWorkerId(r.id_pekerja)}
-                        className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors"
-                        title="Cetak slip pekerja ini"
-                      >
-                        <Printer className="h-3 w-3" />
-                        <span>Slip</span>
-                      </button>
-                    </Td>
                   </tr>
                 ))}
               </tbody>
@@ -245,7 +224,6 @@ export default function Payroll() {
                   <Td colSpan={2} className="font-black text-slate-900">GRAND TOTAL</Td>
                   <Td className="text-right font-black text-slate-900">{formatAngka(totalPasangSemua)} psg</Td>
                   <Td className="text-right font-black text-emerald-800">{formatRupiah(grandTotal)}</Td>
-                  <Td />
                 </tr>
               </tfoot>
             </Tabel>
@@ -269,17 +247,8 @@ export default function Payroll() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setSlipWorkerId(idPekerja)}
-                          className="rounded-xl bg-slate-100 p-2 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200"
-                          title="Cetak slip gaji"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
-                        <div className="rounded-2xl bg-emerald-50 border border-emerald-300 px-3.5 py-1.5 text-right font-black text-emerald-800 text-base shadow-xs">
-                          {formatRupiah(p.total_gaji)}
-                        </div>
+                      <div className="rounded-2xl bg-emerald-50 border border-emerald-300 px-3.5 py-1.5 text-right font-black text-emerald-800 text-base shadow-xs">
+                        {formatRupiah(p.total_gaji)}
                       </div>
                     </div>
 
@@ -299,118 +268,6 @@ export default function Payroll() {
             </div>
           )}
         </>
-      )}
-
-      {/* Printable Slip Gaji Modal */}
-      {slipWorkerId !== null && (
-        <Modal isOpen={true} onClose={() => setSlipWorkerId(null)} title="Cetak Slip Gaji">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-600">Pilih Pekerja:</label>
-              <select
-                value={slipWorkerId === 'all' ? 'all' : String(slipWorkerId)}
-                onChange={(e) => setSlipWorkerId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800"
-              >
-                <option value="all">Semua Pekerja ({perPekerja.size} Orang)</option>
-                {Array.from(perPekerja.entries()).map(([id, p]) => (
-                  <option key={id} value={id}>
-                    {p.nama}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Print Container */}
-            <div id="printable-slip-area" className="max-h-[60vh] overflow-y-auto space-y-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              {Array.from(perPekerja.entries())
-                .filter(([id]) => slipWorkerId === 'all' || slipWorkerId === id)
-                .map(([id, p]) => {
-                  const itemPekerja = rows.filter((r) => r.id_pekerja === id)
-                  return (
-                    <div
-                      key={id}
-                      className="bg-white rounded-2xl border border-slate-300 p-5 shadow-xs text-slate-900 print:border-none print:shadow-none print:p-0 print:m-0"
-                    >
-                      {/* Kop Slip */}
-                      <div className="border-b-2 border-slate-900 pb-3 text-center">
-                        <h2 className="text-base font-black tracking-tight uppercase">SLIP GAJI BORONGAN</h2>
-                        <p className="text-xs font-semibold text-slate-600">PKLK SPT - SISTEM PRODUKSI</p>
-                      </div>
-
-                      {/* Info Pekerja & Periode */}
-                      <div className="grid grid-cols-2 gap-2 py-3 text-xs border-b border-slate-200">
-                        <div>
-                          <span className="text-slate-500 font-semibold block">Nama Pekerja:</span>
-                          <span className="font-black text-sm text-slate-900">{p.nama}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-slate-500 font-semibold block">Periode Gaji:</span>
-                          <span className="font-bold text-slate-900">{labelPeriode(periode)}</span>
-                        </div>
-                      </div>
-
-                      {/* Tabel Rincian */}
-                      <table className="w-full text-xs mt-3 mb-4">
-                        <thead>
-                          <tr className="border-b border-slate-300 text-slate-600 font-bold">
-                            <th className="text-left py-1.5">Model Sepatu</th>
-                            <th className="text-right py-1.5">Pasang</th>
-                            <th className="text-right py-1.5">Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {itemPekerja.map((it, idx) => (
-                            <tr key={idx} className="border-b border-slate-100">
-                              <td className="py-1.5 font-semibold text-slate-800">{it.nama_model}</td>
-                              <td className="py-1.5 text-right font-bold text-slate-700">{formatAngka(it.total_pasang)} psg</td>
-                              <td className="py-1.5 text-right font-black text-slate-900">{formatRupiah(it.total_gaji)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t-2 border-slate-800 font-black text-sm bg-slate-50">
-                            <td className="py-2">TOTAL DITERIMA</td>
-                            <td className="py-2 text-right">{formatAngka(p.total_pasang)} psg</td>
-                            <td className="py-2 text-right text-emerald-800">{formatRupiah(p.total_gaji)}</td>
-                          </tr>
-                        </tfoot>
-                      </table>
-
-                      {/* Tanda Tangan */}
-                      <div className="grid grid-cols-2 gap-4 text-center text-xs pt-4 border-t border-slate-200">
-                        <div>
-                          <p className="text-slate-500 font-semibold mb-10">Penerima (Pekerja),</p>
-                          <p className="font-bold border-t border-dashed border-slate-400 pt-1 mx-4">({p.nama})</p>
-                        </div>
-                        <div>
-                          <p className="text-slate-500 font-semibold mb-10">Admin / Kasir,</p>
-                          <p className="font-bold border-t border-dashed border-slate-400 pt-1 mx-4">(............................)</p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setSlipWorkerId(null)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100"
-              >
-                Tutup
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-colors"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span>Cetak / Cetak PDF</span>
-              </button>
-            </div>
-          </div>
-        </Modal>
       )}
 
       <ExportSuccessModal
