@@ -12,14 +12,17 @@ import {
 import type { MasterPo, MasterUkuran } from '../../lib/types'
 import {
   formatAngka,
+  formatBulanTahun,
   formatRupiah,
   formatTanggalPendek,
-  tanggalAwalBulan,
-  tanggalAwalTahun,
+  bulanHariIni,
+  rentangBulan,
+  rentangTahun,
+  tahunHariIni,
   tanggalHariIni,
   type PeriodRiwayat,
 } from '../../lib/constants'
-import { BigButton, Card, ConfirmModal, ErrorBox, ExportSuccessModal, PillBadge, SkeletonTable } from '../../components/ui'
+import { BigButton, Card, ConfirmModal, ErrorBox, ExportSuccessModal, FieldLabel, PillBadge, SelectInput, SkeletonTable } from '../../components/ui'
 import { Tabel, THead, Th, Td } from '../../components/view'
 import { buatBarisLaporan, exportLaporanHarian, shareLaporanHarian } from '../../lib/laporan'
 import { Calendar, Download, Edit3, Lock, Trash2 } from 'lucide-react'
@@ -33,6 +36,8 @@ const PERIODE_LIST: { value: PeriodRiwayat; label: string }[] = [
 export default function Riwayat() {
   const [periode, setPeriode] = useState<PeriodRiwayat>('hari')
   const [tanggal, setTanggal] = useState(tanggalHariIni())
+  const [bulan, setBulan] = useState(bulanHariIni())
+  const [tahun, setTahun] = useState(tahunHariIni())
   const [rows, setRows] = useState<ProduksiRow[]>(() => getCache<ProduksiRow[]>('produksi_hari_ini') ?? [])
   const [ukuranList, setUkuranList] = useState<MasterUkuran[]>(() => getCache<MasterUkuran[]>('ukuran_semua') ?? [])
   const [poList, setPoList] = useState<MasterPo[]>(() => getCache<MasterPo[]>('po_semua') ?? [])
@@ -46,13 +51,19 @@ export default function Riwayat() {
 
   const muat = useCallback(async () => {
     try {
+      let prodPromise: Promise<ProduksiRow[]>
+      if (periode === 'hari') {
+        prodPromise = getProduksi(tanggal)
+      } else if (periode === 'bulan') {
+        const { dari, sampai } = rentangBulan(bulan)
+        prodPromise = getProduksiRentang(dari, sampai)
+      } else {
+        const { dari, sampai } = rentangTahun(tahun)
+        prodPromise = getProduksiRentang(dari, sampai)
+      }
+
       const [prod, ukuran, po] = await Promise.all([
-        periode === 'hari'
-          ? getProduksi(tanggal)
-          : getProduksiRentang(
-              periode === 'bulan' ? tanggalAwalBulan() : tanggalAwalTahun(),
-              tanggalHariIni(),
-            ),
+        prodPromise,
         getUkuranSemua(),
         getPoSemua(),
       ])
@@ -65,7 +76,7 @@ export default function Riwayat() {
     } finally {
       setLoading(false)
     }
-  }, [periode, tanggal])
+  }, [periode, tanggal, bulan, tahun])
 
   useEffect(() => {
     muat()
@@ -138,8 +149,8 @@ export default function Riwayat() {
       periode === 'hari'
         ? `laporan-harian-${tanggal}.xlsx`
         : periode === 'bulan'
-          ? `laporan-bulanan-${tanggalHariIni().slice(0, 7)}.xlsx`
-          : `laporan-tahunan-${tanggalHariIni().slice(0, 4)}.xlsx`
+          ? `laporan-bulanan-${bulan}.xlsx`
+          : `laporan-tahunan-${tahun}.xlsx`
     try {
       await exportLaporanHarian(rows, poList, ukuranList, nama)
       setExportedName(nama)
@@ -161,7 +172,9 @@ export default function Riwayat() {
           <p className="text-xs font-semibold text-slate-500">
             {periode === 'hari'
               ? `Data ${formatTanggalPendek(tanggal)} · Hanya data hari ini yang bisa diedit.`
-              : 'Semua data periode berjalan.'}
+              : periode === 'bulan'
+                ? `Data Bulan ${formatBulanTahun(bulan)} · Rekapitulasi produksi bulanan.`
+                : `Data Tahun ${tahun} · Rekapitulasi produksi tahunan.`}
           </p>
         </div>
 
@@ -187,13 +200,13 @@ export default function Riwayat() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="space-y-3 rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-xs">
-        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-neutral-100 p-1">
+      <div className="space-y-3 rounded-3xl border border-neutral-200/90 bg-white p-4 sm:p-5 shadow-xs">
+        <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-neutral-100 p-1">
           {PERIODE_LIST.map((p) => (
             <button
               key={p.value}
               onClick={() => setPeriode(p.value)}
-              className={`rounded-lg py-1.5 text-xs font-semibold tracking-tight transition-all ${
+              className={`rounded-xl py-2 text-xs font-bold tracking-tight transition-all ${
                 periode === p.value
                   ? 'bg-white text-neutral-900 shadow-xs'
                   : 'text-neutral-600 hover:text-neutral-900'
@@ -204,18 +217,55 @@ export default function Riwayat() {
           ))}
         </div>
 
-        {periode === 'hari' && (
-          <div>
-            <div className="relative">
-              <input
-                type="date"
-                value={tanggal}
-                onChange={(e) => setTanggal(e.target.value)}
-                className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none"
-              />
+        <div className="pt-1">
+          {periode === 'hari' && (
+            <div>
+              <FieldLabel>Pilih Tanggal</FieldLabel>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={tanggal}
+                  onChange={(e) => setTanggal(e.target.value)}
+                  className="w-full rounded-2xl border border-neutral-300 bg-neutral-50/70 px-3.5 py-2.5 text-sm font-bold text-neutral-900 focus:bg-white focus:border-neutral-900 focus:outline-none transition-all"
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {periode === 'bulan' && (
+            <div>
+              <FieldLabel>Pilih Bulan & Tahun</FieldLabel>
+              <div className="relative">
+                <input
+                  type="month"
+                  value={bulan}
+                  onChange={(e) => setBulan(e.target.value)}
+                  className="w-full rounded-2xl border border-neutral-300 bg-neutral-50/70 px-3.5 py-2.5 text-sm font-bold text-neutral-900 focus:bg-white focus:border-neutral-900 focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          )}
+
+          {periode === 'tahun' && (
+            <div>
+              <FieldLabel>Pilih Tahun</FieldLabel>
+              <SelectInput
+                value={tahun}
+                onChange={(e) => setTahun(e.target.value)}
+                className="py-2.5 text-sm font-bold"
+              >
+                {Array.from({ length: 6 }, (_, i) => {
+                  const y = String(new Date().getFullYear() - 3 + i)
+                  return (
+                    <option key={y} value={y}>
+                      Tahun {y}
+                    </option>
+                  )
+                })}
+              </SelectInput>
+            </div>
+          )}
+        </div>
       </div>
 
       {error && <ErrorBox message={error} />}

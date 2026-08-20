@@ -54,6 +54,44 @@ export function tanggalHariIni(): string {
   return `${d.getFullYear()}-${m}-${day}`
 }
 
+export function bulanHariIni(): string {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `${d.getFullYear()}-${m}`
+}
+
+export function tahunHariIni(): string {
+  return String(new Date().getFullYear())
+}
+
+export function rentangBulan(bulanStr: string): { dari: string; sampai: string } {
+  if (!bulanStr) {
+    const d = new Date()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    bulanStr = `${d.getFullYear()}-${m}`
+  }
+  const [year, month] = bulanStr.split('-').map(Number)
+  const dari = `${bulanStr}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const sampai = `${bulanStr}-${String(lastDay).padStart(2, '0')}`
+  return { dari, sampai }
+}
+
+export function rentangTahun(tahunStr: string): { dari: string; sampai: string } {
+  const year = tahunStr || String(new Date().getFullYear())
+  return {
+    dari: `${year}-01-01`,
+    sampai: `${year}-12-31`,
+  }
+}
+
+export function formatBulanTahun(bulanStr: string): string {
+  if (!bulanStr) return ''
+  const [year, month] = bulanStr.split('-').map(Number)
+  const d = new Date(year, month - 1, 1)
+  return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d)
+}
+
 export function tanggalAwalBulan(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`

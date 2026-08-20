@@ -13,10 +13,13 @@ import {
 import type { MasterPo, MasterUkuran, Pekerja } from '../../lib/types'
 import {
   formatAngka,
+  formatBulanTahun,
   formatRupiah,
   formatTanggalPendek,
-  tanggalAwalBulan,
-  tanggalAwalTahun,
+  bulanHariIni,
+  rentangBulan,
+  rentangTahun,
+  tahunHariIni,
   tanggalHariIni,
   type PeriodRiwayat,
 } from '../../lib/constants'
@@ -44,6 +47,8 @@ const PERIODE_LIST: { value: PeriodRiwayat; label: string }[] = [
 export default function DataProduksi() {
   const [periode, setPeriode] = useState<PeriodRiwayat>('hari')
   const [tanggal, setTanggal] = useState(tanggalHariIni())
+  const [bulan, setBulan] = useState(bulanHariIni())
+  const [tahun, setTahun] = useState(tahunHariIni())
   const [idPekerja, setIdPekerja] = useState('')
   const [rows, setRows] = useState<ProduksiRow[]>(() => getCache<ProduksiRow[]>('produksi_hari_ini') ?? [])
   const [pekerjaList, setPekerjaList] = useState<Pekerja[]>(() => getCache<Pekerja[]>('pekerja_semua') ?? [])
@@ -61,14 +66,19 @@ export default function DataProduksi() {
 
   const muat = useCallback(async () => {
     try {
+      let prodPromise: Promise<ProduksiRow[]>
+      if (periode === 'hari') {
+        prodPromise = getProduksi(tanggal, idPekerja || undefined)
+      } else if (periode === 'bulan') {
+        const { dari, sampai } = rentangBulan(bulan)
+        prodPromise = getProduksiRentang(dari, sampai, idPekerja || undefined)
+      } else {
+        const { dari, sampai } = rentangTahun(tahun)
+        prodPromise = getProduksiRentang(dari, sampai, idPekerja || undefined)
+      }
+
       const [prod, pekerja, ukuran, po] = await Promise.all([
-        periode === 'hari'
-          ? getProduksi(tanggal, idPekerja || undefined)
-          : getProduksiRentang(
-              periode === 'bulan' ? tanggalAwalBulan() : tanggalAwalTahun(),
-              tanggalHariIni(),
-              idPekerja || undefined,
-            ),
+        prodPromise,
         getPekerjaSemua(),
         getUkuranSemua(),
         getPoSemua(),
@@ -83,7 +93,7 @@ export default function DataProduksi() {
     } finally {
       setLoading(false)
     }
-  }, [periode, tanggal, idPekerja])
+  }, [periode, tanggal, bulan, tahun, idPekerja])
 
   useEffect(() => {
     muat()
@@ -146,8 +156,8 @@ export default function DataProduksi() {
       periode === 'hari'
         ? `laporan-harian-${tanggal}.xlsx`
         : periode === 'bulan'
-          ? `laporan-bulanan-${tanggalHariIni().slice(0, 7)}.xlsx`
-          : `laporan-tahunan-${tanggalHariIni().slice(0, 4)}.xlsx`
+          ? `laporan-bulanan-${bulan}.xlsx`
+          : `laporan-tahunan-${tahun}.xlsx`
     try {
       await exportLaporanHarian(rows, poList, ukuranList, nama)
       setExportedName(nama)
@@ -169,7 +179,9 @@ export default function DataProduksi() {
           <p className="text-xs font-semibold text-slate-500">
             {periode === 'hari'
               ? `Data ${formatTanggalPendek(tanggal)} · Kontrol penuh input produksi seluruh pekerja.`
-              : 'Semua data periode berjalan.'}
+              : periode === 'bulan'
+                ? `Data Bulan ${formatBulanTahun(bulan)} · Rekapitulasi produksi bulanan.`
+                : `Data Tahun ${tahun} · Rekapitulasi produksi tahunan.`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -227,7 +239,42 @@ export default function DataProduksi() {
               </div>
             </div>
           )}
-          <div className={periode !== 'hari' ? 'sm:col-span-2' : ''}>
+
+          {periode === 'bulan' && (
+            <div>
+              <FieldLabel>Pilih Bulan & Tahun</FieldLabel>
+              <div className="relative">
+                <input
+                  type="month"
+                  value={bulan}
+                  onChange={(e) => setBulan(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 bg-slate-50/70 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          )}
+
+          {periode === 'tahun' && (
+            <div>
+              <FieldLabel>Pilih Tahun</FieldLabel>
+              <SelectInput
+                value={tahun}
+                onChange={(e) => setTahun(e.target.value)}
+                className="py-2.5 text-sm font-bold"
+              >
+                {Array.from({ length: 6 }, (_, i) => {
+                  const y = String(new Date().getFullYear() - 3 + i)
+                  return (
+                    <option key={y} value={y}>
+                      Tahun {y}
+                    </option>
+                  )
+                })}
+              </SelectInput>
+            </div>
+          )}
+
+          <div>
             <FieldLabel>Filter Pekerja</FieldLabel>
             <SelectInput value={idPekerja} onChange={(e) => setIdPekerja(e.target.value)} className="py-2.5 text-sm">
               <option value="">Semua Pekerja</option>
