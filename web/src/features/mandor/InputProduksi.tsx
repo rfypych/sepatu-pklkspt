@@ -327,6 +327,38 @@ export default function InputProduksi() {
     }
   }, [today, idPekerja, shift, idPo])
 
+  // Muat draft newItems saat pekerja / shift dipilih
+  useEffect(() => {
+    if (!idPekerja) return
+    try {
+      const draftKey = `mandor_draft_${today}_${idPekerja}_${shift}`
+      const savedDraft = localStorage.getItem(draftKey)
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setNewItems(parsed)
+        }
+      }
+    } catch {
+      // abaikan
+    }
+  }, [idPekerja, shift, today])
+
+  // Simpan draft newItems secara realtime ke localStorage
+  useEffect(() => {
+    if (!idPekerja) return
+    try {
+      const draftKey = `mandor_draft_${today}_${idPekerja}_${shift}`
+      if (newItems.length > 0) {
+        localStorage.setItem(draftKey, JSON.stringify(newItems))
+      } else {
+        localStorage.removeItem(draftKey)
+      }
+    } catch {
+      // abaikan
+    }
+  }, [newItems, idPekerja, shift, today])
+
   // catat shift yang dipilih untuk karyawan hari ini (badge di list karyawan)
   useEffect(() => {
     if (idPekerja) {
@@ -544,6 +576,11 @@ export default function InputProduksi() {
     try {
       await simpanProduksiBatch({ tanggal: today, shift, id_pekerja: idPekerja, id_po: idPo, items: payloadItems })
       setNewItems([])
+      try {
+        localStorage.removeItem(`mandor_draft_${today}_${idPekerja}_${shift}`)
+      } catch {
+        // ignore
+      }
       if (idPo != null) {
         setLastPoId(idPo)
         setPoMap((prev) => ({ ...prev, [idPekerja]: idPo }))
@@ -861,11 +898,19 @@ export default function InputProduksi() {
               </button>
             </div>
             {selectedPo.target_qty > 0 && (
-              <div className="mt-2.5">
+              <div className="mt-2.5 space-y-2">
                 <PoProgress target={selectedPo.target_qty} achieved={poProjected} />
                 {newTotal > 0 && (
-                  <div className="mt-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md inline-block">
+                  <div className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg inline-block border border-emerald-200">
                     +{newTotal} pasang baru sedang diketik
+                  </div>
+                )}
+                {poProjected > selectedPo.target_qty && (
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs font-bold text-amber-950 flex items-center gap-2">
+                    <span className="text-base">⚠️</span>
+                    <span>
+                      Total input melebihi target PO (lebih <b>+{poProjected - selectedPo.target_qty} psg</b>). Pastikan jumlah sudah benar.
+                    </span>
                   </div>
                 )}
               </div>

@@ -412,6 +412,8 @@ router.put('/:id', async (req, res) => {
     const id = Number(req.params.id)
     const { sizes, qtyPerUkuran, shift, id_sepatu, model_id } = req.body ?? {}
     const resolvedSepatu = id_sepatu || model_id
+
+    await client.query('BEGIN')
     if (shift !== undefined) {
       await client.query('UPDATE produksi_harian SET shift = $1 WHERE id_produksi = $2', [Number(shift), id])
     }
@@ -450,8 +452,10 @@ router.put('/:id', async (req, res) => {
         }
       }
     }
+    await client.query('COMMIT')
     res.json({ id: String(id), id_produksi: id, ok: true })
   } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
     res.status(500).json({ error: e.message })
   } finally {
     client.release()

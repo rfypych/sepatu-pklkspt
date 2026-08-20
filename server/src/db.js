@@ -34,4 +34,14 @@ const pool = new Pool({
   keepAlive: true,
 })
 
+// Buat indeks optimasi query secara otomatis & non-blocking jika belum ada
+pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_produksi_harian_tgl_pekerja ON produksi_harian (tanggal, id_pekerja);
+  CREATE INDEX IF NOT EXISTS idx_produksi_harian_po ON produksi_harian (id_po);
+  CREATE INDEX IF NOT EXISTS idx_produksi_harian_tgl ON produksi_harian (tanggal);
+  CREATE INDEX IF NOT EXISTS idx_produksi_detail_prod ON produksi_detail (id_produksi);
+`).catch((err) => {
+  console.warn('Index init warning:', err?.message)
+})
+
 export default pool
