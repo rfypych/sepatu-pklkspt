@@ -464,9 +464,10 @@ router.put('/:id', async (req, res) => {
 
 // Hapus produksi
 router.delete('/:id', async (req, res) => {
+  const client = await pool.connect()
   try {
     const id = Number(req.params.id)
-    const { rows } = await pool.query('SELECT * FROM produksi_harian WHERE id_produksi = $1', [id])
+    const { rows } = await client.query('SELECT * FROM produksi_harian WHERE id_produksi = $1', [id])
     if (!rows[0]) return res.status(404).json({ error: 'Data tidak ditemukan' })
 
     if (req.user.role === 'mandor') {
@@ -476,10 +477,17 @@ router.delete('/:id', async (req, res) => {
         return res.status(403).json({ error: 'Mandor hanya bisa menghapus data tanggal hari ini' })
       }
     }
-    await pool.query('DELETE FROM produksi_harian WHERE id_produksi = $1', [id])
+
+    await client.query('BEGIN')
+    await client.query('DELETE FROM produksi_detail WHERE id_produksi = $1', [id])
+    await client.query('DELETE FROM produksi_harian WHERE id_produksi = $1', [id])
+    await client.query('COMMIT')
     res.json({ ok: true, success: true })
   } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
     res.status(500).json({ error: e.message })
+  } finally {
+    client.release()
   }
 })
 

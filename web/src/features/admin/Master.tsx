@@ -127,12 +127,16 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
     }
   }
   async function toggle(p: Pekerja) {
+    const nextVal = !p.status_aktif
+    setList((prev) =>
+      prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: nextVal } : x)),
+    )
     try {
-      await ubahPekerja(p.id_pekerja, { status_aktif: !p.status_aktif })
-      setList((prev) =>
-        prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: !x.status_aktif } : x)),
-      )
+      await ubahPekerja(p.id_pekerja, { status_aktif: nextVal })
     } catch (err) {
+      setList((prev) =>
+        prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: p.status_aktif } : x)),
+      )
       setError((err as Error).message)
     }
   }
@@ -219,12 +223,16 @@ function TabModel({ setError }: { setError: (m: string | null) => void }) {
     }
   }
   async function toggle(m: TipeSepatu) {
+    const nextVal = !m.status_aktif
+    setList((prev) =>
+      prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: nextVal } : x)),
+    )
     try {
-      await ubahTipeSepatu(m.id_sepatu, { status_aktif: !m.status_aktif })
-      setList((prev) =>
-        prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: !x.status_aktif } : x)),
-      )
+      await ubahTipeSepatu(m.id_sepatu, { status_aktif: nextVal })
     } catch (err) {
+      setList((prev) =>
+        prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: m.status_aktif } : x)),
+      )
       setError((err as Error).message)
     }
   }
@@ -326,12 +334,16 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
     }
   }
   async function toggle(u: MasterUkuran) {
+    const nextVal = !u.status_aktif
+    setList((prev) =>
+      prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: nextVal } : x)),
+    )
     try {
-      await ubahUkuran(u.id_ukuran, !u.status_aktif)
-      setList((prev) =>
-        prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: !x.status_aktif } : x)),
-      )
+      await ubahUkuran(u.id_ukuran, nextVal)
     } catch (err) {
+      setList((prev) =>
+        prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: u.status_aktif } : x)),
+      )
       setError((err as Error).message)
     }
   }
@@ -415,21 +427,27 @@ function TabPo({ setError }: { setError: (m: string | null) => void }) {
     }
   }
   async function toggle(p: MasterPo) {
+    const nextVal = !p.status_aktif
+    setList((prev) =>
+      prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: nextVal } : x)),
+    )
     try {
-      await ubahPo(p.id_po, { status_aktif: !p.status_aktif })
-      setList((prev) =>
-        prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: !x.status_aktif } : x)),
-      )
+      await ubahPo(p.id_po, { status_aktif: nextVal })
     } catch (err) {
+      setList((prev) =>
+        prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: p.status_aktif } : x)),
+      )
       setError((err as Error).message)
     }
   }
   async function onHapusPo(p: MasterPo) {
     if (!window.confirm(`Hapus/arsipkan PO "${p.no_po}"?`)) return
+    const prevList = [...list]
+    setList((prev) => prev.filter((x) => x.id_po !== p.id_po))
     try {
       await hapusPo(p.id_po)
-      await reload()
     } catch (err) {
+      setList(prevList)
       setError((err as Error).message)
     }
   }
