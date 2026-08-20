@@ -219,10 +219,12 @@ export const getProduksi = async (tanggal?: string, idPekerja?: string) => {
   setCache(`produksi_${tanggal || 'all'}_${idPekerja || 'all'}`, data)
   return data
 }
-export const getProduksiRentang = async (dari: string, sampai: string) => {
-  const qs = new URLSearchParams({ dari, sampai })
+export const getProduksiRentang = async (dari: string, sampai: string, idPekerja?: string) => {
+  const params = new URLSearchParams({ dari, sampai })
+  if (idPekerja) params.set('pekerja', idPekerja)
+  const qs = params.toString()
   const data = (await get<ProduksiRow[]>(`/produksi?${qs}`)).map(normProduksi)
-  setCache(`produksi_rentang_${dari}_${sampai}`, data)
+  setCache(`produksi_rentang_${dari}_${sampai}_${idPekerja || 'all'}`, data)
   return data
 }
 export const simpanProduksi = async (input: SimpanInput) => {
