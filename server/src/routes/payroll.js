@@ -1,18 +1,28 @@
 import { Router } from 'express'
 import pool from '../db.js'
 import { authRequired, attachUser, adminOnly } from '../auth.js'
+import { todayStr } from '../date.js'
 
 const router = Router()
 router.use(authRequired, attachUser, adminOnly)
 
 router.get('/periods', async (req, res) => {
   try {
+    const today = todayStr()
+    const [thnNow, blnNow] = today.split('-')
+    const currentP1 = `${thnNow}-${blnNow}-1`
+    const currentP2 = `${thnNow}-${blnNow}-2`
+
     const { rows } = await pool.query(
       `SELECT DISTINCT to_char(tanggal, 'YYYY-MM') || '-' ||
               (CASE WHEN EXTRACT(DAY FROM tanggal) <= 15 THEN '1' ELSE '2' END) AS periode
-       FROM produksi_harian ORDER BY periode DESC`,
+       FROM produksi_harian WHERE tanggal IS NOT NULL`,
     )
-    const periodList = rows.map((r) => r.periode)
+    const dbPeriods = rows.map((r) => r.periode)
+
+    // Selalu pastikan Periode I dan Periode II bulan berjalan muncul, digabung dengan seluruh histori
+    const periodSet = new Set([currentP2, currentP1, ...dbPeriods])
+    const periodList = Array.from(periodSet).sort((a, b) => b.localeCompare(a))
 
     if (req.headers['user-agent']?.includes('okhttp') || req.query.format === 'objects') {
       const monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -51,16 +61,11 @@ router.get('/rekap', async (req, res) => {
     }
 
     if (!targetPeriode) {
-      // Default to latest period
-      const { rows: latest } = await pool.query(
-        `SELECT DISTINCT to_char(tanggal, 'YYYY-MM') || '-' ||
-                (CASE WHEN EXTRACT(DAY FROM tanggal) <= 15 THEN '1' ELSE '2' END) AS periode
-         FROM produksi_harian ORDER BY periode DESC LIMIT 1`,
-      )
-      targetPeriode = latest[0]?.periode
+      const today = todayStr()
+      const [thn, bln, dayStr] = today.split('-')
+      const day = Number(dayStr)
+      targetPeriode = `${thn}-${bln}-${day <= 15 ? '1' : '2'}`
     }
-
-    if (!targetPeriode) return res.json([])
 
     const { rows } = await pool.query('SELECT * FROM v_rekap_gaji WHERE periode = $1', [targetPeriode])
 
