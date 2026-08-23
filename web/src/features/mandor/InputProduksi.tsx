@@ -118,7 +118,7 @@ export default function InputProduksi() {
   }, [])
 
   const reloadSaved = useCallback(
-    async (workerId: number, shiftVal: 1 | 2, currentPoId?: number | null) => {
+    async (workerId: number, shiftVal: 1 | 2) => {
       try {
         setLoadingSaved(true)
         const rows = await getProduksiHariIni()
@@ -126,17 +126,6 @@ export default function InputProduksi() {
           (r) => Number(r.id_pekerja) === workerId && Number(r.shift) === shiftVal,
         )
         setSavedList(forThisWorker)
-
-        // Jika pekerja ini belum punya PO yang diset, tapi sudah punya record tersimpan hari ini,
-        // otomatis pakai PO dari data tersimpan tersebut
-        if (currentPoId === undefined || currentPoId === null) {
-          const rowWithPo = forThisWorker.find((r) => r.id_po != null)
-          if (rowWithPo && rowWithPo.id_po != null) {
-            const resolvedPo = Number(rowWithPo.id_po)
-            setIdPo(resolvedPo)
-            setPoMap((prev) => ({ ...prev, [workerId]: resolvedPo }))
-          }
-        }
       } catch (e) {
         setError((e as Error).message)
       } finally {
@@ -237,7 +226,9 @@ export default function InputProduksi() {
       const dbPoMap: Record<number, number | null> = {}
       for (const row of todayProd) {
         if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
-        if (row.id_po != null) dbPoMap[row.id_pekerja] = row.id_po
+        if (row.id_po != null && po.some((x) => x.id_po === Number(row.id_po))) {
+          dbPoMap[row.id_pekerja] = Number(row.id_po)
+        }
       }
 
       // Gabungkan: prioritas data database > localStorage
@@ -251,8 +242,15 @@ export default function InputProduksi() {
       if (restored) {
         setIdPekerja(restored.idPekerja)
         const resolvedShift = dbShiftMap[restored.idPekerja] ?? restored.shift
-        const resolvedPo =
-          dbPoMap[restored.idPekerja] ?? restored.idPo ?? restoredPoMap[restored.idPekerja] ?? restoredLastPo
+        let resolvedPo =
+          restoredPoMap[restored.idPekerja] !== undefined
+            ? restoredPoMap[restored.idPekerja]
+            : (dbPoMap[restored.idPekerja] ?? restored.idPo ?? restoredLastPo ?? null)
+
+        if (resolvedPo != null && !po.some((x) => x.id_po === resolvedPo)) {
+          resolvedPo = null
+        }
+
         setShift(resolvedShift)
         setIdPo(resolvedPo)
 
@@ -287,19 +285,31 @@ export default function InputProduksi() {
         setPoList(pos)
         setCache('po_semua', pos)
 
+        // Validasi: jika PO yang sedang dipilih dinonaktifkan admin, batalkan pilihan PO secara otomatis
+        setIdPo((curPo) => {
+          if (curPo != null && !pos.some((p) => p.id_po === curPo)) {
+            return null
+          }
+          return curPo
+        })
+
         const dbShiftMap: Record<number, 1 | 2> = {}
-        const dbPoMap: Record<number, number> = {}
         for (const r of todayProd) {
           const pid = Number(r.id_pekerja)
           if (!dbShiftMap[pid] && r.shift) {
             dbShiftMap[pid] = Number(r.shift) as 1 | 2
           }
-          if (!dbPoMap[pid] && r.id_po) {
-            dbPoMap[pid] = Number(r.id_po)
-          }
         }
         setShiftMap((prev) => ({ ...prev, ...dbShiftMap }))
-        setPoMap((prev) => ({ ...prev, ...dbPoMap }))
+        setPoMap((prev) => {
+          const updated = { ...prev }
+          for (const [k, v] of Object.entries(updated)) {
+            if (v != null && !pos.some((p) => p.id_po === v)) {
+              updated[Number(k)] = null
+            }
+          }
+          return updated
+        })
 
         if (idPekerja) {
           const forThisWorker = todayProd.filter(
@@ -456,7 +466,7 @@ export default function InputProduksi() {
       setEditingRow(null)
       if (idPekerja) {
         await Promise.all([
-          reloadSaved(idPekerja, shift, idPo),
+          reloadSaved(idPekerja, shift),
           getProduksiHariIni(),
           reloadPo(),
         ])
@@ -490,14 +500,17 @@ export default function InputProduksi() {
   function lanjutPilihPekerja(id: number) {
     const s = shiftMap[id] ?? 1
     // Prioritas PO: PO yang pernah dipilih untuk pekerja ini -> PO terakhir yang aktif -> null
-    const targetPo = poMap[id] !== undefined ? poMap[id] : (idPo ?? lastPoId ?? null)
+    let targetPo = poMap[id] !== undefined ? poMap[id] : (idPo ?? lastPoId ?? null)
+    if (targetPo != null && !poList.some((p) => p.id_po === targetPo)) {
+      targetPo = null
+    }
 
     setIdPekerja(id)
     setShift(s)
     setIdPo(targetPo)
     setNewItems([])
     setError(null)
-    void reloadSaved(id, s, targetPo)
+    void reloadSaved(id, s)
   }
 
   function gantiShift(s: 1 | 2) {
@@ -523,14 +536,15 @@ export default function InputProduksi() {
     setShift(s)
     setNewItems([])
     setError(null)
-    if (idPekerja) void reloadSaved(idPekerja, s, idPo)
+    if (idPekerja) void reloadSaved(idPekerja, s)
   }
 
   function handlePilihPo(selectedId: number | null) {
-    setIdPo(selectedId)
-    setLastPoId(selectedId)
+    const resolvedId = selectedId != null && poList.some((p) => p.id_po === selectedId) ? selectedId : null
+    setIdPo(resolvedId)
+    setLastPoId(resolvedId)
     if (idPekerja) {
-      setPoMap((prev) => ({ ...prev, [idPekerja]: selectedId }))
+      setPoMap((prev) => ({ ...prev, [idPekerja]: resolvedId }))
     }
     setPilihPo(false)
   }
@@ -549,13 +563,10 @@ export default function InputProduksi() {
           setSavedList((prev) => prev.filter((x) => x.id_produksi !== r.id_produksi))
           const [updatedToday] = await Promise.all([getProduksiHariIni(), reloadPo()])
           const dbShiftMap: Record<number, 1 | 2> = {}
-          const dbPoMap: Record<number, number | null> = {}
           for (const row of updatedToday) {
             if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
-            if (row.id_po != null) dbPoMap[row.id_pekerja] = row.id_po
           }
           setShiftMap((prev) => ({ ...prev, ...dbShiftMap }))
-          setPoMap((prev) => ({ ...prev, ...dbPoMap }))
           setError(null)
         } catch (e) {
           setError((e as Error).message)
@@ -581,30 +592,33 @@ export default function InputProduksi() {
     setSaving(true)
     setError(null)
     try {
-      await simpanProduksiBatch({ tanggal: today, shift, id_pekerja: idPekerja, id_po: idPo, items: payloadItems })
+      const validPoId = idPo != null && poList.some((p) => p.id_po === idPo) ? idPo : null
+      await simpanProduksiBatch({
+        tanggal: today,
+        shift,
+        id_pekerja: idPekerja,
+        id_po: validPoId,
+        items: payloadItems,
+      })
       setNewItems([])
       try {
         localStorage.removeItem(`mandor_draft_${today}_${idPekerja}_${shift}`)
       } catch {
         // ignore
       }
-      if (idPo != null) {
-        setLastPoId(idPo)
-        setPoMap((prev) => ({ ...prev, [idPekerja]: idPo }))
-      }
+      setLastPoId(validPoId)
+      setPoMap((prev) => ({ ...prev, [idPekerja]: validPoId }))
+
       const [updatedToday] = await Promise.all([
         getProduksiHariIni(),
-        reloadSaved(idPekerja, shift, idPo),
+        reloadSaved(idPekerja, shift),
         reloadPo(),
       ])
       const dbShiftMap: Record<number, 1 | 2> = {}
-      const dbPoMap: Record<number, number | null> = {}
       for (const row of updatedToday) {
         if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
-        if (row.id_po != null) dbPoMap[row.id_pekerja] = row.id_po
       }
       setShiftMap((prev) => ({ ...prev, ...dbShiftMap }))
-      setPoMap((prev) => ({ ...prev, ...dbPoMap }))
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -1100,8 +1114,8 @@ export default function InputProduksi() {
 
       {error && <ErrorBox message={error} />}
 
-      {/* ---------- Ringkasan + Tombol Simpan (menempel di atas menu bawah) ---------- */}
-      <div className="sticky bottom-24 z-10 space-y-2.5 rounded-3xl border-2 border-slate-950 bg-slate-900 p-4 text-white shadow-lg">
+      {/* ---------- Ringkasan + Tombol Simpan ---------- */}
+      <div className="space-y-3 rounded-3xl border-2 border-slate-950 bg-slate-900 p-4 sm:p-5 text-white shadow-md">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-base font-bold uppercase tracking-wide text-slate-300">
             Total hari ini
