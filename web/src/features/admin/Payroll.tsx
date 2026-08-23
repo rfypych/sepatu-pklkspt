@@ -2,16 +2,29 @@ import { useCallback, useEffect, useState } from 'react'
 import { getDaftarPeriode, getRekapGaji, getCache } from '../../lib/api'
 import type { RekapGajiRow } from '../../lib/types'
 import { formatAngka, formatRupiah, labelPeriode } from '../../lib/constants'
-import { Card, ErrorBox, ExportSuccessModal, SelectInput, SkeletonTable } from '../../components/ui'
-import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
+import {
+  BigButton,
+  EmptyState,
+  ErrorBox,
+  ExportSuccessModal,
+  FieldLabel,
+  PageTitle,
+  SelectInput,
+  SkeletonTable,
+  StatCard,
+} from '../../components/ui'
+import { ViewToggle, Tabel, THead, Th, Td } from '../../components/view'
+import { useViewMode } from '../../lib/useViewMode'
 import { downloadExcelWorkbook, shareExcelWorkbook } from '../../lib/laporan'
-import { Coins, Download, User } from 'lucide-react'
+import { Coins, Download, Package, User } from 'lucide-react'
 
 export default function Payroll() {
-  const [periodeList, setPeriodeList] = useState<string[]>(() => getCache<string[]>('payroll_periods') ?? [])
+  const [periodeList, setPeriodeList] = useState<string[]>(
+    () => getCache<string[]>('payroll_periods') ?? [],
+  )
   const [periode, setPeriode] = useState('')
   const [rows, setRows] = useState<RekapGajiRow[]>([])
-  const [view, setView] = useState<ViewMode>('tabel')
+  const [view, setView] = useViewMode('payroll')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -57,7 +70,8 @@ export default function Payroll() {
   // Kelompokkan per pekerja
   const perPekerja = new Map<number, { nama: string; total_pasang: number; total_gaji: number }>()
   for (const r of rows) {
-    const cur = perPekerja.get(r.id_pekerja) ?? { nama: r.nama_pekerja, total_pasang: 0, total_gaji: 0 }
+    const cur =
+      perPekerja.get(r.id_pekerja) ?? { nama: r.nama_pekerja, total_pasang: 0, total_gaji: 0 }
     cur.total_pasang += r.total_pasang
     cur.total_gaji += r.total_gaji
     perPekerja.set(r.id_pekerja, cur)
@@ -65,30 +79,36 @@ export default function Payroll() {
   const grandTotal = Array.from(perPekerja.values()).reduce((a, p) => a + p.total_gaji, 0)
   const totalPasangSemua = rows.reduce((a, r) => a + r.total_pasang, 0)
 
+  function buatWorkbook(XLSX: typeof import('xlsx')) {
+    const dataRows = rows.map((r) => ({
+      'Nama Pekerja': r.nama_pekerja,
+      Model: r.nama_model,
+      'Total Pasang': r.total_pasang,
+      'Total Gaji (Rp)': r.total_gaji,
+    }))
+    dataRows.push({
+      'Nama Pekerja': 'GRAND TOTAL',
+      Model: '',
+      'Total Pasang': totalPasangSemua,
+      'Total Gaji (Rp)': grandTotal,
+    })
+    const ws = XLSX.utils.json_to_sheet(dataRows)
+    ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 18 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Gaji')
+    return wb
+  }
+
   async function exportExcel() {
     if (rows.length === 0) return
     setExporting(true)
-    const namaFile = `payroll-${periode || 'rekap'}.xlsx`
+    const namaFile = `rekap-gaji-${periode || 'semua'}.xlsx`
     try {
       const XLSX = await import('xlsx')
-      const dataRows = rows.map((r) => ({
-        'Nama Pekerja': r.nama_pekerja,
-        Model: r.nama_model,
-        'Total Pasang': r.total_pasang,
-        'Total Gaji (Rp)': r.total_gaji,
-      }))
-      dataRows.push({
-        'Nama Pekerja': 'GRAND TOTAL',
-        Model: '',
-        'Total Pasang': totalPasangSemua,
-        'Total Gaji (Rp)': grandTotal,
-      })
-      const ws = XLSX.utils.json_to_sheet(dataRows)
-      ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 18 }]
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Gaji')
-      downloadExcelWorkbook(XLSX, wb, namaFile)
+      downloadExcelWorkbook(XLSX, buatWorkbook(XLSX), namaFile)
       setExportedName(namaFile)
+    } catch (e) {
+      setError((e as Error).message)
     } finally {
       setExporting(false)
     }
@@ -96,73 +116,52 @@ export default function Payroll() {
 
   async function bagikanPayroll() {
     if (rows.length === 0) return
-    const namaFile = exportedName || `payroll-${periode || 'rekap'}.xlsx`
+    const namaFile = exportedName || `rekap-gaji-${periode || 'semua'}.xlsx`
     try {
       const XLSX = await import('xlsx')
-      const dataRows = rows.map((r) => ({
-        'Nama Pekerja': r.nama_pekerja,
-        Model: r.nama_model,
-        'Total Pasang': r.total_pasang,
-        'Total Gaji (Rp)': r.total_gaji,
-      }))
-      dataRows.push({
-        'Nama Pekerja': 'GRAND TOTAL',
-        Model: '',
-        'Total Pasang': totalPasangSemua,
-        'Total Gaji (Rp)': grandTotal,
-      })
-      const ws = XLSX.utils.json_to_sheet(dataRows)
-      ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 18 }]
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Gaji')
-      shareExcelWorkbook(XLSX, wb, namaFile)
-    } catch (err) {
-      console.error(err)
+      shareExcelWorkbook(XLSX, buatWorkbook(XLSX), namaFile)
+    } catch (e) {
+      setError((e as Error).message)
     }
   }
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Rekap Gaji (Payroll)</h1>
-          <p className="text-xs font-semibold text-slate-500">Perhitungan upah kerja otomatis per periode cut-off.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {rows.length > 0 && (
-            <button
-              onClick={exportExcel}
-              disabled={exporting}
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
-            >
-              {exporting ? (
-                <>
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>Menyiapkan File...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Ekspor Excel</span>
-                </>
-              )}
-            </button>
-          )}
-          <ViewToggle value={view} onChange={setView} />
-        </div>
-      </div>
+      <PageTitle
+        icon={<Coins className="h-6 w-6" />}
+        title="Rekap Gaji"
+        subtitle="Upah dihitung otomatis dari hasil kerja yang sudah dicatat mandor."
+        right={
+          <>
+            {rows.length > 0 && (
+              <BigButton variant="dark" size="sm" onClick={exportExcel} disabled={exporting}>
+                <Download className="h-5 w-5" />
+                {exporting ? 'Menyiapkan file...' : 'Simpan ke Excel'}
+              </BigButton>
+            )}
+            <ViewToggle value={view} onChange={setView} />
+          </>
+        }
+      />
 
-      {/* Periode Selector (M3 Card) */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-xs">
-        <SelectInput value={periode} onChange={(e) => setPeriode(e.target.value)} className="py-2.5 text-sm">
-          {periodeList.length === 0 && <option value="">Belum ada data periode</option>}
+      {/* ---------- Pilih periode ---------- */}
+      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm sm:p-5">
+        <FieldLabel htmlFor="periode-gaji">Pilih periode gaji</FieldLabel>
+        <SelectInput
+          id="periode-gaji"
+          value={periode}
+          onChange={(e) => setPeriode(e.target.value)}
+        >
+          {periodeList.length === 0 && <option value="">Belum ada periode</option>}
           {periodeList.map((p) => (
             <option key={p} value={p}>
-              Periode: {labelPeriode(p)}
+              {labelPeriode(p)}
             </option>
           ))}
         </SelectInput>
+        <p className="mt-2 text-sm font-medium text-slate-600">
+          Gaji dibagi 2 kali sebulan: tanggal 1–15 dan tanggal 16 sampai akhir bulan.
+        </p>
       </div>
 
       {error && <ErrorBox message={error} />}
@@ -170,35 +169,28 @@ export default function Payroll() {
       {loading && rows.length === 0 ? (
         <SkeletonTable rows={5} cols={4} />
       ) : rows.length === 0 ? (
-        <Card className="py-12 text-center text-slate-500">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-            <Coins className="h-6 w-6" />
-          </div>
-          <p className="text-sm font-bold text-slate-700">Belum ada data pada periode ini.</p>
-          <p className="mt-0.5 text-xs text-slate-400">Pilih periode penggajian lain di atas.</p>
-        </Card>
+        <EmptyState
+          icon={<Coins className="h-8 w-8" />}
+          title="Belum ada data gaji di periode ini"
+          description="Pilih periode lain di kotak di atas, atau tunggu sampai mandor menyimpan hasil kerja."
+        />
       ) : (
         <>
-          {/* Summary Metric Cards (M3 Tonal Containers) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-3xl border border-blue-200/90 bg-blue-50/90 p-4.5 sm:p-5 text-blue-950 shadow-2xs">
-              <div className="text-xs font-bold uppercase tracking-wider text-blue-800">
-                Total Pasang Periode
-              </div>
-              <div className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-blue-950">
-                {formatAngka(totalPasangSemua)}{' '}
-                <span className="text-xs sm:text-sm font-bold text-blue-700">psg</span>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-emerald-200/90 bg-emerald-50/90 p-4.5 sm:p-5 text-emerald-950 shadow-2xs">
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-                Total Pengeluaran Gaji
-              </div>
-              <div className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">
-                {formatRupiah(grandTotal)}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <StatCard
+              tone="blue"
+              icon={<Package className="h-5 w-5" />}
+              label="Sepatu Selesai Periode Ini"
+              value={formatAngka(totalPasangSemua)}
+              unit="pasang"
+            />
+            <StatCard
+              tone="emerald"
+              icon={<Coins className="h-5 w-5" />}
+              label="Total Gaji Dibayar"
+              value={formatRupiah(grandTotal)}
+              hint={`Untuk ${perPekerja.size} pekerja`}
+            />
           </div>
 
           {view === 'tabel' ? (
@@ -206,24 +198,34 @@ export default function Payroll() {
               <THead>
                 <Th>Pekerja</Th>
                 <Th>Model</Th>
-                <Th className="text-right">Total Pasang</Th>
-                <Th className="text-right">Total Gaji</Th>
+                <Th className="text-right">Pasang</Th>
+                <Th className="text-right">Jumlah Gaji</Th>
               </THead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                    <Td className="font-bold text-slate-900">{r.nama_pekerja}</Td>
-                    <Td className="font-semibold text-slate-800">{r.nama_model}</Td>
-                    <Td className="text-right font-black text-slate-900">{formatAngka(r.total_pasang)} psg</Td>
-                    <Td className="text-right font-black text-emerald-700">{formatRupiah(r.total_gaji)}</Td>
+                  <tr key={i} className="odd:bg-white even:bg-slate-50">
+                    <Td className="font-extrabold text-slate-900">{r.nama_pekerja}</Td>
+                    <Td>{r.nama_model}</Td>
+                    <Td className="text-right font-extrabold text-slate-900">
+                      {formatAngka(r.total_pasang)}
+                    </Td>
+                    <Td className="text-right font-extrabold text-emerald-800">
+                      {formatRupiah(r.total_gaji)}
+                    </Td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
-                  <Td colSpan={2} className="font-black text-slate-900">GRAND TOTAL</Td>
-                  <Td className="text-right font-black text-slate-900">{formatAngka(totalPasangSemua)} psg</Td>
-                  <Td className="text-right font-black text-emerald-800">{formatRupiah(grandTotal)}</Td>
+                <tr className="border-t-4 border-slate-300 bg-slate-100">
+                  <Td colSpan={2} className="text-lg font-extrabold text-slate-900">
+                    TOTAL SEMUA
+                  </Td>
+                  <Td className="text-right text-lg font-extrabold text-slate-900">
+                    {formatAngka(totalPasangSemua)}
+                  </Td>
+                  <Td className="text-right text-lg font-extrabold text-emerald-800">
+                    {formatRupiah(grandTotal)}
+                  </Td>
                 </tr>
               </tfoot>
             </Tabel>
@@ -232,39 +234,67 @@ export default function Payroll() {
               {Array.from(perPekerja.entries()).map(([idPekerja, p]) => {
                 const itemPekerja = rows.filter((r) => r.id_pekerja === idPekerja)
                 return (
-                  <div key={idPekerja} className="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-sm space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-800 font-black">
-                          <User className="h-5 w-5" />
+                  <article
+                    key={idPekerja}
+                    className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3 border-b-2 border-slate-100 pb-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-300 bg-blue-100 text-blue-800">
+                          <User className="h-6 w-6" />
                         </div>
-                        <div>
-                          <span className="text-lg font-black text-slate-900 block leading-tight">
+                        <div className="min-w-0">
+                          <div className="truncate text-lg font-extrabold leading-tight text-slate-900">
                             {p.nama}
-                          </span>
-                          <span className="text-xs font-bold text-slate-500">
-                            Total Produksi: {formatAngka(p.total_pasang)} pasang
-                          </span>
+                          </div>
+                          <div className="text-sm font-semibold text-slate-600">
+                            {formatAngka(p.total_pasang)} pasang selesai
+                          </div>
                         </div>
                       </div>
-                      <div className="rounded-2xl bg-emerald-50 border border-emerald-300 px-3.5 py-1.5 text-right font-black text-emerald-800 text-base shadow-xs">
-                        {formatRupiah(p.total_gaji)}
+                      <div className="shrink-0 rounded-2xl border-2 border-emerald-400 bg-emerald-50 px-3 py-2 text-right">
+                        <div className="text-xs font-bold uppercase text-emerald-800">Gaji</div>
+                        <div className="text-lg font-extrabold leading-tight text-emerald-900">
+                          {formatRupiah(p.total_gaji)}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-1.5 pl-2">
+                    <div className="pt-2">
+                      <div className="mb-1 text-sm font-bold uppercase tracking-wide text-slate-500">
+                        Rincian model
+                      </div>
                       {itemPekerja.map((it, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs text-slate-700">
-                          <span>
-                            • <b>{it.nama_model}</b> ({formatAngka(it.total_pasang)} psg)
+                        <div
+                          key={idx}
+                          className="flex items-baseline justify-between gap-3 border-b border-slate-100 py-2 last:border-b-0"
+                        >
+                          <span className="text-base font-semibold text-slate-700">
+                            {it.nama_model}
+                            <span className="ml-1 text-sm font-medium text-slate-500">
+                              ({formatAngka(it.total_pasang)} psg)
+                            </span>
                           </span>
-                          <span className="font-bold text-slate-900">{formatRupiah(it.total_gaji)}</span>
+                          <span className="text-base font-extrabold text-slate-900">
+                            {formatRupiah(it.total_gaji)}
+                          </span>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </article>
                 )
               })}
+
+              <div className="rounded-3xl border-2 border-slate-950 bg-slate-900 p-4 text-white shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-base font-bold uppercase tracking-wide text-slate-300">
+                    Total gaji periode ini
+                  </span>
+                  <span className="text-2xl font-extrabold text-emerald-400">
+                    {formatRupiah(grandTotal)}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </>

@@ -20,18 +20,24 @@ import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/type
 import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
 import {
   BigButton,
-  Card,
   ConfirmModal,
+  EmptyState,
   ErrorBox,
+  FieldLabel,
+  HintBox,
   Modal,
+  NumberStepper,
+  PageTitle,
+  PillBadge,
   Skeleton,
   SkeletonCard,
   Spinner,
+  StepCard,
+  TextInput,
 } from '../../components/ui'
 import PoProgress from '../../components/PoProgress'
 import {
   ArrowLeft,
-  ArrowRight,
   Calendar,
   CheckCircle2,
   ChevronRight,
@@ -40,6 +46,7 @@ import {
   Package,
   Plus,
   RotateCw,
+  Save,
   Trash2,
   User,
 } from 'lucide-react'
@@ -608,10 +615,10 @@ export default function InputProduksi() {
   if (loading && pekerjaList.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm">
-          <Skeleton className="h-6 w-32 rounded-full mb-3" />
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-full" />
+        <div className="rounded-3xl border-2 border-slate-300 bg-white p-5 shadow-sm">
+          <Skeleton className="mb-3 h-7 w-40 rounded-full" />
+          <Skeleton className="mb-2 h-9 w-64" />
+          <Skeleton className="h-5 w-full" />
         </div>
         <div className="space-y-3">
           <SkeletonCard />
@@ -625,18 +632,19 @@ export default function InputProduksi() {
   if (!idPekerja) {
     return (
       <div className="space-y-4">
-        <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full w-fit border border-emerald-300">
-            <Calendar className="h-4 w-4" />
-            <span>{labelTanggalHariIni()}</span>
-          </div>
-          <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
-            Pilih Nama Pekerja
-          </h1>
-          <p className="mt-0.5 text-sm font-semibold text-slate-600">
-            Ketuk nama pekerja di bawah untuk mulai mengisi hasil pasang sepatu hari ini.
-          </p>
-        </div>
+        <PageTitle
+          icon={<User className="h-6 w-6" />}
+          title="Pilih Nama Pekerja"
+          subtitle="Ketuk nama pekerja untuk mulai mencatat hasil kerjanya hari ini."
+          badge={
+            <PillBadge color="emerald">
+              <Calendar className="h-4 w-4" />
+              {labelTanggalHariIni()}
+            </PillBadge>
+          }
+        />
+
+        {error && <ErrorBox message={error} onRetry={() => muatData()} />}
 
         <div className="space-y-3">
           {pekerjaList.map((p) => {
@@ -647,66 +655,56 @@ export default function InputProduksi() {
               <button
                 key={p.id_pekerja}
                 onClick={() => pilihPekerja(p.id_pekerja)}
-                className="group flex w-full items-center justify-between rounded-3xl border-2 border-slate-200 bg-white p-4 text-left shadow-sm transition-all duration-150 hover:border-emerald-500 hover:bg-emerald-50/40 active:scale-[0.98]"
+                className="flex w-full items-center justify-between gap-3 rounded-3xl border-2 border-slate-300 bg-white p-4 text-left shadow-sm transition-colors active:bg-emerald-50"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-800 text-xl font-bold border-2 border-emerald-300">
-                    <User className="h-6 w-6" />
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-emerald-300 bg-emerald-100 text-emerald-800">
+                    <User className="h-7 w-7" />
                   </div>
-                  <div>
-                    <div className="text-lg font-black tracking-tight text-slate-900">
+                  <div className="min-w-0">
+                    <div className="truncate text-xl font-extrabold leading-tight tracking-tight text-slate-900">
                       {p.nama}
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
                       {hasShift && (
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${
-                          shiftMap[p.id_pekerja] === 1 
-                            ? 'bg-amber-100 text-amber-950 border-amber-300' 
-                            : 'bg-indigo-100 text-indigo-950 border-indigo-300'
-                        }`}>
-                          {shiftMap[p.id_pekerja] === 1 ? '☀️ Shift 1 (Pagi)' : '🌙 Shift 2 (Malam)'}
-                        </span>
+                        <PillBadge color={shiftMap[p.id_pekerja] === 1 ? 'amber' : 'indigo'}>
+                          {shiftMap[p.id_pekerja] === 1 ? '☀️ Shift 1' : '🌙 Shift 2'}
+                        </PillBadge>
                       )}
                       {workerPo && (
-                        <span className="inline-flex items-center rounded-full bg-sky-100 text-sky-950 border border-sky-300 px-2.5 py-0.5 text-xs font-bold">
-                          <Package className="mr-1 h-3 w-3 inline text-sky-700" />
+                        <PillBadge color="blue">
+                          <Package className="h-4 w-4" />
                           {workerPo.no_po}
+                        </PillBadge>
+                      )}
+                      {!hasShift && !workerPo && (
+                        <span className="text-sm font-medium text-slate-500">
+                          Belum ada catatan hari ini
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 font-bold text-sm text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
-                  <span>PILIH</span>
-                  <ChevronRight className="h-4 w-4" />
-                </div>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-emerald-700 bg-emerald-700 text-white">
+                  <ChevronRight className="h-7 w-7" />
+                </span>
               </button>
             )
           })}
         </div>
-        {error && (
-          <div className="space-y-2">
-            <ErrorBox message={error} />
-            <button
-              onClick={() => muatData()}
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800"
-            >
-              <RotateCw className="h-3.5 w-3.5" />
-              <span>Coba Muat Ulang</span>
-            </button>
-          </div>
-        )}
+
         {!loading && pekerjaList.length === 0 && !error && (
-          <Card className="text-center text-slate-500 py-10 space-y-3">
-            <p>Belum ada pekerja aktif.</p>
-            <button
-              onClick={() => muatData()}
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200"
-            >
-              <RotateCw className="h-3.5 w-3.5" />
-              <span>Segarkan Data</span>
-            </button>
-          </Card>
+          <EmptyState
+            icon={<User className="h-8 w-8" />}
+            title="Belum ada nama pekerja"
+            description="Minta admin pabrik menambahkan nama pekerja lewat menu Master Data terlebih dahulu."
+            action={
+              <BigButton variant="ghost" onClick={() => muatData()}>
+                <RotateCw className="h-5 w-5" />
+                Muat Ulang
+              </BigButton>
+            }
+          />
         )}
       </div>
     )
@@ -733,43 +731,52 @@ export default function InputProduksi() {
   if (pilihModel) {
     return (
       <div className="space-y-4">
-        <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm">
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Pilih Model Sepatu</h1>
-          <p className="text-sm font-semibold text-slate-600">Pilih model sepatu yang keluar dari loker untuk diisi jumlahnya.</p>
-        </div>
+        <PageTitle
+          icon={<Layers className="h-6 w-6" />}
+          title="Pilih Model Sepatu"
+          subtitle="Pilih model sepatu yang dikerjakan. Setelah dipilih, Anda bisa mengisi jumlahnya."
+        />
+
+        {error && <ErrorBox message={error} />}
 
         <div className="space-y-3">
           {modelList.map((m) => (
             <button
               key={m.id_sepatu}
               onClick={() => onTambahItem(m.id_sepatu)}
-              className="flex w-full items-center justify-between rounded-3xl border-2 border-slate-200 bg-white p-4 text-left shadow-sm transition-all duration-150 hover:border-emerald-500 hover:bg-emerald-50/40 active:scale-[0.98]"
+              className="flex w-full items-center justify-between gap-3 rounded-3xl border-2 border-slate-300 bg-white p-4 text-left shadow-sm transition-colors active:bg-emerald-50"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-800 border border-blue-200">
-                  <Layers className="h-6 w-6" />
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-300 bg-blue-100 text-blue-800">
+                  <Layers className="h-7 w-7" />
                 </div>
-                <div>
-                  <span className="text-lg font-black tracking-tight text-slate-900 block">
+                <div className="min-w-0">
+                  <div className="truncate text-xl font-extrabold leading-tight tracking-tight text-slate-900">
                     {m.nama_model}
-                  </span>
-                  <span className="text-xs font-bold text-slate-500">
-                    Upah: {formatRupiah(m.ongkos_kerja)} / pasang
-                  </span>
+                  </div>
+                  <div className="text-base font-semibold text-slate-600">
+                    Upah {formatRupiah(m.ongkos_kerja)} / pasang
+                  </div>
                 </div>
               </div>
-              <span className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white shadow-xs">
-                + PILIH MODEL
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-emerald-700 bg-emerald-700 text-white">
+                <Plus className="h-7 w-7" />
               </span>
             </button>
           ))}
         </div>
 
-        {error && <ErrorBox message={error} />}
+        {modelList.length === 0 && (
+          <EmptyState
+            icon={<Layers className="h-8 w-8" />}
+            title="Belum ada model sepatu"
+            description="Minta admin menambahkan model sepatu beserta upah per pasang di menu Master Data."
+          />
+        )}
 
-        <BigButton variant="ghost" className="w-full py-4 text-base font-bold" onClick={() => setPilihModel(false)}>
-          <ArrowLeft className="h-5 w-5 mr-1" />
-          Batal & Kembali
+        <BigButton variant="ghost" size="lg" className="w-full" onClick={() => setPilihModel(false)}>
+          <ArrowLeft className="h-6 w-6" />
+          Kembali
         </BigButton>
       </div>
     )
@@ -802,15 +809,15 @@ export default function InputProduksi() {
 
   return (
     <div className="space-y-4">
-      {/* Header bar Pekerja Aktif */}
-      <div className="rounded-3xl border-2 border-slate-800 bg-slate-900 p-4 text-white shadow-md flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400 text-slate-900 text-xl font-bold">
+      {/* ---------- Pekerja yang sedang diisi ---------- */}
+      <div className="flex items-center justify-between gap-3 rounded-3xl border-2 border-slate-950 bg-slate-900 p-4 text-white shadow-sm">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-2xl text-slate-900">
             👤
           </div>
-          <div>
-            <div className="text-xs font-bold text-amber-300">Pekerja yang Dipilih:</div>
-            <h1 className="text-xl font-black tracking-tight text-white leading-tight">
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-amber-300">Sedang mengisi data:</div>
+            <h1 className="truncate text-xl font-extrabold leading-tight tracking-tight">
               {pekerja?.nama}
             </h1>
           </div>
@@ -820,10 +827,11 @@ export default function InputProduksi() {
             const hasUnsaved = newItems.some((it) => Object.values(it.qty).some((q) => q > 0))
             if (hasUnsaved) {
               requestConfirm({
-                title: 'Perubahan Belum Disimpan',
-                message: 'Terdapat isian data baru yang belum disimpan. Yakin ingin kembali dan membatalkan input?',
-                confirmLabel: 'Kembali',
-                cancelLabel: 'Batal',
+                title: 'Data belum disimpan',
+                message:
+                  'Ada jumlah yang sudah Anda ketik tapi belum ditekan Simpan. Kalau kembali sekarang, isian itu akan hilang.',
+                confirmLabel: 'Kembali, Hapus Isian',
+                cancelLabel: 'Batal, Lanjut Mengisi',
                 isDestructive: true,
                 onConfirm: () => {
                   setConfirmState(null)
@@ -835,18 +843,16 @@ export default function InputProduksi() {
             }
             setIdPekerja(null)
           }}
-          className="rounded-2xl border-2 border-slate-600 bg-slate-800 px-3.5 py-2 text-xs font-black text-slate-200 hover:bg-slate-700 active:bg-slate-600 transition-colors"
+          className="flex min-h-12 shrink-0 items-center gap-1.5 rounded-2xl border-2 border-slate-600 bg-slate-800 px-3.5 text-base font-bold text-white active:bg-slate-600"
         >
-          ← Ganti Pekerja
+          <ArrowLeft className="h-5 w-5" />
+          Ganti
         </button>
       </div>
 
-      {/* Shift Toggle */}
-      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm space-y-2">
-        <div className="text-sm font-black uppercase tracking-wider text-slate-800">
-          1. PILIH SHIFT KERJA
-        </div>
-        <div className="grid grid-cols-2 gap-2.5">
+      {/* ---------- Langkah 1: Shift ---------- */}
+      <StepCard step={1} title="Pilih Shift Kerja" hint="Pagi atau malam?" done>
+        <div className="grid grid-cols-2 gap-3">
           {SHIFTS.map((s) => {
             const isShift1 = s.value === 1
             const isSelected = shift === s.value
@@ -854,64 +860,74 @@ export default function InputProduksi() {
               <button
                 key={s.value}
                 onClick={() => gantiShift(s.value)}
-                className={`rounded-2xl p-3.5 text-center transition-all ${
+                aria-pressed={isSelected}
+                className={`min-h-20 rounded-2xl border-2 p-3 text-center transition-colors ${
                   isSelected
                     ? isShift1
-                      ? 'bg-amber-400 text-slate-950 border-2 border-amber-600 shadow-md scale-[1.02]'
-                      : 'bg-indigo-600 text-white border-2 border-indigo-800 shadow-md scale-[1.02]'
-                    : 'border-2 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      ? 'border-amber-600 bg-amber-400 text-slate-950'
+                      : 'border-indigo-800 bg-indigo-700 text-white'
+                    : 'border-slate-300 bg-white text-slate-700 active:bg-slate-100'
                 }`}
               >
-                <div className="text-base font-black tracking-tight">
+                <div className="text-lg font-extrabold tracking-tight">
                   {isShift1 ? '☀️ ' : '🌙 '}
                   {s.label}
                 </div>
-                <div className={`text-xs font-bold mt-0.5 ${isSelected ? (isShift1 ? 'text-amber-950' : 'text-indigo-200') : 'text-slate-500'}`}>
+                <div
+                  className={`mt-0.5 text-base font-semibold ${
+                    isSelected ? 'opacity-80' : 'text-slate-500'
+                  }`}
+                >
                   {s.sub}
                 </div>
+                {isSelected && (
+                  <div className="mt-1 text-sm font-extrabold">✓ Dipilih</div>
+                )}
               </button>
             )
           })}
         </div>
-      </div>
+      </StepCard>
 
-      {/* PO Selector */}
-      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm space-y-2">
-        <div className="text-sm font-black uppercase tracking-wider text-slate-800">
-          2. NOMOR PURCHASE ORDER (PO)
-        </div>
+      {/* ---------- Langkah 2: PO ---------- */}
+      <StepCard
+        step={2}
+        title="Nomor Pesanan (PO)"
+        hint={selectedPo ? 'Sudah dipilih' : 'Boleh dilewati jika pekerjaan biasa'}
+        done={Boolean(selectedPo)}
+      >
         {selectedPo ? (
-          <div className="rounded-2xl border-2 border-sky-200 bg-sky-50 p-4 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-sky-700" />
-                <span className="text-lg font-black text-sky-950">{selectedPo.no_po}</span>
-                {selectedPo.nama_customer && (
-                  <span className="text-xs font-bold text-sky-700">({selectedPo.nama_customer})</span>
-                )}
+          <div className="space-y-3 rounded-2xl border-2 border-sky-300 bg-sky-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <Package className="h-6 w-6 shrink-0 text-sky-700" />
+                <div className="min-w-0">
+                  <div className="truncate text-xl font-extrabold text-sky-950">
+                    {selectedPo.no_po}
+                  </div>
+                  {selectedPo.nama_customer && (
+                    <div className="truncate text-base font-semibold text-sky-800">
+                      {selectedPo.nama_customer}
+                    </div>
+                  )}
+                </div>
               </div>
-              <button
-                onClick={() => setPilihPo(true)}
-                className="rounded-xl bg-sky-600 px-3.5 py-1.5 text-xs font-black text-white hover:bg-sky-700 shadow-xs"
-              >
-                Ganti PO
-              </button>
+              <BigButton variant="blue" size="sm" onClick={() => setPilihPo(true)}>
+                Ganti
+              </BigButton>
             </div>
             {selectedPo.target_qty > 0 && (
-              <div className="mt-2.5 space-y-2">
+              <div className="space-y-2 border-t-2 border-sky-200 pt-3">
                 <PoProgress target={selectedPo.target_qty} achieved={poProjected} />
                 {newTotal > 0 && (
-                  <div className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg inline-block border border-emerald-200">
-                    +{newTotal} pasang baru sedang diketik
-                  </div>
+                  <PillBadge color="emerald">+{newTotal} pasang belum disimpan</PillBadge>
                 )}
                 {poProjected > selectedPo.target_qty && (
-                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs font-bold text-amber-950 flex items-center gap-2">
-                    <span className="text-base">⚠️</span>
-                    <span>
-                      Total input melebihi target PO (lebih <b>+{poProjected - selectedPo.target_qty} psg</b>). Pastikan jumlah sudah benar.
-                    </span>
-                  </div>
+                  <HintBox>
+                    Jumlah yang diisi <b>melebihi target PO</b> sebanyak{' '}
+                    <b>{poProjected - selectedPo.target_qty} pasang</b>. Mohon periksa lagi
+                    angkanya.
+                  </HintBox>
                 )}
               </div>
             )}
@@ -919,156 +935,160 @@ export default function InputProduksi() {
         ) : (
           <button
             onClick={() => setPilihPo(true)}
-            className="flex w-full items-center justify-between rounded-2xl border-2 border-dashed border-sky-400 bg-sky-50/50 p-4 text-sm font-bold text-sky-900 hover:bg-sky-100"
+            className="flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-sky-500 bg-sky-50 p-4 text-left active:bg-sky-100"
           >
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-sky-600" />
-              <span>Belum Memilih PO (Ketuk di sini untuk memilih)</span>
-            </div>
-            <span className="text-xs font-black text-sky-700 bg-sky-200/80 px-2.5 py-1 rounded-lg">PILIH PO →</span>
+            <span className="flex items-center gap-2.5">
+              <Package className="h-6 w-6 shrink-0 text-sky-700" />
+              <span className="text-base font-bold text-sky-950">
+                Belum pilih PO — ketuk di sini
+              </span>
+            </span>
+            <ChevronRight className="h-6 w-6 shrink-0 text-sky-700" />
           </button>
         )}
-      </div>
+      </StepCard>
 
-      {/* Item Tercatat (Terkunci) */}
+      {/* ---------- Data yang sudah tersimpan ---------- */}
       {savedList.length > 0 && (
-        <div className="rounded-3xl border-2 border-slate-200 bg-slate-50 p-4 space-y-2">
-          <div className="text-xs font-black uppercase tracking-wider text-slate-600">
-            ✓ Data Sudah Tersimpan di Database ({savedList.length} Model)
-          </div>
+        <section className="rounded-3xl border-2 border-emerald-300 bg-emerald-50 p-4 shadow-sm">
+          <h2 className="flex items-center gap-2 text-base font-extrabold uppercase tracking-wide text-emerald-900">
+            <CheckCircle2 className="h-5 w-5" />
+            Sudah tersimpan ({savedList.length} model)
+          </h2>
           {loadingSaved ? (
             <Spinner />
           ) : (
-            <div className="space-y-2">
+            <div className="mt-3 space-y-2.5">
               {savedList.map((r) => {
                 const model = modelList.find((m) => m.id_sepatu === Number(r.id_sepatu))
                 const sum = (r.detail ?? []).reduce((x, d) => x + Number(d.qty), 0)
                 const ringkas = (r.detail ?? [])
                   .filter((d) => Number(d.qty) > 0)
-                  .map((d) => `No ${ukuranList.find((u) => u.id_ukuran === Number(d.id_ukuran))?.label_ukuran ?? '?'}: ${d.qty}`)
-                  .join(' · ')
+                  .map(
+                    (d) =>
+                      `No ${
+                        ukuranList.find((u) => u.id_ukuran === Number(d.id_ukuran))?.label_ukuran ??
+                        '?'
+                      }: ${d.qty}`,
+                  )
+                  .join('  ·  ')
                 return (
-                  <div key={r.id_produksi} className="rounded-2xl border-2 border-slate-200 bg-white p-3.5 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                        <div className="font-black text-slate-900 text-base">
+                  <div
+                    key={r.id_produksi}
+                    className="rounded-2xl border-2 border-slate-300 bg-white p-3.5"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-lg font-extrabold text-slate-900">
                           {model?.nama_model ?? '?'}
                         </div>
-                        {r.no_po && (
-                          <span className="bg-slate-100 text-slate-700 border border-slate-300 rounded-full px-2.5 py-0.5 text-xs font-bold">
-                            {r.no_po}
-                          </span>
-                        )}
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <PillBadge color="emerald">{sum} pasang</PillBadge>
+                          {r.no_po && <PillBadge color="blue">{r.no_po}</PillBadge>}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-xl">
-                          {sum} pasang
-                        </span>
+                      <div className="flex shrink-0 items-center gap-2">
                         <button
                           onClick={() => bukaEdit(r)}
-                          className="rounded-xl p-2 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200"
-                          title="Edit data ini"
+                          className="flex min-h-12 items-center gap-1.5 rounded-2xl border-2 border-blue-400 bg-blue-50 px-3.5 text-base font-bold text-blue-900 active:bg-blue-200"
                         >
-                          <Edit3 className="h-4 w-4" />
+                          <Edit3 className="h-5 w-5" />
+                          Ubah
                         </button>
                         <button
                           onClick={() => hapusLocked(r)}
-                          className="rounded-xl p-2 text-rose-600 hover:bg-rose-100 transition-colors border border-rose-200"
-                          title="Hapus data ini"
+                          aria-label="Hapus catatan ini"
+                          className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-rose-400 bg-rose-50 text-rose-700 active:bg-rose-200"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-5 w-5" />
                         </button>
                       </div>
                     </div>
-                    {ringkas && <div className="mt-2 text-xs font-semibold text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">{ringkas}</div>}
+                    {ringkas && (
+                      <div className="mt-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 p-2.5 text-base font-semibold text-slate-700">
+                        {ringkas}
+                      </div>
+                    )}
                   </div>
                 )
               })}
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      {/* Item Baru */}
-      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-          <div>
-            <div className="text-sm font-black uppercase tracking-wider text-slate-900">
-              3. ISI JUMLAH UKURAN SEPATU
-            </div>
-            <div className="text-xs text-slate-500 font-semibold">Ketik jumlah pasang sesuai nomor ukuran</div>
-          </div>
-          <button
-            onClick={() => setPilihModel(true)}
-            className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-black text-white hover:bg-blue-700 shadow-md active:scale-[0.98]"
-          >
-            <Plus className="h-4 w-4" />
-            <span>+ TAMBAH MODEL</span>
-          </button>
-        </div>
-
+      {/* ---------- Langkah 3: Isi jumlah ---------- */}
+      <StepCard
+        step={3}
+        title="Isi Jumlah Sepatu"
+        hint="Isi jumlah pasang sesuai nomor ukuran"
+        done={newTotal > 0}
+        action={
+          <BigButton variant="secondary" size="sm" onClick={() => setPilihModel(true)}>
+            <Plus className="h-5 w-5" />
+            Tambah Model
+          </BigButton>
+        }
+      >
         {newItems.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
-            <Layers className="mx-auto h-10 w-10 text-slate-400 mb-2" />
-            <p className="text-base font-black text-slate-800">Belum ada model sepatu yang dipilih.</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">
-              Tekan tombol biru <b>+ TAMBAH MODEL</b> di atas untuk mulai mengisi.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Layers className="h-8 w-8" />}
+            title="Belum ada model sepatu"
+            description="Ketuk tombol biru “Tambah Model” di atas, lalu pilih model sepatu yang dikerjakan."
+          />
         ) : (
           <div className="space-y-4">
             {newItems.map((it, idx) => {
               const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
-              const subTotal = ukuranList.reduce((x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0), 0)
+              const subTotal = ukuranList.reduce(
+                (x, u) => x + (it.qty[String(u.id_ukuran)] ?? 0),
+                0,
+              )
               return (
-                <div key={it.localId} className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/40 p-4 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-emerald-200 pb-2.5">
-                    <div>
-                      <div className="text-lg font-black text-slate-900">{model?.nama_model ?? '?'}</div>
-                      <div className="text-xs font-bold text-emerald-800">
-                        {model ? `Tarif Upah: ${formatRupiah(model.ongkos_kerja)} / pasang` : ''}
+                <div
+                  key={it.localId}
+                  className="rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-3.5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-emerald-200 pb-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-lg font-extrabold text-slate-900">
+                        {model?.nama_model ?? '?'}
+                      </div>
+                      <div className="text-base font-semibold text-emerald-800">
+                        {model ? `${formatRupiah(model.ongkos_kerja)} / pasang` : ''}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="rounded-xl bg-emerald-600 px-3.5 py-1 text-sm font-black text-white shadow-xs">
-                        Total: {subTotal} psg
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-2xl border-2 border-emerald-800 bg-emerald-700 px-3 py-1.5 text-base font-extrabold text-white">
+                        {subTotal} psg
                       </span>
                       <button
-                        onClick={() => setNewItems((prev) => prev.filter((x) => x.localId !== it.localId))}
-                        className="rounded-xl p-2 text-rose-600 hover:bg-rose-100 border border-rose-300 bg-white"
-                        title="Hapus baris ini"
+                        onClick={() =>
+                          setNewItems((prev) => prev.filter((x) => x.localId !== it.localId))
+                        }
+                        aria-label="Hapus model ini dari isian"
+                        className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-rose-400 bg-white text-rose-700 active:bg-rose-200"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-2.5">
+                  <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                     {ukuranList.map((u) => (
-                      <div key={u.id_ukuran} className="rounded-xl border-2 border-slate-300 bg-white p-2 text-center shadow-xs">
-                        <div className="text-xs font-black text-slate-700 mb-1">
-                          No {u.label_ukuran}
-                        </div>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          placeholder="0"
-                          value={it.qty[String(u.id_ukuran)] === undefined || it.qty[String(u.id_ukuran)] === 0 ? '' : it.qty[String(u.id_ukuran)]}
-                          onChange={(e) => {
-                            const raw = e.target.value
-                            const val = raw === '' ? 0 : Math.max(0, Math.floor(Number(raw) || 0))
-                            setNewItems((prev) =>
-                              prev.map((x, i) =>
-                                i === idx
-                                  ? { ...x, qty: { ...x.qty, [String(u.id_ukuran)]: val } }
-                                  : x,
-                              ),
-                            )
-                          }}
-                          className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 py-2 text-center text-xl font-black text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                        />
-                      </div>
+                      <NumberStepper
+                        key={u.id_ukuran}
+                        label={`No ${u.label_ukuran}`}
+                        value={it.qty[String(u.id_ukuran)] ?? 0}
+                        onChange={(val) =>
+                          setNewItems((prev) =>
+                            prev.map((x, i) =>
+                              i === idx
+                                ? { ...x, qty: { ...x.qty, [String(u.id_ukuran)]: val } }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
                     ))}
                   </div>
                 </div>
@@ -1076,152 +1096,114 @@ export default function InputProduksi() {
             })}
           </div>
         )}
-      </div>
+      </StepCard>
 
       {error && <ErrorBox message={error} />}
 
-      {/* Summary Box */}
-      <div className="rounded-3xl border-2 border-slate-800 bg-slate-900 p-4 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold uppercase tracking-wider text-slate-300">TOTAL HASIL KERJA:</span>
-          <span className="text-3xl font-black tracking-tight text-emerald-400">{totalPasang} Pasang</span>
+      {/* ---------- Ringkasan + Tombol Simpan (menempel di atas menu bawah) ---------- */}
+      <div className="sticky bottom-24 z-10 space-y-2.5 rounded-3xl border-2 border-slate-950 bg-slate-900 p-4 text-white shadow-lg">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-base font-bold uppercase tracking-wide text-slate-300">
+            Total hari ini
+          </span>
+          <span className="text-3xl font-extrabold leading-none text-emerald-400">
+            {totalPasang}
+            <span className="ml-1 text-base font-bold text-slate-300">pasang</span>
+          </span>
         </div>
         {newTotal > 0 && (
-          <div className="mt-1 text-right text-xs font-bold text-amber-300">
-            ({savedTotal} tersimpan + <span className="underline">{newTotal} pasang baru belum disimpan</span>)
+          <div className="rounded-xl border-2 border-amber-500 bg-amber-400/15 p-2.5 text-base font-bold text-amber-200">
+            {savedTotal} sudah tersimpan + {newTotal} pasang{' '}
+            <span className="underline">belum disimpan</span>
           </div>
         )}
+        <BigButton
+          disabled={saving || newTotal <= 0}
+          variant={newTotal > 0 ? 'primary' : 'ghost'}
+          size="lg"
+          onClick={simpan}
+          className="w-full"
+        >
+          {saving ? (
+            'MENYIMPAN...'
+          ) : newTotal > 0 ? (
+            <>
+              <Save className="h-6 w-6" />
+              SIMPAN ({jumlahBaruTerisi} MODEL)
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="h-6 w-6" />
+              SEMUA SUDAH TERSIMPAN
+            </>
+          )}
+        </BigButton>
       </div>
-
-      {/* Big Save Button */}
-      <BigButton
-        disabled={saving || newTotal <= 0}
-        variant="primary"
-        onClick={simpan}
-        className="w-full py-4 text-lg font-black shadow-xl"
-      >
-        {saving ? (
-          'SEDANG MENYIMPAN KE DATABASE...'
-        ) : newTotal > 0 ? (
-          <>
-            <span>💾 SIMPAN HASIL PRODUKSI ({jumlahBaruTerisi} MODEL)</span>
-            <ArrowRight className="h-5 w-5 ml-1" />
-          </>
-        ) : (
-          '✓ SEMUA DATA SUDAH TERSIMPAN'
-        )}
-      </BigButton>
 
       {/* Modal Edit Item Tersimpan */}
       {editingRow && (
         <Modal
           isOpen={true}
           onClose={() => setEditingRow(null)}
-          title={`Edit Produksi: ${editingRow.nama_model ?? 'Model'}`}
+          title={`Ubah: ${editingRow.nama_model ?? 'Model'}`}
           maxWidth="max-w-md"
         >
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-slate-100 border border-slate-300 px-3 py-1 text-xs font-bold text-slate-800">
-                👤 {pekerja?.nama}
-              </span>
-              <span className="rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-xs font-bold text-amber-900">
+              <PillBadge color="neutral">👤 {pekerja?.nama}</PillBadge>
+              <PillBadge color={editingRow.shift === 1 ? 'amber' : 'indigo'}>
                 {editingRow.shift === 1 ? '☀️ Shift 1' : '🌙 Shift 2'}
+              </PillBadge>
+              {editingRow.no_po && <PillBadge color="blue">📦 {editingRow.no_po}</PillBadge>}
+            </div>
+
+            <div>
+              <div className="mb-2 text-base font-bold text-slate-900">
+                Ubah jumlah per nomor ukuran:
+              </div>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {ukuranList.map((u) => (
+                  <NumberStepper
+                    key={u.id_ukuran}
+                    label={`No ${u.label_ukuran}`}
+                    value={editQty[String(u.id_ukuran)] || 0}
+                    onChange={(val) =>
+                      setEditQty((prev) => ({ ...prev, [String(u.id_ukuran)]: val }))
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-baseline justify-between gap-3 rounded-2xl border-2 border-slate-950 bg-slate-900 px-4 py-3 text-white">
+              <span className="text-base font-bold uppercase tracking-wide text-slate-300">
+                Total
               </span>
-              {editingRow.no_po && (
-                <span className="rounded-full bg-sky-100 border border-sky-300 px-3 py-1 text-xs font-bold text-sky-900">
-                  📦 {editingRow.no_po}
-                </span>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                Ubah Jumlah per Nomor Ukuran:
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {ukuranList.map((u) => {
-                  const val = editQty[String(u.id_ukuran)] || 0
-                  return (
-                    <div
-                      key={u.id_ukuran}
-                      className="rounded-xl border border-slate-200 bg-white p-2 text-center shadow-xs"
-                    >
-                      <div className="text-xs font-black text-slate-500">No {u.label_ukuran}</div>
-                      <div className="mt-1 flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditQty((prev) => ({
-                              ...prev,
-                              [String(u.id_ukuran)]: Math.max(0, (prev[String(u.id_ukuran)] || 0) - 1),
-                            }))
-                          }
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 text-xs font-black"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="0"
-                          value={val === 0 ? '' : val}
-                          placeholder="0"
-                          onChange={(e) => {
-                            const n = parseInt(e.target.value, 10)
-                            setEditQty((prev) => ({
-                              ...prev,
-                              [String(u.id_ukuran)]: isNaN(n) ? 0 : Math.max(0, n),
-                            }))
-                          }}
-                          className="w-12 text-center text-base font-black text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 rounded"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditQty((prev) => ({
-                              ...prev,
-                              [String(u.id_ukuran)]: (prev[String(u.id_ukuran)] || 0) + 1,
-                            }))
-                          }
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 text-xs font-black"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Total Pasang in Edit Modal */}
-            <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-white">
-              <span className="text-xs font-bold uppercase text-slate-300">Total Pasang:</span>
-              <span className="text-xl font-black text-emerald-400">
-                {Object.values(editQty).reduce((a, b) => a + (Number(b) || 0), 0)} Pasang
+              <span className="text-2xl font-extrabold text-emerald-400">
+                {Object.values(editQty).reduce((a, b) => a + (Number(b) || 0), 0)} pasang
               </span>
             </div>
 
             {editError && <ErrorBox message={editError} />}
 
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="space-y-2.5 pt-1">
+              <BigButton
+                variant="primary"
+                type="button"
+                className="w-full"
+                onClick={simpanEdit}
+                disabled={savingEdit}
+              >
+                {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </BigButton>
               <BigButton
                 variant="ghost"
                 type="button"
-                className="py-3 text-sm font-bold"
+                className="w-full"
                 onClick={() => setEditingRow(null)}
                 disabled={savingEdit}
               >
                 Batal
-              </BigButton>
-              <BigButton
-                variant="primary"
-                type="button"
-                className="py-3 text-sm font-black"
-                onClick={simpanEdit}
-                disabled={savingEdit}
-              >
-                {savingEdit ? 'Menyimpan...' : '✓ Simpan Perubahan'}
               </BigButton>
             </div>
           </div>
@@ -1296,17 +1278,20 @@ function PoPickerScreen({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">Pilih Purchase Order (PO)</h1>
-        <p className="text-sm font-semibold text-slate-600">Pilih nomor PO yang sedang dikerjakan hari ini, atau lewati jika order reguler.</p>
-      </div>
+      <PageTitle
+        icon={<Package className="h-6 w-6" />}
+        title="Pilih Nomor Pesanan (PO)"
+        subtitle="Pilih PO yang sedang dikerjakan. Jika pekerjaan biasa tanpa PO, ketuk tombol Lewati."
+      />
+
+      {error && <ErrorBox message={error} />}
 
       <button
         onClick={() => setIdPo(null)}
-        className="flex w-full items-center justify-between rounded-2xl border-2 border-dashed border-slate-400 bg-white p-4 text-left font-black text-slate-700 shadow-xs hover:border-slate-600 active:bg-slate-50 transition-colors"
+        className="flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-slate-500 bg-white p-4 text-left active:bg-slate-100"
       >
-        <span className="text-base">⏭️ Lewati (Tanpa PO / Order Reguler)</span>
-        <span className="text-xs font-black text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">PILIH →</span>
+        <span className="text-lg font-bold text-slate-800">Lewati — tanpa nomor PO</span>
+        <ChevronRight className="h-6 w-6 shrink-0 text-slate-600" />
       </button>
 
       <div className="space-y-3">
@@ -1317,39 +1302,49 @@ function PoPickerScreen({
             <button
               key={p.id_po}
               onClick={() => setIdPo(p.id_po)}
-              className={`w-full rounded-3xl border-2 p-4 text-left shadow-sm transition-all duration-150 active:scale-[0.98] ${
+              aria-pressed={terpilih}
+              className={`w-full rounded-3xl border-2 p-4 text-left shadow-sm transition-colors ${
                 terpilih
-                  ? 'border-sky-600 bg-sky-50 text-slate-900 ring-2 ring-sky-500'
-                  : 'border-slate-200 bg-white text-slate-900 hover:border-slate-400'
+                  ? 'border-sky-700 bg-sky-50 ring-4 ring-sky-300'
+                  : 'border-slate-300 bg-white active:bg-slate-100'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-xl ${terpilih ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                    <Package className="h-5 w-5" />
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 ${
+                      terpilih
+                        ? 'border-sky-800 bg-sky-700 text-white'
+                        : 'border-slate-300 bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <Package className="h-6 w-6" />
                   </div>
-                  <div>
-                    <span className="text-lg font-black tracking-tight">{p.no_po}</span>
+                  <div className="min-w-0">
+                    <div className="truncate text-xl font-extrabold tracking-tight text-slate-900">
+                      {p.no_po}
+                    </div>
                     {p.nama_customer && (
-                      <span className="text-xs font-bold text-slate-500 block">
-                        Customer: {p.nama_customer}
-                      </span>
+                      <div className="truncate text-base font-semibold text-slate-600">
+                        {p.nama_customer}
+                      </div>
                     )}
                   </div>
                 </div>
-                {penuh && (
-                  <span className="rounded-full px-3 py-1 text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    ✓ Target Tercapai
-                  </span>
-                )}
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  {terpilih && <PillBadge color="blue">✓ Dipilih</PillBadge>}
+                  {penuh && <PillBadge color="emerald">Target tercapai</PillBadge>}
+                </div>
               </div>
               {p.target_qty > 0 ? (
-                <div className="mt-3 pointer-events-none">
+                <div className="pointer-events-none mt-3 border-t-2 border-slate-100 pt-3">
                   <PoProgress target={p.target_qty} achieved={p.achieved_qty} />
                 </div>
               ) : (
-                <div className="mt-2 text-xs font-bold text-slate-500">
-                  {p.achieved_qty > 0 ? `${p.achieved_qty} pasang terinput` : 'Belum ada target'}
+                <div className="mt-2 text-base font-semibold text-slate-600">
+                  {p.achieved_qty > 0
+                    ? `${p.achieved_qty} pasang sudah dicatat`
+                    : 'Belum ada target jumlah'}
                 </div>
               )}
             </button>
@@ -1357,37 +1352,57 @@ function PoPickerScreen({
         })}
       </div>
 
-      {poList.length === 0 && <p className="text-sm text-slate-500 font-semibold">Belum ada PO aktif.</p>}
+      {poList.length === 0 && (
+        <EmptyState
+          icon={<Package className="h-8 w-8" />}
+          title="Belum ada nomor PO"
+          description="Anda bisa menambahkan nomor PO baru lewat tombol di bawah, atau ketuk Lewati."
+        />
+      )}
 
       {/* Tambah PO Baru */}
-      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm space-y-3">
+      <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm">
         {tambahPoMode ? (
           <form onSubmit={submitPo} className="space-y-3">
-            <div className="text-base font-black text-slate-900">+ Tambah Nomor PO Baru</div>
-            <input
-              placeholder="No PO (cth: PO-2026-003)"
-              value={poForm.no_po}
-              onChange={(e) => setPoForm({ ...poForm, no_po: e.target.value })}
-              className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base font-bold text-slate-900 focus:border-emerald-600 focus:outline-none"
-            />
-            <input
-              placeholder="Customer (opsional)"
-              value={poForm.customer}
-              onChange={(e) => setPoForm({ ...poForm, customer: e.target.value })}
-              className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base font-bold text-slate-900 focus:border-emerald-600 focus:outline-none"
-            />
-            <input
-              placeholder="Target jumlah (pasang) — sesuai order"
-              inputMode="numeric"
-              value={poForm.target}
-              onChange={(e) => setPoForm({ ...poForm, target: e.target.value.replace(/[^\d]/g, '') })}
-              className="w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base font-bold text-slate-900 focus:border-emerald-600 focus:outline-none"
-            />
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="text-lg font-extrabold text-slate-900">Tambah Nomor PO Baru</div>
+            <div>
+              <FieldLabel htmlFor="po-nomor">Nomor PO</FieldLabel>
+              <TextInput
+                id="po-nomor"
+                placeholder="contoh: PO-2026-003"
+                value={poForm.no_po}
+                onChange={(e) => setPoForm({ ...poForm, no_po: e.target.value })}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="po-customer">Nama Customer (boleh dikosongkan)</FieldLabel>
+              <TextInput
+                id="po-customer"
+                placeholder="contoh: Toko Maju"
+                value={poForm.customer}
+                onChange={(e) => setPoForm({ ...poForm, customer: e.target.value })}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="po-target">Target Jumlah (pasang)</FieldLabel>
+              <TextInput
+                id="po-target"
+                placeholder="contoh: 500"
+                inputMode="numeric"
+                value={poForm.target}
+                onChange={(e) =>
+                  setPoForm({ ...poForm, target: e.target.value.replace(/[^\d]/g, '') })
+                }
+              />
+            </div>
+            <div className="space-y-2.5 pt-1">
+              <BigButton type="submit" variant="primary" className="w-full" disabled={saving}>
+                {saving ? 'Menyimpan...' : 'Simpan PO Baru'}
+              </BigButton>
               <BigButton
                 variant="ghost"
                 type="button"
-                className="py-3 text-base font-bold"
+                className="w-full"
                 onClick={() => {
                   setTambahPoMode(false)
                   setError(null)
@@ -1395,27 +1410,19 @@ function PoPickerScreen({
               >
                 Batal
               </BigButton>
-              <BigButton type="submit" variant="primary" className="py-3 text-base font-bold" disabled={saving}>
-                {saving ? 'Menyimpan...' : '✓ SIMPAN PO'}
-              </BigButton>
             </div>
           </form>
         ) : (
-          <button
-            onClick={() => setTambahPoMode(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 border-2 border-blue-200 py-3 text-sm font-black text-blue-800 hover:bg-blue-100 transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            <span>+ TAMBAH NOMOR PO BARU</span>
-          </button>
+          <BigButton variant="secondary" className="w-full" onClick={() => setTambahPoMode(true)}>
+            <Plus className="h-6 w-6" />
+            Tambah Nomor PO Baru
+          </BigButton>
         )}
       </div>
 
-      {error && <ErrorBox message={error} />}
-
-      <BigButton variant="ghost" className="w-full py-4 text-base font-bold" onClick={onBack}>
-        <ArrowLeft className="h-5 w-5 mr-1" />
-        Kembali ke Form
+      <BigButton variant="ghost" size="lg" className="w-full" onClick={onBack}>
+        <ArrowLeft className="h-6 w-6" />
+        Kembali
       </BigButton>
     </div>
   )

@@ -2,17 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { resetDatabase } from '../../lib/api'
-import { BigButton, ConfirmModal, ErrorBox, PillBadge, SuccessBox } from '../../components/ui'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Database,
-  HardHat,
-  LogOut,
-  RotateCcw,
-  ShieldCheck,
-  Trash2,
-} from 'lucide-react'
+import { BigButton, ConfirmModal, ErrorBox, HintBox, PillBadge, SuccessBox } from '../../components/ui'
+import { ArrowLeft, Database, HardHat, LogOut, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react'
 
 export default function Pengaturan() {
   const { user, switchRole, signOut } = useAuth()
@@ -21,6 +12,7 @@ export default function Pengaturan() {
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [konfirmasiKeluar, setKonfirmasiKeluar] = useState(false)
 
   // Confirm Modal state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -48,6 +40,7 @@ export default function Pengaturan() {
   }
 
   async function keluar() {
+    setKonfirmasiKeluar(false)
     await signOut()
     navigate('/login')
   }
@@ -55,11 +48,11 @@ export default function Pengaturan() {
   function promptResetProduksi() {
     setConfirmDialog({
       isOpen: true,
-      title: 'Kosongkan Catatan Hasil Kerja?',
+      title: 'Kosongkan catatan hasil kerja?',
       message:
-        'Semua riwayat hasil produksi harian dan hitungan gaji akan dihapus kembali ke 0. Data master pekerja, model sepatu, dan nomor PO tetap aman tersimpan.',
-      confirmLabel: 'Ya, Kosongkan Catatan',
-      cancelLabel: 'Batal',
+        'Semua riwayat hasil kerja dan hitungan gaji akan kembali ke 0. Nama pekerja, model sepatu, dan nomor PO tetap aman.',
+      confirmLabel: 'Ya, Kosongkan',
+      cancelLabel: 'Tidak, Batal',
       isDestructive: true,
       action: async () => {
         setResetting(true)
@@ -81,11 +74,11 @@ export default function Pengaturan() {
   function promptFactoryReset() {
     setConfirmDialog({
       isOpen: true,
-      title: 'Hapus Bersih Semua Data Pabrik?',
+      title: 'Hapus bersih semua data pabrik?',
       message:
-        'PERINGATAN: Semua data pekerja, tarif model sepatu, nomor PO, dan catatan hasil kerja akan dihapus permanen. Akun login Admin & Mandor tetap ada.',
-      confirmLabel: 'Ya, Hapus Semua Data',
-      cancelLabel: 'Batal',
+        'PERHATIAN: semua nama pekerja, upah model sepatu, nomor PO, dan catatan hasil kerja akan dihapus permanen. Akun login Admin dan Mandor tetap ada.',
+      confirmLabel: 'Ya, Hapus Semua',
+      cancelLabel: 'Tidak, Batal',
       isDestructive: true,
       action: async () => {
         setResetting(true)
@@ -115,128 +108,170 @@ export default function Pengaturan() {
       <button
         onClick={() => ganti(role)}
         disabled={loading}
-        className={`w-full rounded-2xl border-2 p-4 text-left shadow-xs transition-all duration-150 active:scale-[0.99] disabled:opacity-60 ${
+        aria-pressed={aktif}
+        className={`w-full rounded-3xl border-2 p-4 text-left shadow-sm transition-colors disabled:opacity-60 ${
           aktif
-            ? 'border-slate-900 bg-slate-900 text-white'
-            : 'border-slate-200 bg-white text-slate-900 hover:border-slate-300'
+            ? 'border-slate-950 bg-slate-900 text-white'
+            : 'border-slate-300 bg-white text-slate-900 active:bg-slate-100'
         }`}
       >
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
           <div
-            className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-              aktif ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-800'
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 ${
+              aktif
+                ? 'border-slate-700 bg-slate-800 text-white'
+                : 'border-slate-300 bg-slate-100 text-slate-800'
             }`}
           >
-            <IconComponent className="h-5 w-5" />
+            <IconComponent className="h-6 w-6" />
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold tracking-tight">{label}</span>
-              {aktif && <PillBadge color="emerald">AKTIF</PillBadge>}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-lg font-extrabold tracking-tight">{label}</span>
+              {aktif && <PillBadge color="emerald">Sedang dipakai</PillBadge>}
             </div>
-            <div className={`text-xs ${aktif ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</div>
+            <div
+              className={`mt-0.5 text-base font-medium leading-snug ${
+                aktif ? 'text-slate-300' : 'text-slate-600'
+              }`}
+            >
+              {desc}
+            </div>
           </div>
-          {!aktif && <ArrowRight className="h-4 w-4 text-slate-400" />}
         </div>
       </button>
     )
   }
 
   return (
-    <div className="min-h-full bg-[#F5F5F5]">
-      {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-neutral-200/80 bg-white/90 px-4 py-3 backdrop-blur-md">
+    <div className="min-h-full bg-slate-100">
+      {/* ---------- Header ---------- */}
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b-2 border-slate-300 bg-white px-3 py-3 sm:px-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200"
+          aria-label="Kembali"
+          className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-300 bg-white text-slate-800 active:bg-slate-200"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-6 w-6" />
         </button>
-        <span className="text-sm font-semibold tracking-tight text-neutral-900">Pengaturan</span>
-        <div className="w-9" />
+        <span className="text-lg font-extrabold tracking-tight text-slate-900">Pengaturan</span>
+        <div className="w-12" />
       </header>
 
-      <div className="mx-auto max-w-xl p-4 md:p-6 space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Ganti Mode Akun</h1>
-          <p className="text-xs text-neutral-500">
-            Login sebagai <b className="text-neutral-800">{user?.nama}</b>. Pilih mode untuk berpindah tanpa login ulang.
+      <div className="mx-auto max-w-2xl space-y-4 p-3 pb-10 sm:p-5">
+        <div className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm sm:p-5">
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Ganti Mode</h1>
+          <p className="mt-0.5 text-base font-medium text-slate-600">
+            Anda masuk sebagai <b className="text-slate-900">{user?.nama}</b>. Pilih mode di bawah
+            untuk berpindah tanpa login ulang.
           </p>
         </div>
 
-        <div className="space-y-2.5">
-          {tombol('admin', 'Mode Admin', 'Kelola dashboard produksi, rekap gaji, dan master data.', ShieldCheck)}
-          {tombol('mandor', 'Mode Mandor Lapangan', 'Input hasil produksi harian dan lihat riwayat.', HardHat)}
+        <div className="space-y-3">
+          {tombol(
+            'admin',
+            'Mode Admin',
+            'Lihat hasil kerja, rekap gaji, dan atur master data.',
+            ShieldCheck,
+          )}
+          {tombol(
+            'mandor',
+            'Mode Mandor',
+            'Catat hasil kerja harian pekerja di lapangan.',
+            HardHat,
+          )}
         </div>
 
-        {/* Database Management Section (Admin Only) */}
+        {error && <ErrorBox message={error} />}
+        {success && <SuccessBox message={success} />}
+
+        {/* ---------- Hapus data (khusus admin) ---------- */}
         {user?.role === 'admin' && (
-          <div className="rounded-3xl border-2 border-rose-200 bg-white p-5 shadow-sm space-y-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-                <Database className="h-5 w-5" />
+          <div className="space-y-3 rounded-3xl border-2 border-rose-300 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-rose-300 bg-rose-100 text-rose-700">
+                <Database className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-base font-black text-slate-900">Hapus & Bersihkan Data Pabrik</h2>
-                <p className="text-xs font-semibold text-slate-500">Pilihan untuk mengosongkan data lama atau mulai buku baru</p>
+                <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+                  Hapus Data Pabrik
+                </h2>
+                <p className="text-base font-medium text-slate-600">
+                  Gunakan dengan hati-hati.
+                </p>
               </div>
             </div>
 
-            <div className="space-y-2.5 pt-1">
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black text-amber-950">1. Kosongkan Catatan Hasil Kerja (Buku Baru)</div>
-                  <div className="text-xs font-semibold text-amber-800 leading-snug mt-0.5">
-                    Semua catatan pasang sepatu dan gaji harian akan dikosongkan (kembali ke 0). Nama pekerja, model sepatu, dan nomor PO <b>tetap aman</b>.
-                  </div>
+            <HintBox>
+              Data yang sudah dihapus <b>tidak bisa dikembalikan</b>. Sebaiknya simpan dulu laporan
+              ke Excel sebelum menghapus.
+            </HintBox>
+
+            <div className="space-y-3">
+              <div className="space-y-2.5 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4">
+                <div className="text-lg font-extrabold text-amber-950">
+                  1. Kosongkan Catatan Hasil Kerja
                 </div>
-                <button
+                <p className="text-base font-medium leading-snug text-amber-900">
+                  Semua catatan pasang sepatu dan gaji harian kembali ke 0. Nama pekerja, model
+                  sepatu, dan nomor PO <b>tetap aman</b>.
+                </p>
+                <BigButton
+                  variant="ghost"
+                  className="w-full border-amber-500 bg-amber-200 text-amber-950"
                   onClick={promptResetProduksi}
                   disabled={resetting}
-                  className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400 bg-amber-200/80 px-3.5 py-2 text-xs font-black text-amber-950 hover:bg-amber-300 active:bg-amber-400 transition-colors"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
+                  <RotateCcw className="h-5 w-5" />
                   Kosongkan Catatan
-                </button>
+                </BigButton>
               </div>
 
-              <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black text-rose-950">2. Hapus Bersih Semua Data (Mulai Pabrik Baru)</div>
-                  <div className="text-xs font-semibold text-rose-800 leading-snug mt-0.5">
-                    Menghapus SEMUA data termasuk nama pekerja, model sepatu, nomor PO, dan catatan kerja. Bersih total dari awal.
-                  </div>
+              <div className="space-y-2.5 rounded-2xl border-2 border-rose-400 bg-rose-50 p-4">
+                <div className="text-lg font-extrabold text-rose-950">
+                  2. Hapus Bersih Semua Data
                 </div>
-                <button
+                <p className="text-base font-medium leading-snug text-rose-900">
+                  Menghapus SEMUA data: nama pekerja, model sepatu, nomor PO, dan catatan kerja.
+                  Mulai benar-benar dari nol.
+                </p>
+                <BigButton
+                  variant="danger"
+                  className="w-full"
                   onClick={promptFactoryReset}
                   disabled={resetting}
-                  className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-black text-white hover:bg-rose-700 active:bg-rose-800 shadow-xs transition-colors"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-5 w-5" />
                   Hapus Bersih Semua
-                </button>
+                </BigButton>
               </div>
             </div>
           </div>
         )}
 
-        {error && <ErrorBox message={error} />}
-        {success && <SuccessBox message={success} />}
-
-        <div className="pt-2">
-          <BigButton
-            variant="ghost"
-            className="w-full text-rose-600 border-rose-200 hover:bg-rose-50"
-            onClick={keluar}
-            disabled={loading || resetting}
-          >
-            <LogOut className="h-4 w-4 mr-1 text-rose-600" />
-            Keluar dari Aplikasi
-          </BigButton>
-        </div>
+        <BigButton
+          variant="ghost"
+          size="lg"
+          className="w-full border-rose-400 text-rose-700"
+          onClick={() => setKonfirmasiKeluar(true)}
+          disabled={loading || resetting}
+        >
+          <LogOut className="h-6 w-6" />
+          Keluar dari Aplikasi
+        </BigButton>
       </div>
 
-      {/* In-App Confirmation Modal */}
+      <ConfirmModal
+        isOpen={konfirmasiKeluar}
+        title="Keluar dari aplikasi?"
+        message="Anda harus mengetik username dan password lagi untuk masuk kembali."
+        confirmLabel="Ya, Keluar"
+        cancelLabel="Tidak, Tetap di Sini"
+        isDestructive
+        onConfirm={keluar}
+        onCancel={() => setKonfirmasiKeluar(false)}
+      />
+
       {confirmDialog && (
         <ConfirmModal
           isOpen={confirmDialog.isOpen}

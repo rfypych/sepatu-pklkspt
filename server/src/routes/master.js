@@ -264,21 +264,20 @@ const updatePoHandler = async (req, res) => {
   try {
     const { no_po, nomor_po, nama_customer, nama_po, target_qty, target_pasang, status_aktif } = req.body ?? {}
     const id = Number(req.params.id)
-    const resolvedNoPo = (no_po || nomor_po || '').trim()
-    if (resolvedNoPo) await pool.query('UPDATE master_po SET no_po = $1 WHERE id_po = $2', [resolvedNoPo, id])
-    const resolvedCust = (nama_customer || nama_po || '').trim()
-    if (resolvedCust) await pool.query('UPDATE master_po SET nama_customer = $1 WHERE id_po = $2', [resolvedCust, id])
+    if (no_po !== undefined || nomor_po !== undefined) {
+      const resolvedNoPo = (no_po || nomor_po || '').trim()
+      if (resolvedNoPo) await pool.query('UPDATE master_po SET no_po = $1 WHERE id_po = $2', [resolvedNoPo, id])
+    }
+    if (nama_customer !== undefined || nama_po !== undefined) {
+      const resolvedCust = (nama_customer || nama_po || '').trim() || null
+      await pool.query('UPDATE master_po SET nama_customer = $1 WHERE id_po = $2', [resolvedCust, id])
+    }
     const resolvedTarget = target_qty !== undefined ? Number(target_qty) : (target_pasang !== undefined ? Number(target_pasang) : undefined)
     if (resolvedTarget !== undefined) await pool.query('UPDATE master_po SET target_qty = $1 WHERE id_po = $2', [Math.max(0, Math.floor(resolvedTarget)), id])
     if (status_aktif !== undefined) await pool.query('UPDATE master_po SET status_aktif = $1 WHERE id_po = $2', [status_aktif ? 1 : 0, id])
     res.json({
       id: String(id),
       id_po: id,
-      nomor_po: resolvedNoPo,
-      no_po: resolvedNoPo,
-      nama_customer: resolvedCust,
-      target_qty: resolvedTarget ?? 0,
-      status_aktif: status_aktif ?? 1,
       ok: true,
     })
   } catch (e) {

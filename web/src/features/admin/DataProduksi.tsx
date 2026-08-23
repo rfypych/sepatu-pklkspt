@@ -25,24 +25,23 @@ import {
 } from '../../lib/constants'
 import {
   BigButton,
-  Card,
   ConfirmModal,
+  EmptyState,
   ErrorBox,
   ExportSuccessModal,
   FieldLabel,
+  NumberStepper,
+  PageTitle,
   PillBadge,
   SelectInput,
   SkeletonTable,
+  StatCard,
 } from '../../components/ui'
-import { ViewToggle, Tabel, THead, Th, Td, type ViewMode } from '../../components/view'
+import { Tabel, THead, Th, Td, DataRow, ViewToggle } from '../../components/view'
+import { useViewMode } from '../../lib/useViewMode'
+import PeriodeFilter from '../../components/PeriodeFilter'
 import { buatBarisLaporan, exportLaporanHarian, shareLaporanHarian } from '../../lib/laporan'
-import { Calendar, Download, Edit3, Trash2 } from 'lucide-react'
-
-const PERIODE_LIST: { value: PeriodRiwayat; label: string }[] = [
-  { value: 'hari', label: 'Harian' },
-  { value: 'bulan', label: 'Bulanan' },
-  { value: 'tahun', label: 'Tahunan' },
-]
+import { Calendar, ClipboardList, Coins, Download, Edit3, Package, Trash2 } from 'lucide-react'
 
 export default function DataProduksi() {
   const [periode, setPeriode] = useState<PeriodRiwayat>('hari')
@@ -54,7 +53,7 @@ export default function DataProduksi() {
   const [pekerjaList, setPekerjaList] = useState<Pekerja[]>(() => getCache<Pekerja[]>('pekerja_semua') ?? [])
   const [ukuranList, setUkuranList] = useState<MasterUkuran[]>(() => getCache<MasterUkuran[]>('ukuran_semua') ?? [])
   const [poList, setPoList] = useState<MasterPo[]>(() => getCache<MasterPo[]>('po_semua') ?? [])
-  const [view, setView] = useState<ViewMode>('tabel')
+  const [view, setView] = useViewMode('data_produksi')
   const [loading, setLoading] = useState(() => !getCache('produksi_hari_ini'))
   const [error, setError] = useState<string | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
@@ -172,150 +171,85 @@ export default function DataProduksi() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Data Produksi</h1>
-          <p className="text-xs font-semibold text-slate-500">
-            {periode === 'hari'
-              ? `Data ${formatTanggalPendek(tanggal)} · Kontrol penuh input produksi seluruh pekerja.`
-              : periode === 'bulan'
-                ? `Data Bulan ${formatBulanTahun(bulan)} · Rekapitulasi produksi bulanan.`
-                : `Data Tahun ${tahun} · Rekapitulasi produksi tahunan.`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={exportExcel}
-            disabled={rows.length === 0 || exporting}
-            className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
-          >
-            {exporting ? (
-              <>
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>Menyiapkan File...</span>
-              </>
-            ) : (
-              <>
-                <Download className="h-3.5 w-3.5" />
-                <span>Ekspor Excel</span>
-              </>
-            )}
-          </button>
-          <ViewToggle value={view} onChange={setView} />
-        </div>
-      </div>
-
-      {/* Filter Card (M3 Elevated) */}
-      <div className="space-y-3 rounded-3xl border border-slate-200/80 bg-white p-4.5 sm:p-5 shadow-xs">
-        {/* Segmented Period Tabs */}
-        <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100 p-1">
-          {PERIODE_LIST.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setPeriode(p.value)}
-              className={`rounded-xl py-2 text-xs font-bold tracking-tight transition-all ${
-                periode === p.value
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+      <PageTitle
+        icon={<ClipboardList className="h-6 w-6" />}
+        title="Data Produksi"
+        subtitle={
+          periode === 'hari'
+            ? `Tanggal ${formatTanggalPendek(tanggal)}. Anda bisa mengubah atau menghapus data kapan saja.`
+            : periode === 'bulan'
+              ? `Bulan ${formatBulanTahun(bulan)}.`
+              : `Tahun ${tahun}.`
+        }
+        right={
+          <>
+            <BigButton
+              variant="dark"
+              size="sm"
+              onClick={exportExcel}
+              disabled={rows.length === 0 || exporting}
             >
-              {p.label}
-            </button>
-          ))}
+              <Download className="h-5 w-5" />
+              {exporting ? 'Menyiapkan file...' : 'Simpan ke Excel'}
+            </BigButton>
+            <ViewToggle value={view} onChange={setView} />
+          </>
+        }
+      />
+
+      <PeriodeFilter
+        periode={periode}
+        setPeriode={setPeriode}
+        tanggal={tanggal}
+        setTanggal={setTanggal}
+        bulan={bulan}
+        setBulan={setBulan}
+        tahun={tahun}
+        setTahun={setTahun}
+      >
+        <div>
+          <FieldLabel htmlFor="filter-pekerja">Nama pekerja</FieldLabel>
+          <SelectInput
+            id="filter-pekerja"
+            value={idPekerja}
+            onChange={(e) => setIdPekerja(e.target.value)}
+          >
+            <option value="">Semua Pekerja</option>
+            {pekerjaList.map((p) => (
+              <option key={p.id_pekerja} value={p.id_pekerja}>
+                {p.nama}
+              </option>
+            ))}
+          </SelectInput>
         </div>
+      </PeriodeFilter>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {periode === 'hari' && (
-            <div>
-              <FieldLabel>Pilih Tanggal</FieldLabel>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={tanggal}
-                  onChange={(e) => setTanggal(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 bg-slate-50/70 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-          )}
+      {error && <ErrorBox message={error} onRetry={muat} />}
 
-          {periode === 'bulan' && (
-            <div>
-              <FieldLabel>Pilih Bulan & Tahun</FieldLabel>
-              <div className="relative">
-                <input
-                  type="month"
-                  value={bulan}
-                  onChange={(e) => setBulan(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 bg-slate-50/70 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-800 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-          )}
-
-          {periode === 'tahun' && (
-            <div>
-              <FieldLabel>Pilih Tahun</FieldLabel>
-              <SelectInput
-                value={tahun}
-                onChange={(e) => setTahun(e.target.value)}
-                className="py-2.5 text-sm font-bold"
-              >
-                {Array.from({ length: 6 }, (_, i) => {
-                  const y = String(new Date().getFullYear() - 3 + i)
-                  return (
-                    <option key={y} value={y}>
-                      Tahun {y}
-                    </option>
-                  )
-                })}
-              </SelectInput>
-            </div>
-          )}
-
-          <div>
-            <FieldLabel>Filter Pekerja</FieldLabel>
-            <SelectInput value={idPekerja} onChange={(e) => setIdPekerja(e.target.value)} className="py-2.5 text-sm">
-              <option value="">Semua Pekerja</option>
-              {pekerjaList.map((p) => (
-                <option key={p.id_pekerja} value={p.id_pekerja}>
-                  {p.nama}
-                </option>
-              ))}
-            </SelectInput>
-          </div>
-        </div>
-      </div>
-
-      {error && <ErrorBox message={error} />}
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-3xl border-2 border-blue-700 bg-blue-600 p-4 text-white shadow-md">
-          <div className="text-xs font-bold uppercase tracking-wider text-blue-100">Total Pasang</div>
-          <div className="mt-1 text-2xl font-black tracking-tight text-white">
-            {formatAngka(totalPasangSemua)} <span className="text-xs font-bold text-blue-200">psg</span>
-          </div>
-        </div>
-        <div className="rounded-3xl border-2 border-emerald-800 bg-emerald-700 p-4 text-white shadow-md">
-          <div className="text-xs font-bold uppercase tracking-wider text-emerald-100">Estimasi Upah</div>
-          <div className="mt-1 text-2xl font-black tracking-tight text-white">
-            {formatRupiah(totalGajiSemua)}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <StatCard
+          tone="blue"
+          icon={<Package className="h-5 w-5" />}
+          label="Sepatu Selesai"
+          value={formatAngka(totalPasangSemua)}
+          unit="pasang"
+        />
+        <StatCard
+          tone="emerald"
+          icon={<Coins className="h-5 w-5" />}
+          label="Perkiraan Upah"
+          value={formatRupiah(totalGajiSemua)}
+        />
       </div>
 
       {loading && rows.length === 0 ? (
         <SkeletonTable rows={5} cols={6} />
       ) : rows.length === 0 ? (
-        <Card className="py-12 text-center text-slate-500">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-            <Calendar className="h-6 w-6" />
-          </div>
-          <p className="text-base font-bold text-slate-700">Belum ada data produksi di periode ini.</p>
-          <p className="mt-0.5 text-xs text-slate-500">Pilih periode atau filter pekerja lain.</p>
-        </Card>
+        <EmptyState
+          icon={<Calendar className="h-8 w-8" />}
+          title="Belum ada data di periode ini"
+          description="Coba ganti tanggal, bulan, tahun, atau pilihan pekerja di kotak filter di atas."
+        />
       ) : (
         <>
           {editId !== null && (
@@ -329,57 +263,131 @@ export default function DataProduksi() {
             />
           )}
 
-          {view === 'tabel' ? (
+          {/* ---------- Tampilan Kartu (opsional) ---------- */}
+          {view === 'kartu' && (
+          <div className="space-y-3">
+            {baris.map((b) => (
+              <article
+                key={b.row.id_produksi}
+                className="rounded-3xl border-2 border-slate-300 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3 border-b-2 border-slate-100 pb-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-lg font-extrabold leading-tight text-slate-900">
+                      {b.row.nama_pekerja}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <PillBadge color="neutral">{b.row.nama_model}</PillBadge>
+                      {b.row.no_po && <PillBadge color="blue">{b.row.no_po}</PillBadge>}
+                      {b.row.shift && (
+                        <PillBadge color={b.row.shift === 1 ? 'amber' : 'indigo'}>
+                          {b.row.shift === 1 ? '☀️ Shift 1' : '🌙 Shift 2'}
+                        </PillBadge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-lg font-extrabold text-slate-900">
+                      {formatAngka(b.pasang)} psg
+                    </div>
+                    <div className="text-base font-bold text-emerald-800">
+                      {formatRupiah(b.subtotal)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <DataRow label="Tanggal" value={formatTanggalPendek(b.row.tanggal)} />
+                  <DataRow label="Rincian ukuran" value={b.rincianSize} />
+                  <DataRow
+                    label="Upah per pasang"
+                    value={`${formatRupiah(b.ongkos)} × ${b.pasang}`}
+                  />
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2.5 border-t-2 border-slate-100 pt-3">
+                  <BigButton variant="ghost" onClick={() => mulaiEdit(b.row)}>
+                    <Edit3 className="h-5 w-5" />
+                    Ubah
+                  </BigButton>
+                  <BigButton variant="danger" onClick={() => setHapusTarget(b.row.id_produksi)}>
+                    <Trash2 className="h-5 w-5" />
+                    Hapus
+                  </BigButton>
+                </div>
+              </article>
+            ))}
+
+            <div className="rounded-3xl border-2 border-slate-950 bg-slate-900 p-4 text-white shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-base font-bold uppercase tracking-wide text-slate-300">
+                  Total
+                </span>
+                <span className="text-xl font-extrabold">
+                  {formatAngka(totalPasangSemua)} pasang
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center justify-between gap-3 border-t-2 border-slate-700 pt-1.5">
+                <span className="text-base font-bold uppercase tracking-wide text-slate-300">
+                  Upah
+                </span>
+                <span className="text-2xl font-extrabold text-emerald-400">
+                  {formatRupiah(totalGajiSemua)}
+                </span>
+              </div>
+            </div>
+          </div>
+          )}
+
+          {/* ---------- Tampilan Tabel (default) ---------- */}
+          {view === 'tabel' && (
+          <div>
             <Tabel>
               <THead>
                 <Th>Pekerja</Th>
                 <Th>Tanggal</Th>
                 <Th>Model</Th>
                 <Th>PO</Th>
-                <Th className="text-right">Target</Th>
-                <Th>Rincian Size</Th>
-                <Th>Ongkos × Pasang</Th>
-                <Th className="text-right">Subtotal</Th>
-                <Th>Progress PO</Th>
+                <Th>Rincian Ukuran</Th>
+                <Th className="text-right">Pasang</Th>
+                <Th className="text-right">Upah</Th>
                 <Th className="text-right">Aksi</Th>
               </THead>
               <tbody>
                 {baris.map((b) => (
-                  <tr key={b.row.id_produksi} className="hover:bg-slate-50/80 transition-colors">
-                    <Td className="font-black text-slate-900">{b.row.nama_pekerja}</Td>
-                    <Td className="text-slate-500 font-semibold">{formatTanggalPendek(b.row.tanggal)}</Td>
-                    <Td className="font-bold text-slate-800">{b.row.nama_model}</Td>
+                  <tr key={b.row.id_produksi} className="odd:bg-white even:bg-slate-50">
+                    <Td className="font-extrabold text-slate-900">{b.row.nama_pekerja}</Td>
+                    <Td>{formatTanggalPendek(b.row.tanggal)}</Td>
+                    <Td>{b.row.nama_model}</Td>
                     <Td>
                       {b.row.no_po ? (
-                        <PillBadge color="neutral">{b.row.no_po}</PillBadge>
+                        <PillBadge color="blue">{b.row.no_po}</PillBadge>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
                     </Td>
-                    <Td className="text-right font-bold text-slate-700">{b.target != null ? formatAngka(b.target) : '—'}</Td>
-                    <Td className="text-xs font-semibold text-slate-600">{b.rincianSize}</Td>
-                    <Td className="text-slate-600 font-semibold">
-                      {formatAngka(b.ongkos)} × {b.pasang}
+                    <Td className="whitespace-normal text-sm">{b.rincianSize}</Td>
+                    <Td className="text-right font-extrabold text-slate-900">
+                      {formatAngka(b.pasang)}
                     </Td>
-                    <Td className="text-right font-black text-slate-900">{formatRupiah(b.subtotal)}</Td>
-                    <Td className="text-slate-600 font-semibold">
-                      {b.row.id_po != null && b.target ? `${b.harianProgress}/${formatAngka(b.target)}` : '—'}
+                    <Td className="text-right font-extrabold text-emerald-800">
+                      {formatRupiah(b.subtotal)}
                     </Td>
                     <Td className="text-right">
-                      <div className="inline-flex items-center gap-1.5">
+                      <div className="inline-flex items-center gap-2">
                         <button
                           onClick={() => mulaiEdit(b.row)}
-                          className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                          title="Edit"
+                          aria-label="Ubah"
+                          className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-blue-400 bg-blue-50 text-blue-800 active:bg-blue-200"
                         >
-                          <Edit3 className="h-4 w-4" />
+                          <Edit3 className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => setHapusTarget(b.row.id_produksi)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                          title="Hapus"
+                          aria-label="Hapus"
+                          className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-rose-400 bg-rose-50 text-rose-700 active:bg-rose-200"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-5 w-5" />
                         </button>
                       </div>
                     </Td>
@@ -387,81 +395,32 @@ export default function DataProduksi() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-slate-200 bg-slate-50 font-black">
-                  <Td className="font-black text-slate-900">TOTAL</Td>
-                  <Td></Td>
-                  <Td></Td>
-                  <Td></Td>
-                  <Td></Td>
-                  <Td className="font-black text-slate-900">{formatAngka(totalPasangSemua)} psg</Td>
-                  <Td></Td>
-                  <Td className="text-right font-black text-slate-900">{formatRupiah(totalGajiSemua)}</Td>
-                  <Td></Td>
-                  <Td></Td>
+                <tr className="border-t-4 border-slate-300 bg-slate-100">
+                  <Td colSpan={5} className="text-lg font-extrabold text-slate-900">
+                    TOTAL
+                  </Td>
+                  <Td className="text-right text-lg font-extrabold text-slate-900">
+                    {formatAngka(totalPasangSemua)}
+                  </Td>
+                  <Td className="text-right text-lg font-extrabold text-emerald-800">
+                    {formatRupiah(totalGajiSemua)}
+                  </Td>
+                  <Td />
                 </tr>
               </tfoot>
             </Tabel>
-          ) : (
-            <div className="space-y-3">
-              {baris.map((b) => (
-                <Card key={b.row.id_produksi}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="text-base font-black text-slate-900">{b.row.nama_pekerja}</div>
-                      <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500 font-semibold">
-                        <span>{b.row.nama_model}</span>
-                        {b.row.no_po && (
-                          <>
-                            <span>·</span>
-                            <PillBadge color="neutral">{b.row.no_po}</PillBadge>
-                          </>
-                        )}
-                        {b.row.shift && (
-                          <>
-                            <span>·</span>
-                            <PillBadge color={b.row.shift === 1 ? 'neutral' : 'emerald'}>
-                              {b.row.shift === 1 ? 'Shift 1' : 'Shift 2'}
-                            </PillBadge>
-                          </>
-                        )}
-                      </div>
-                      <div className="mt-2 text-xs font-semibold text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-200/80">
-                        {b.rincianSize}
-                      </div>
-                      <div className="mt-1.5 text-[11px] font-semibold text-slate-400">
-                        {formatTanggalPendek(b.row.tanggal)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-base font-black text-slate-900">{formatAngka(b.pasang)} psg</div>
-                      <div className="text-xs font-bold text-slate-600">{formatRupiah(b.subtotal)}</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
-                    <BigButton variant="ghost" className="flex-1 py-2 text-xs" onClick={() => mulaiEdit(b.row)}>
-                      <Edit3 className="h-3.5 w-3.5 mr-1" />
-                      Edit
-                    </BigButton>
-                    <BigButton variant="danger" className="flex-1 py-2 text-xs" onClick={() => setHapusTarget(b.row.id_produksi)}>
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      Hapus
-                    </BigButton>
-                  </div>
-                </Card>
-              ))}
-            </div>
+          </div>
           )}
         </>
       )}
 
-      {/* In-App M3 Confirmation Dialog */}
       <ConfirmModal
         isOpen={hapusTarget !== null}
-        title="Hapus Catatan Produksi?"
-        message="Hapus data produksi ini? Rekap gaji dan total pasang akan otomatis disesuaikan kembali."
-        confirmLabel="Ya, Hapus Data"
-        cancelLabel="Batal"
-        isDestructive={true}
+        title="Hapus catatan ini?"
+        message="Data produksi ini akan dihapus. Rekap gaji dan total pasang akan menyesuaikan otomatis."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Tidak, Batal"
+        isDestructive
         onConfirm={eksekusiHapus}
         onCancel={() => setHapusTarget(null)}
       />
@@ -491,39 +450,34 @@ function EditorProduksi({
   onSimpan: () => void
   onBatal: () => void
 }) {
+  const total = ukuranList.reduce((a, u) => a + (qty[String(u.id_ukuran)] ?? 0), 0)
   return (
-    <Card className="border-neutral-900">
-      <div className="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2">
-        <div className="font-semibold text-neutral-900">✏️ Edit Jumlah per Ukuran</div>
-      </div>
-      <div className="grid grid-cols-4 gap-2">
+    <div className="space-y-3 rounded-3xl border-2 border-slate-950 bg-white p-4 shadow-md sm:p-5">
+      <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+        Ubah Jumlah per Ukuran
+      </h2>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
         {ukuranList.map((u) => (
-          <div key={u.id_ukuran}>
-            <div className="mb-1 text-center text-xs font-semibold text-neutral-500">{u.label_ukuran}</div>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={qty[String(u.id_ukuran)] ?? 0}
-              onChange={(e) =>
-                setQty((prev) => ({
-                  ...prev,
-                  [String(u.id_ukuran)]: Math.max(0, Math.floor(Number(e.target.value) || 0)),
-                }))
-              }
-              className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-2 py-2 text-center text-base font-bold text-neutral-900 focus:bg-white focus:border-neutral-900 focus:outline-none"
-            />
-          </div>
+          <NumberStepper
+            key={u.id_ukuran}
+            label={`No ${u.label_ukuran}`}
+            value={qty[String(u.id_ukuran)] ?? 0}
+            onChange={(val) => setQty((prev) => ({ ...prev, [String(u.id_ukuran)]: val }))}
+          />
         ))}
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="flex items-baseline justify-between gap-3 rounded-2xl border-2 border-slate-950 bg-slate-900 px-4 py-3 text-white">
+        <span className="text-base font-bold uppercase tracking-wide text-slate-300">Total</span>
+        <span className="text-2xl font-extrabold text-emerald-400">{total} pasang</span>
+      </div>
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <BigButton variant="primary" onClick={onSimpan} disabled={saving}>
+          {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+        </BigButton>
         <BigButton variant="ghost" onClick={onBatal} disabled={saving}>
           Batal
         </BigButton>
-        <BigButton onClick={onSimpan} disabled={saving}>
-          {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-        </BigButton>
       </div>
-    </Card>
+    </div>
   )
 }

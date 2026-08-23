@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { EmptyState, FieldLabel, TextInput } from '../../components/ui'
 import {
   BookOpen,
   ChevronDown,
@@ -44,37 +45,48 @@ function AccordionItem({
   const isBlue = color === 'blue'
 
   return (
-    <div className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-xs transition-all">
+    <div
+      className={`overflow-hidden rounded-3xl border-2 bg-white shadow-sm ${
+        isOpen ? 'border-slate-900' : 'border-slate-300'
+      }`}
+    >
       <button
         onClick={onToggle}
-        className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors"
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-3 p-4 text-left active:bg-slate-100"
       >
-        <div className="flex items-center gap-3.5">
+        <div className="flex min-w-0 items-center gap-3">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold border ${
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 ${
               isBlue
-                ? 'bg-blue-100 text-blue-800 border-blue-300'
-                : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                ? 'border-blue-300 bg-blue-100 text-blue-800'
+                : 'border-emerald-300 bg-emerald-100 text-emerald-800'
             }`}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-6 w-6" />
           </div>
-          <div>
-            <div className="text-base font-bold tracking-tight text-slate-900">
+          <div className="min-w-0">
+            <div className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">
               {topic.title}
             </div>
-            <div className="text-xs font-semibold text-slate-500">
+            <div className="mt-0.5 text-base font-medium leading-snug text-slate-600">
               {topic.subtitle}
             </div>
           </div>
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 ${
+            isOpen
+              ? 'border-slate-950 bg-slate-900 text-white'
+              : 'border-slate-300 bg-slate-100 text-slate-700'
+          }`}
+        >
+          {isOpen ? <ChevronDown className="h-6 w-6" /> : <ChevronRight className="h-6 w-6" />}
         </div>
       </button>
 
       {isOpen && (
-        <div className="border-t-2 border-slate-100 bg-slate-50/60 p-4 sm:p-5 text-sm leading-relaxed text-slate-700">
+        <div className="border-t-2 border-slate-200 bg-slate-50 p-4 text-base leading-relaxed text-slate-800 sm:p-5">
           {topic.content}
         </div>
       )}
@@ -97,15 +109,17 @@ function Step({
   return (
     <div className="flex gap-3">
       <div
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black text-white shadow-xs ${
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-extrabold text-white ${
           isBlue ? 'bg-blue-700' : 'bg-emerald-700'
         }`}
       >
         {nomor}
       </div>
-      <div>
-        <div className="font-bold text-slate-900 text-sm">{judul}</div>
-        <div className="mt-0.5 text-xs text-slate-600 leading-relaxed">{deskripsi}</div>
+      <div className="min-w-0 pt-0.5">
+        <div className="text-base font-extrabold text-slate-900">{judul}</div>
+        <div className="mt-0.5 text-base font-medium leading-relaxed text-slate-700">
+          {deskripsi}
+        </div>
       </div>
     </div>
   )
@@ -140,21 +154,21 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'input_produksi',
       icon: Smartphone,
-      title: '1. Cara Mengisi & Menyimpan Hasil Kerja',
-      subtitle: 'Alur pencatatan pasang sepatu harian per tukang sepatu',
+      title: '1. Cara Mengisi Hasil Kerja',
+      subtitle: 'Langkah demi langkah mencatat hasil kerja harian',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Di menu <b>Input Produksi</b>, ikuti langkah berikut:
+            Di menu <b>Isi Data</b> (menu pertama di bawah), ikuti langkah ini:
           </p>
           <div className="space-y-2.5">
             <Step nomor="1" judul="Pilih Nama Pekerja" deskripsi="Ketuk nama pekerja dari daftar yang tersedia." />
             <Step nomor="2" judul="Pilih Shift Kerja" deskripsi="Pilih Shift 1 (Pagi) atau Shift 2 (Siang/Malam)." />
             <Step nomor="3" judul="Pilih Nomor PO (Pesanan)" deskripsi="Bisa dipilih nomor PO yang dikerjakan, atau lewati jika pekerjaan reguler umum." />
             <Step nomor="4" judul="Tambah Model & Isi Ukuran" deskripsi="Pilih model sepatu, lalu masukkan jumlah pasang di nomor ukuran yang dikerjakan (nomor 36 s/d 44)." />
-            <Step nomor="5" judul="Tekan Simpan" deskripsi="Tekan tombol 'Simpan Hasil Produksi'. Data otomatis tersimpan dan lembar kerja pekerja tersebut terkunci." />
+            <Step nomor="5" judul="Tekan Simpan" deskripsi="Tekan tombol hijau SIMPAN di bagian bawah. Data langsung tersimpan." />
           </div>
-          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-xs font-semibold text-emerald-900">
+          <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-3 text-base font-semibold text-emerald-900">
             ✅ Total pasang sepatu dan perkiraan upah langsung dihitung otomatis oleh aplikasi.
           </div>
         </div>
@@ -163,8 +177,8 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'edit_data',
       icon: Edit3,
-      title: '2. Cara Memperbaiki / Edit Data yang Salah Ketik',
-      subtitle: 'Mengubah jumlah pasang ukuran yang sudah disimpan',
+      title: '2. Cara Memperbaiki Data yang Salah',
+      subtitle: 'Mengubah jumlah pasang yang sudah tersimpan',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
@@ -172,8 +186,8 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
           </p>
           <div className="space-y-2.5">
             <Step nomor="1" judul="Buka Lembar Kerja Pekerja" deskripsi="Pilih nama pekerja yang datanya ingin diperbaiki." />
-            <Step nomor="2" judul="Tekan Tombol Edit (Ikon Pensil)" deskripsi="Pada kartu sepatu yang tersimpan di bawah, tekan tombol ikon pensil biru." />
-            <Step nomor="3" judul="Sesuaikan Jumlah Ukuran" deskripsi="Ubah angka pasang pada ukuran yang keliru menggunakan tombol + / - atau ketik angkanya." />
+            <Step nomor="2" judul="Tekan Tombol Ubah" deskripsi="Pada kartu yang sudah tersimpan, tekan tombol biru bertulisan Ubah." />
+            <Step nomor="3" judul="Sesuaikan Jumlah Ukuran" deskripsi="Ubah angka pasang pada ukuran yang keliru memakai tombol + dan − , atau ketik angkanya langsung." />
             <Step nomor="4" judul="Simpan Perubahan" deskripsi="Tekan tombol 'Simpan Perubahan'. Total pasang dan upah akan langsung ter-update otomatis." />
           </div>
         </div>
@@ -182,7 +196,7 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'hapus_data',
       icon: Trash2,
-      title: '3. Cara Menghapus Catatan Kerja yang Keliru / Batal',
+      title: '3. Cara Menghapus Catatan yang Keliru',
       subtitle: 'Membatalkan item yang tidak sengaja terinput',
       content: (
         <div className="space-y-3">
@@ -190,13 +204,13 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
             Untuk menghapus catatan kerja sepatu:
           </p>
           <div className="space-y-2">
-            <p className="text-xs sm:text-sm text-slate-700">
-              1. Buka kartu pekerja atau masuk ke menu <b>Riwayat Kerja</b>.<br />
-              2. Tekan tombol <b>Ikon Sampah (Hapus)</b> pada baris data yang ingin dibuang.<br />
-              3. Pada jendela konfirmasi, tekan <b>"Ya, Hapus Data Ini"</b>.
+            <p className="text-base text-slate-800">
+              1. Buka kartu pekerja atau masuk ke menu <b>Riwayat</b>.<br />
+              2. Tekan tombol merah <b>Hapus</b> pada data yang ingin dibuang.<br />
+              3. Pada jendela konfirmasi, tekan <b>"Ya, Hapus"</b>.
             </p>
           </div>
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+          <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-3 text-base font-semibold text-amber-900">
             ⚠️ Mandor hanya dapat menghapus atau mengedit data <b>hari ini</b> sebelum tutup buku.
           </div>
         </div>
@@ -205,17 +219,17 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'riwayat_mandor',
       icon: ClipboardList,
-      title: '4. Memantau Riwayat Kerja & Ekspor Excel',
+      title: '4. Melihat Riwayat & Menyimpan ke Excel',
       subtitle: 'Melihat rekap total harian dan download file laporan ke HP',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Riwayat Kerja</b> digunakan untuk memantau semua hasil kerja:
+            Menu <b>Riwayat</b> dipakai untuk melihat semua hasil kerja yang sudah dicatat:
           </p>
-          <ul className="list-disc list-inside space-y-1.5 text-xs sm:text-sm text-slate-700">
+          <ul className="list-disc list-inside space-y-1.5 text-base text-slate-800">
             <li><b>Total Pasang Harian:</b> Memantau akumulasi hasil kerja seluruh tukang sepatu pada hari ini.</li>
             <li><b>Filter Shift:</b> Memisahkan pantauan hasil kerja Shift 1 dan Shift 2.</li>
-            <li><b>Tombol Ekspor Excel:</b> Mengunduh file spreadsheet (.xlsx) laporan produksi langsung ke folder <b>Unduhan (Download)</b> di HP Anda.</li>
+            <li><b>Tombol Simpan ke Excel:</b> Menyimpan laporan ke folder <b>Download (Unduhan)</b> di HP Anda, siap dikirim ke WhatsApp.</li>
           </ul>
         </div>
       ),
@@ -223,21 +237,21 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'faq_mandor',
       icon: HelpCircle,
-      title: '5. Tanya Jawab (FAQ) Mandor',
+      title: '5. Tanya Jawab Mandor',
       subtitle: 'Solusi untuk kendala umum di lapangan',
       content: (
-        <div className="space-y-3 text-xs sm:text-sm">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+        <div className="space-y-3 text-base">
+          <div className="rounded-2xl border-2 border-slate-300 bg-white p-3.5">
             <div className="font-bold text-slate-900">Nama pekerja tidak muncul di pilihan?</div>
-            <p className="mt-1 text-slate-600">Pastikan admin sudah mendaftarkan nama pekerja dan mengaktifkan statusnya di Master Data.</p>
+            <p className="mt-1 text-slate-700">Pastikan admin sudah mendaftarkan nama pekerja dan mengaktifkan statusnya di Master Data.</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+          <div className="rounded-2xl border-2 border-slate-300 bg-white p-3.5">
             <div className="font-bold text-slate-900">Apakah harus login ulang setiap kali buka aplikasi HP?</div>
-            <p className="mt-1 text-slate-600">Tidak. Aplikasi mandor sudah otomatis menyimpan sesi sehingga bisa langsung dipakai mencatat.</p>
+            <p className="mt-1 text-slate-700">Tidak. Aplikasi mandor sudah otomatis menyimpan sesi sehingga bisa langsung dipakai mencatat.</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+          <div className="rounded-2xl border-2 border-slate-300 bg-white p-3.5">
             <div className="font-bold text-slate-900">Di mana file Excel yang diunduh tersimpan?</div>
-            <p className="mt-1 text-slate-600">File tersimpan langsung di folder <b>Unduhan / Downloads</b> pada memori HP.</p>
+            <p className="mt-1 text-slate-700">File tersimpan langsung di folder <b>Unduhan / Downloads</b> pada memori HP.</p>
           </div>
         </div>
       ),
@@ -249,28 +263,28 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'dashboard_admin',
       icon: Layers,
-      title: '1. Dashboard Produksi Realtime',
+      title: '1. Beranda: Hasil Kerja Hari Ini',
       subtitle: 'Memantau produktivitas dan pengeluaran upah pabrik',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Dashboard</b> menampilkan performa pabrik yang diperbarui secara realtime:
+            Menu <b>Beranda</b> menampilkan hasil kerja hari ini dan diperbarui otomatis:
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-black text-slate-900 block">Total Pasang Hari Ini</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-base">
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">Total Pasang Hari Ini</span>
               Akumulasi jumlah pasang sepatu yang diselesaikan seluruh pekerja pada hari ini.
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-black text-slate-900 block">Estimasi Upah Hari Ini</span>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">Estimasi Upah Hari Ini</span>
               Total kewajiban gaji harian yang harus dibayarkan sesuai tarif ongkos model sepatu.
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-black text-slate-900 block">Breakdown Shift 1 & 2</span>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">Breakdown Shift 1 & 2</span>
               Perbandingan hasil pasang antara Shift 1 (Pagi) dan Shift 2 (Siang/Malam).
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-black text-slate-900 block">Model Terbanyak Dikerjakan</span>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">Model Terbanyak Dikerjakan</span>
               Informasi model sepatu yang sedang paling banyak diproduksi hari ini.
             </div>
           </div>
@@ -280,17 +294,17 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'data_produksi_admin',
       icon: FileSpreadsheet,
-      title: '2. Pusat Data Produksi & Audit Koreksi',
+      title: '2. Data Produksi & Koreksi',
       subtitle: 'Melihat seluruh riwayat produksi semua tanggal dan ekspor Excel',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Data Produksi</b> adalah pusat arsip hasil kerja seluruh pabrik:
+            Menu <b>Produksi</b> adalah tempat semua catatan hasil kerja pabrik:
           </p>
-          <ul className="list-disc list-inside space-y-1.5 text-xs sm:text-sm text-slate-700">
+          <ul className="list-disc list-inside space-y-1.5 text-base text-slate-800">
             <li><b>Filter Tanggal & Pekerja:</b> Memeriksa hasil kerja karyawan tertentu pada tanggal atau rentang tanggal tertentu.</li>
             <li><b>Koreksi Penuh:</b> Admin memiliki wewenang mengoreksi maupun menghapus data produksi kapan saja (termasuk tanggal lampau).</li>
-            <li><b>Ekspor Excel:</b> Mengunduh laporan data produksi berformat spreadsheet (.xlsx) rapi untuk arsip pembukuan.</li>
+            <li><b>Simpan ke Excel:</b> Menyimpan laporan produksi ke file Excel untuk arsip pembukuan.</li>
           </ul>
         </div>
       ),
@@ -298,17 +312,17 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'payroll_admin',
       icon: Coins,
-      title: '3. Hitung & Rekap Gaji (Payroll)',
+      title: '3. Rekap Gaji',
       subtitle: 'Perhitungan upah otomatis per periode cut-off (1-15 & 16-akhir bulan)',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Rekap Gaji</b> menghitung kewajiban upah kerja secara otomatis:
+            Menu <b>Gaji</b> menghitung upah pekerja secara otomatis:
           </p>
-          <div className="space-y-2 text-xs sm:text-sm text-slate-700">
+          <div className="space-y-2 text-base text-slate-800">
             <p>• <b>Periode Cut-Off:</b> Otomatis terbagi menjadi periode 1–15 dan periode 16–akhir bulan.</p>
             <p>• <b>Rincian per Pekerja:</b> Menampilkan breakdown tiap model yang dikerjakan beserta total pasang dan total upah rupiah.</p>
-            <p>• <b>Unduh Excel / Slip Gaji:</b> Tekan tombol "Ekspor Excel" untuk mencetak slip atau mengolah data gaji di Excel.</p>
+            <p>• <b>Simpan ke Excel:</b> Tekan tombol "Simpan ke Excel" untuk mengolah atau mencetak data gaji.</p>
           </div>
         </div>
       ),
@@ -316,25 +330,25 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'master_data',
       icon: UserCheck,
-      title: '4. Kelola Master Data Pabrik',
+      title: '4. Master Data Pabrik',
       subtitle: 'Pengaturan pekerja, tarif upah model, ukuran sepatu, dan nomor PO',
       content: (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-bold text-slate-900 block">👷 Master Pekerja</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-base">
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">👷 Master Pekerja</span>
               Tambah nama karyawan baru atau nonaktifkan karyawan yang sudah berhenti.
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-bold text-slate-900 block">👟 Model & Tarif Upah</span>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">👟 Model & Tarif Upah</span>
               Tambah model sepatu baru dan tentukan nominal ongkos kerja per pasang (Rp).
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-bold text-slate-900 block">📏 Master Ukuran</span>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">📏 Master Ukuran</span>
               Kelola nomor ukuran sepatu aktif (misal No 36 s/d 44).
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <span className="font-bold text-slate-900 block">📦 Master PO Pesanan</span>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">📦 Master PO Pesanan</span>
               Kelola nomor pesanan customer beserta target pasang yang harus dipenuhi.
             </div>
           </div>
@@ -344,19 +358,19 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'reset_db',
       icon: Database,
-      title: '5. Pembersihan & Reset Database',
+      title: '5. Menghapus / Mengosongkan Data',
       subtitle: 'Mengosongkan riwayat kerja untuk buku baru atau reset total',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
             Di menu <b>Pengaturan</b>, tersedia 2 opsi pembersihan data:
           </p>
-          <div className="space-y-2 text-xs sm:text-sm text-slate-700">
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+          <div className="space-y-2 text-base text-slate-800">
+            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-3">
               <b className="text-amber-950 block">1. Kosongkan Catatan Hasil Kerja (Buku Baru)</b>
               Menghapus semua riwayat catatan pasang sepatu dan hitungan gaji harian agar kembali ke 0. Nama pekerja, model sepatu, dan nomor PO tetap aman.
             </div>
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3">
+            <div className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-3">
               <b className="text-rose-950 block">2. Hapus Bersih Semua Data Pabrik</b>
               Menghapus SEMUA data termasuk nama pekerja, model sepatu, nomor PO, dan catatan kerja untuk memulai pabrik bersih dari awal.
             </div>
@@ -367,17 +381,17 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'faq_admin',
       icon: HelpCircle,
-      title: '6. Tanya Jawab (FAQ) Admin',
+      title: '6. Tanya Jawab Admin',
       subtitle: 'Pertanyaan umum seputar administrasi sistem',
       content: (
-        <div className="space-y-3 text-xs sm:text-sm">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+        <div className="space-y-3 text-base">
+          <div className="rounded-2xl border-2 border-slate-300 bg-white p-3.5">
             <div className="font-bold text-slate-900">Jika tarif ongkos model diubah hari ini, apakah gaji periode lalu ikut berubah?</div>
-            <p className="mt-1 text-slate-600">Tidak. Sistem mengunci harga saat data diinput (snapshot harga), sehingga arsip gaji periode lampau tetap aman dan akurat.</p>
+            <p className="mt-1 text-slate-700">Tidak. Sistem mengunci harga saat data diinput (snapshot harga), sehingga arsip gaji periode lampau tetap aman dan akurat.</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+          <div className="rounded-2xl border-2 border-slate-300 bg-white p-3.5">
             <div className="font-bold text-slate-900">Bagaimana jika ingin berpindah ke mode Mandor untuk mengecek input lapangan?</div>
-            <p className="mt-1 text-slate-600">Buka menu <b>Pengaturan</b>, lalu klik <b>Mode Mandor Lapangan</b> untuk berpindah seketika tanpa perlu logout.</p>
+            <p className="mt-1 text-slate-700">Buka menu <b>Pengaturan</b> (ikon gerigi di kanan atas), lalu tekan <b>Mode Mandor</b>. Tidak perlu keluar dari aplikasi.</p>
           </div>
         </div>
       ),
@@ -398,61 +412,62 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
 
   return (
     <div className="space-y-4">
-      {/* Header Banner (M3 Tonal Container) */}
+      {/* ---------- Banner ---------- */}
       <div
-        className={`rounded-3xl border p-4.5 sm:p-5 shadow-xs transition-all ${
+        className={`rounded-3xl border-2 p-4 shadow-sm sm:p-5 ${
           isMandor
-            ? 'bg-emerald-50/80 border-emerald-200/80 text-emerald-950'
-            : 'bg-blue-50/80 border-blue-200/80 text-blue-950'
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-950'
+            : 'border-blue-300 bg-blue-50 text-blue-950'
         }`}
       >
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
           <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl shadow-2xs ${
-              isMandor
-                ? 'bg-emerald-600 text-white'
-                : 'bg-blue-600 text-white'
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white ${
+              isMandor ? 'bg-emerald-700' : 'bg-blue-700'
             }`}
           >
-            {isMandor ? <HardHat className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
+            {isMandor ? <HardHat className="h-7 w-7" /> : <ShieldCheck className="h-7 w-7" />}
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">
-              {isMandor ? 'Panduan Mandor Lapangan' : 'Panduan Admin'}
+          <div className="min-w-0">
+            <h1 className="text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
+              {isMandor ? 'Panduan Mandor' : 'Panduan Admin'}
             </h1>
-            <p className="text-xs sm:text-sm font-semibold opacity-80 mt-0.5">
+            <p className="mt-0.5 text-base font-medium leading-snug opacity-90">
               {isMandor
-                ? 'Panduan praktis pencatatan hasil kerja, shift, edit data, dan ekspor excel.'
-                : 'Panduan memantau dashboard, kelola master data, payroll gaji, dan database.'}
+                ? 'Cara mengisi hasil kerja, memperbaiki data, dan menyimpan laporan.'
+                : 'Cara memantau hasil kerja, rekap gaji, master data, dan hapus data.'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Floating M3 Search Bar */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder={
-            isMandor
-              ? 'Cari panduan mandor (cth: input, edit, ukuran, shift)...'
-              : 'Cari panduan admin (cth: dashboard, gaji, master, reset)...'
-          }
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-full border border-slate-300 bg-slate-50/80 px-5 py-3.5 pl-11 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-slate-900/10 shadow-2xs transition-all"
-        />
-        <Search className="absolute left-4 top-4 h-4 w-4 text-slate-400" />
+      {/* ---------- Cari ---------- */}
+      <div>
+        <FieldLabel htmlFor="cari-panduan">Cari panduan</FieldLabel>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          />
+          <TextInput
+            id="cari-panduan"
+            type="text"
+            placeholder={isMandor ? 'contoh: isi data, ubah, ukuran' : 'contoh: gaji, master, hapus'}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-13"
+          />
+        </div>
       </div>
 
-      {/* Topics List */}
+      {/* ---------- Daftar topik ---------- */}
       <div className="space-y-3">
         {filteredTopics.length === 0 ? (
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-8 text-center shadow-xs">
-            <BookOpen className="mx-auto mb-2 h-10 w-10 text-slate-400" />
-            <p className="text-sm font-bold text-slate-700">Topik tidak ditemukan</p>
-            <p className="text-xs text-slate-500">Coba ketik kata kunci pencarian yang lain.</p>
-          </div>
+          <EmptyState
+            icon={<BookOpen className="h-8 w-8" />}
+            title="Panduan tidak ditemukan"
+            description="Coba kata lain, atau kosongkan kotak pencarian untuk melihat semua panduan."
+          />
         ) : (
           filteredTopics.map((topic) => (
             <AccordionItem
