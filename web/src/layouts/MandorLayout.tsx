@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ConfirmModal } from '../components/ui'
+import OfflineBanner from '../components/OfflineBanner'
 import { PenLine, Clock, HelpCircle, Settings, LogOut } from 'lucide-react'
 
 export function LogoIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -64,6 +65,8 @@ export default function MandorLayout() {
           </div>
         </div>
       </header>
+
+      <OfflineBanner />
 
       {/* ---------- Isi halaman ---------- */}
       <main className="flex-1 overflow-y-auto px-3 pb-32 pt-4 sm:px-5 sm:pt-5">

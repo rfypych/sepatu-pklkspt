@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext'
 import type { ProduksiRow } from '../../lib/api'
 import type { MasterPo, MasterUkuran, Pekerja, TipeSepatu } from '../../lib/types'
 import { SHIFTS, formatRupiah, tanggalHariIni } from '../../lib/constants'
+import { addOfflineQueue } from '../../lib/offline'
 import {
   BigButton,
   ConfirmModal,
@@ -33,6 +34,7 @@ import {
   SkeletonCard,
   Spinner,
   StepCard,
+  SuccessBox,
   TextInput,
 } from '../../components/ui'
 import PoProgress from '../../components/PoProgress'
@@ -79,6 +81,7 @@ export default function InputProduksi() {
   const [ukuranList, setUkuranList] = useState<MasterUkuran[]>(() => getCache<MasterUkuran[]>('ukuran_aktif') ?? [])
   const [poList, setPoList] = useState<MasterPo[]>(() => getCache<MasterPo[]>('po_semua') ?? [])
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [loading, setLoading] = useState(() => !getCache('pekerja_aktif'))
 
   const [idPekerja, setIdPekerja] = useState<number | null>(null)
@@ -575,6 +578,79 @@ export default function InputProduksi() {
     })
   }
 
+  function simpanKeOffline(
+    validPoId: number | null,
+    payloadItems: { id_sepatu: number; qtyPerUkuran: { id_ukuran: string; qty: number }[] }[],
+  ) {
+    if (!idPekerja) return
+
+    const formattedItems = payloadItems.map((it) => {
+      const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
+      return {
+        id_sepatu: it.id_sepatu,
+        nama_model: model?.nama_model,
+        qtyPerUkuran: it.qtyPerUkuran.map((d) => {
+          const uk = ukuranList.find((u) => String(u.id_ukuran) === d.id_ukuran)
+          return {
+            id_ukuran: d.id_ukuran,
+            label_ukuran: uk?.label_ukuran,
+            qty: d.qty,
+          }
+        }),
+      }
+    })
+
+    addOfflineQueue({
+      tanggal: today,
+      shift,
+      id_pekerja: idPekerja,
+      id_po: validPoId,
+      nama_pekerja: pekerja?.nama,
+      nama_po: selectedPo?.no_po,
+      items: formattedItems,
+    })
+
+    const offlineEntries: ProduksiRow[] = payloadItems.map((it, i) => {
+      const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
+      return {
+        id_produksi: -1 * (Date.now() + i),
+        tanggal: today,
+        shift,
+        id_pekerja: idPekerja,
+        id_sepatu: it.id_sepatu,
+        id_po: validPoId,
+        catatan: 'offline',
+        created_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        nama_pekerja: pekerja?.nama ?? '',
+        nama_model: model?.nama_model ?? 'Model',
+        no_po: selectedPo?.no_po ?? null,
+        detail: it.qtyPerUkuran.map((d, dIdx) => ({
+          id_detail: -1 * (Date.now() + i * 100 + dIdx),
+          id_produksi: -1 * (Date.now() + i),
+          id_ukuran: Number(d.id_ukuran),
+          qty: d.qty,
+          ongkos_kerja_saat_ini: model?.ongkos_kerja ?? 0,
+        })),
+      }
+    })
+
+    setSavedList((prev) => [...prev, ...offlineEntries])
+    setNewItems([])
+    try {
+      localStorage.removeItem(`mandor_draft_${today}_${idPekerja}_${shift}`)
+    } catch {
+      // ignore
+    }
+    setLastPoId(validPoId)
+    setPoMap((prev) => ({ ...prev, [idPekerja]: validPoId }))
+    setInfo(
+      '📶 Data tersimpan di memori HP (Mode Offline). Data otomatis terkirim ke server begitu sinyal/internet aktif kembali.',
+    )
+    setError(null)
+  }
+
   async function simpan() {
     if (!idPekerja) return
     const payloadItems = newItems
@@ -591,8 +667,17 @@ export default function InputProduksi() {
 
     setSaving(true)
     setError(null)
+    setInfo(null)
+    const validPoId = idPo != null && poList.some((p) => p.id_po === idPo) ? idPo : null
+
+    // Jika sedang offline murni: langsung simpan ke antrean lokal HP
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      simpanKeOffline(validPoId, payloadItems)
+      setSaving(false)
+      return
+    }
+
     try {
-      const validPoId = idPo != null && poList.some((p) => p.id_po === idPo) ? idPo : null
       await simpanProduksiBatch({
         tanggal: today,
         shift,
@@ -608,6 +693,7 @@ export default function InputProduksi() {
       }
       setLastPoId(validPoId)
       setPoMap((prev) => ({ ...prev, [idPekerja]: validPoId }))
+      setInfo('Data hasil kerja berhasil disimpan ke server.')
 
       const [updatedToday] = await Promise.all([
         getProduksiHariIni(),
@@ -620,7 +706,19 @@ export default function InputProduksi() {
       }
       setShiftMap((prev) => ({ ...prev, ...dbShiftMap }))
     } catch (e) {
-      setError((e as Error).message)
+      const errMsg = (e as Error).message || ''
+      const looksLikeNetworkFail =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        errMsg.toLowerCase().includes('failed to fetch') ||
+        errMsg.toLowerCase().includes('network') ||
+        errMsg.toLowerCase().includes('load failed') ||
+        errMsg.toLowerCase().includes('abort')
+
+      if (looksLikeNetworkFail) {
+        simpanKeOffline(validPoId, payloadItems)
+      } else {
+        setError(errMsg)
+      }
     } finally {
       setSaving(false)
     }
@@ -999,16 +1097,21 @@ export default function InputProduksi() {
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <PillBadge color="emerald">{sum} pasang</PillBadge>
                           {r.no_po && <PillBadge color="blue">{r.no_po}</PillBadge>}
+                          {r.id_produksi < 0 && (
+                            <PillBadge color="amber">🟡 Menunggu Sinyal (Offline)</PillBadge>
+                          )}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
-                        <button
-                          onClick={() => bukaEdit(r)}
-                          className="flex min-h-12 items-center gap-1.5 rounded-2xl border-2 border-blue-400 bg-blue-50 px-3.5 text-base font-bold text-blue-900 active:bg-blue-200"
-                        >
-                          <Edit3 className="h-5 w-5" />
-                          Ubah
-                        </button>
+                        {r.id_produksi > 0 && (
+                          <button
+                            onClick={() => bukaEdit(r)}
+                            className="flex min-h-12 items-center gap-1.5 rounded-2xl border-2 border-blue-400 bg-blue-50 px-3.5 text-base font-bold text-blue-900 active:bg-blue-200"
+                          >
+                            <Edit3 className="h-5 w-5" />
+                            Ubah
+                          </button>
+                        )}
                         <button
                           onClick={() => hapusLocked(r)}
                           aria-label="Hapus catatan ini"
@@ -1112,6 +1215,7 @@ export default function InputProduksi() {
         )}
       </StepCard>
 
+      {info && <SuccessBox message={info} />}
       {error && <ErrorBox message={error} />}
 
       {/* ---------- Ringkasan + Tombol Simpan ---------- */}
