@@ -1,21 +1,38 @@
 # Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# OkHttp & Optional Security/TLS Providers
+-dontwarn okio.**
+-dontwarn okhttp3.**
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.bouncycastle.jsse.**
+-dontwarn org.conscrypt.**
+-dontwarn org.openjsse.**
+-dontwarn javax.annotation.**
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Retrofit
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepclassmembers,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Moshi JSON
+-dontwarn com.squareup.moshi.**
+-keepclassmembers class * {
+    @com.squareup.moshi.* <fields>;
+    @com.squareup.moshi.* <methods>;
+}
+-keep @com.squareup.moshi.JsonClass class * { *; }
+
+# Room SQLite
+-keep class * extends androidx.room.RoomDatabase
+-dontwarn androidx.room.paging.**
+
+# Coroutines
+-dontwarn kotlinx.coroutines.**
+
+# Data Models
+-keep class com.example.data.models.** { *; }
+-keepclassmembers class com.example.data.models.** { *; }
