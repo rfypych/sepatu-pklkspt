@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  getProduksiHariIni,
+  getProduksi,
+  getProduksiRentang,
   getUkuranSemua,
   getPoSemua,
   hapusProduksi,
@@ -9,12 +10,24 @@ import {
   type ProduksiRow,
 } from '../../lib/api'
 import type { MasterPo, MasterUkuran } from '../../lib/types'
-import { formatAngka, formatRupiah, formatTanggalPendek } from '../../lib/constants'
+import {
+  formatAngka,
+  formatBulanTahun,
+  formatRupiah,
+  formatTanggalPendek,
+  bulanHariIni,
+  rentangBulan,
+  rentangTahun,
+  tahunHariIni,
+  tanggalHariIni,
+  type PeriodRiwayat,
+} from '../../lib/constants'
 import {
   BigButton,
   ConfirmModal,
   EmptyState,
   ErrorBox,
+  ExportSuccessModal,
   NumberStepper,
   PageTitle,
   PillBadge,
@@ -23,19 +36,15 @@ import {
 } from '../../components/ui'
 import { ViewToggle, Tabel, THead, Th, Td, DataRow } from '../../components/view'
 import { useViewMode } from '../../lib/useViewMode'
-import { buatBarisLaporan } from '../../lib/laporan'
-import { BarChart3, Coins, Edit3, LayoutDashboard, Package, Trash2 } from 'lucide-react'
-
-function labelTanggalPanjang(): string {
-  return new Intl.DateTimeFormat('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date())
-}
+import PeriodeFilter from '../../components/PeriodeFilter'
+import { buatBarisLaporan, exportLaporanHarian, shareLaporanHarian } from '../../lib/laporan'
+import { Calendar, Coins, Download, Edit3, LayoutDashboard, Package, Trash2 } from 'lucide-react'
 
 export default function Dashboard() {
+  const [periode, setPeriode] = useState<PeriodRiwayat>('hari')
+  const [tanggal, setTanggal] = useState(tanggalHariIni())
+  const [bulan, setBulan] = useState(bulanHariIni())
+  const [tahun, setTahun] = useState(tahunHariIni())
   const [rows, setRows] = useState<ProduksiRow[]>(
     () => getCache<ProduksiRow[]>('produksi_hari_ini') ?? [],
   )
@@ -52,11 +61,24 @@ export default function Dashboard() {
   const [qty, setQty] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [hapusTarget, setHapusTarget] = useState<number | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportedName, setExportedName] = useState<string | null>(null)
 
   const muat = useCallback(async () => {
     try {
+      let prodPromise: Promise<ProduksiRow[]>
+      if (periode === 'hari') {
+        prodPromise = getProduksi(tanggal)
+      } else if (periode === 'bulan') {
+        const { dari, sampai } = rentangBulan(bulan)
+        prodPromise = getProduksiRentang(dari, sampai)
+      } else {
+        const { dari, sampai } = rentangTahun(tahun)
+        prodPromise = getProduksiRentang(dari, sampai)
+      }
+
       const [prod, ukuran, po] = await Promise.all([
-        getProduksiHariIni(),
+        prodPromise,
         getUkuranSemua(),
         getPoSemua(),
       ])
@@ -69,7 +91,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [periode, tanggal, bulan, tahun])
 
   useEffect(() => {
     muat()
@@ -124,6 +146,22 @@ export default function Dashboard() {
     }
   }
 
+  async function exportExcel() {
+    setExporting(true)
+    const nama =
+      periode === 'hari'
+        ? `laporan-harian-${tanggal}.xlsx`
+        : periode === 'bulan'
+          ? `laporan-bulanan-${bulan}.xlsx`
+          : `laporan-tahunan-${tahun}.xlsx`
+    try {
+      await exportLaporanHarian(rows, poList, ukuranList, nama)
+      setExportedName(nama)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const baris = buatBarisLaporan(rows, poList, ukuranList)
   const totalPasangSemua = baris.reduce((a, b) => a + b.pasang, 0)
   const totalGajiSemua = baris.reduce((a, b) => a + b.subtotal, 0)
@@ -133,14 +171,44 @@ export default function Dashboard() {
       <PageTitle
         icon={<LayoutDashboard className="h-6 w-6" />}
         title="Hasil Kerja Hari Ini"
-        subtitle={labelTanggalPanjang()}
+        subtitle={
+          periode === 'hari'
+            ? `Tanggal ${formatTanggalPendek(tanggal)}.`
+            : periode === 'bulan'
+              ? `Bulan ${formatBulanTahun(bulan)}.`
+              : `Tahun ${tahun}.`
+        }
         badge={
           <PillBadge color="emerald">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-600" />
             Otomatis diperbarui
           </PillBadge>
         }
-        right={<ViewToggle value={view} onChange={setView} />}
+        right={
+          <>
+            <BigButton
+              variant="dark"
+              size="sm"
+              onClick={exportExcel}
+              disabled={rows.length === 0 || exporting}
+            >
+              <Download className="h-5 w-5" />
+              {exporting ? 'Menyiapkan file...' : 'Simpan ke Excel'}
+            </BigButton>
+            <ViewToggle value={view} onChange={setView} />
+          </>
+        }
+      />
+
+      <PeriodeFilter
+        periode={periode}
+        setPeriode={setPeriode}
+        tanggal={tanggal}
+        setTanggal={setTanggal}
+        bulan={bulan}
+        setBulan={setBulan}
+        tahun={tahun}
+        setTahun={setTahun}
       />
 
       {/* ---------- Angka besar ---------- */}
@@ -148,14 +216,14 @@ export default function Dashboard() {
         <StatCard
           tone="blue"
           icon={<Package className="h-5 w-5" />}
-          label="Sepatu Selesai Hari Ini"
+          label="Sepatu Selesai"
           value={formatAngka(totalPasangSemua)}
           unit="pasang"
         />
         <StatCard
           tone="emerald"
           icon={<Coins className="h-5 w-5" />}
-          label="Perkiraan Upah Hari Ini"
+          label="Perkiraan Upah"
           value={formatRupiah(totalGajiSemua)}
           hint={`Dari ${rows.length} catatan kerja`}
         />
@@ -167,9 +235,9 @@ export default function Dashboard() {
         <SkeletonTable rows={4} cols={8} />
       ) : rows.length === 0 ? (
         <EmptyState
-          icon={<BarChart3 className="h-8 w-8" />}
-          title="Belum ada hasil kerja hari ini"
-          description="Data akan muncul sendiri di halaman ini begitu mandor menyimpan catatan dari lapangan. Tidak perlu menekan tombol apa pun."
+          icon={<Calendar className="h-8 w-8" />}
+          title="Belum ada data di periode ini"
+          description="Coba pilih tanggal, bulan, atau tahun yang lain di kotak filter di atas."
         />
       ) : (
         <>
@@ -339,6 +407,13 @@ export default function Dashboard() {
         isDestructive
         onConfirm={eksekusiHapus}
         onCancel={() => setHapusTarget(null)}
+      />
+
+      <ExportSuccessModal
+        isOpen={exportedName !== null}
+        onClose={() => setExportedName(null)}
+        filename={exportedName ?? ''}
+        onShare={() => shareLaporanHarian(rows, poList, ukuranList, exportedName || `laporan-harian-${tanggal}.xlsx`)}
       />
     </div>
   )
