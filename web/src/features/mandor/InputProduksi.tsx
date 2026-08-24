@@ -97,6 +97,8 @@ export default function InputProduksi() {
 
   // Item hari ini (dari server) untuk pekerja + shift ini -> terkunci
   const [savedList, setSavedList] = useState<ProduksiRow[]>([])
+  // Seluruh item produksi hari ini (semua pekerja & shift) untuk indikator badge
+  const [todayAllProd, setTodayAllProd] = useState<ProduksiRow[]>(() => getCache<ProduksiRow[]>('produksi_hari_ini') ?? [])
   // Item baru yang sedang diketik (belum disimpan)
   const [newItems, setNewItems] = useState<NewItem[]>([])
   const [saving, setSaving] = useState(false)
@@ -217,12 +219,14 @@ export default function InputProduksi() {
       setModelList(m)
       setUkuranList(u)
       setPoList(po)
+      setTodayAllProd(todayProd)
 
       // Simpan ke unified cache
       setCache('pekerja_aktif', p)
       setCache('tipe_sepatu_aktif', m)
       setCache('ukuran_aktif', u)
       setCache('po_semua', po)
+      setCache('produksi_hari_ini', todayProd)
 
       // Ambil data Shift & PO yang sudah tersimpan di database hari ini
       const dbShiftMap: Record<number, 1 | 2> = {}
@@ -287,6 +291,8 @@ export default function InputProduksi() {
 
         setPoList(pos)
         setCache('po_semua', pos)
+        setTodayAllProd(todayProd)
+        setCache('produksi_hari_ini', todayProd)
 
         // Validasi: jika PO yang sedang dipilih dinonaktifkan admin, batalkan pilihan PO secara otomatis
         setIdPo((curPo) => {
@@ -468,11 +474,12 @@ export default function InputProduksi() {
       await replaceProduksiDetail(editingRow.id_produksi, payload)
       setEditingRow(null)
       if (idPekerja) {
-        await Promise.all([
+        const [, updatedToday] = await Promise.all([
           reloadSaved(idPekerja, shift),
           getProduksiHariIni(),
           reloadPo(),
         ])
+        setTodayAllProd(updatedToday)
       }
     } catch (e) {
       setEditError((e as Error).message)
@@ -565,6 +572,7 @@ export default function InputProduksi() {
           await hapusProduksi(r.id_produksi)
           setSavedList((prev) => prev.filter((x) => x.id_produksi !== r.id_produksi))
           const [updatedToday] = await Promise.all([getProduksiHariIni(), reloadPo()])
+          setTodayAllProd(updatedToday)
           const dbShiftMap: Record<number, 1 | 2> = {}
           for (const row of updatedToday) {
             if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
@@ -637,6 +645,7 @@ export default function InputProduksi() {
     })
 
     setSavedList((prev) => [...prev, ...offlineEntries])
+    setTodayAllProd((prev) => [...prev, ...offlineEntries])
     setNewItems([])
     try {
       localStorage.removeItem(`mandor_draft_${today}_${idPekerja}_${shift}`)
@@ -700,6 +709,7 @@ export default function InputProduksi() {
         reloadSaved(idPekerja, shift),
         reloadPo(),
       ])
+      setTodayAllProd(updatedToday)
       const dbShiftMap: Record<number, 1 | 2> = {}
       for (const row of updatedToday) {
         if (row.shift) dbShiftMap[row.id_pekerja] = row.shift
@@ -760,9 +770,18 @@ export default function InputProduksi() {
 
         <div className="space-y-3">
           {pekerjaList.map((p) => {
-            const workerPoId = poMap[p.id_pekerja]
-            const workerPo = workerPoId ? poList.find((po) => po.id_po === workerPoId) : null
-            const hasShift = shiftMap[p.id_pekerja] !== undefined
+            const workerRows = todayAllProd.filter((r) => Number(r.id_pekerja) === p.id_pekerja)
+            const totalPasangHariIni = workerRows.reduce(
+              (sum, r) => sum + (r.detail ?? []).reduce((dSum, d) => dSum + Number(d.qty), 0),
+              0,
+            )
+            const poNumbers = Array.from(
+              new Set(workerRows.filter((r) => r.no_po).map((r) => r.no_po as string)),
+            )
+            const hasNonPo = workerRows.some((r) => r.id_po == null)
+            const hasShift = shiftMap[p.id_pekerja] !== undefined || workerRows.length > 0
+            const workerShift = shiftMap[p.id_pekerja] ?? workerRows[0]?.shift
+
             return (
               <button
                 key={p.id_pekerja}
@@ -778,18 +797,26 @@ export default function InputProduksi() {
                       {p.nama}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
-                      {hasShift && (
-                        <PillBadge color={shiftMap[p.id_pekerja] === 1 ? 'amber' : 'indigo'}>
-                          {shiftMap[p.id_pekerja] === 1 ? '☀️ Shift 1' : '🌙 Shift 2'}
+                      {hasShift && workerShift && (
+                        <PillBadge color={workerShift === 1 ? 'amber' : 'indigo'}>
+                          {workerShift === 1 ? '☀️ Shift 1' : '🌙 Shift 2'}
                         </PillBadge>
                       )}
-                      {workerPo && (
-                        <PillBadge color="blue">
-                          <Package className="h-4 w-4" />
-                          {workerPo.no_po}
+                      {totalPasangHariIni > 0 && (
+                        <PillBadge color="emerald">{totalPasangHariIni} psg</PillBadge>
+                      )}
+                      {poNumbers.map((noPo) => (
+                        <PillBadge key={noPo} color="blue">
+                          <Package className="h-3.5 w-3.5" />
+                          {noPo}
+                        </PillBadge>
+                      ))}
+                      {hasNonPo && workerRows.length > 0 && (
+                        <PillBadge color="neutral">
+                          Tanpa PO
                         </PillBadge>
                       )}
-                      {!hasShift && !workerPo && (
+                      {workerRows.length === 0 && !hasShift && (
                         <span className="text-sm font-medium text-slate-500">
                           Belum ada catatan hari ini
                         </span>
