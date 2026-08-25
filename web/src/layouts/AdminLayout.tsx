@@ -22,7 +22,7 @@ const navItems = [
 ]
 
 export default function AdminLayout() {
-  const { user, signOut } = useAuth()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
   const [konfirmasiKeluar, setKonfirmasiKeluar] = useState(false)
 
@@ -42,10 +42,9 @@ export default function AdminLayout() {
               👔
             </div>
             <div className="min-w-0">
-              <div className="truncate text-lg font-extrabold leading-tight tracking-tight">
-                {user?.nama ?? 'Admin'}
+              <div className="truncate text-xl font-extrabold leading-tight tracking-tight">
+                Admin
               </div>
-              <div className="text-sm font-bold text-sky-300">Admin Pabrik</div>
             </div>
           </div>
 

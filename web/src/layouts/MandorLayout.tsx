@@ -20,7 +20,7 @@ const navItems = [
 ]
 
 export default function MandorLayout() {
-  const { user, signOut } = useAuth()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
   const [konfirmasiKeluar, setKonfirmasiKeluar] = useState(false)
 
@@ -40,10 +40,9 @@ export default function MandorLayout() {
               👷
             </div>
             <div className="min-w-0">
-              <div className="truncate text-lg font-extrabold leading-tight tracking-tight">
-                {user?.nama ?? 'Mandor'}
+              <div className="truncate text-xl font-extrabold leading-tight tracking-tight">
+                Mandor
               </div>
-              <div className="text-sm font-bold text-amber-300">Mandor Lapangan</div>
             </div>
           </div>
 
