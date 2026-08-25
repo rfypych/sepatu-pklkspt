@@ -618,34 +618,127 @@ export default function InputProduksi() {
       items: formattedItems,
     })
 
-    const offlineEntries: ProduksiRow[] = payloadItems.map((it, i) => {
-      const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
-      return {
-        id_produksi: -1 * (Date.now() + i),
-        tanggal: today,
-        shift,
-        id_pekerja: idPekerja,
-        id_sepatu: it.id_sepatu,
-        id_po: validPoId,
-        catatan: 'offline',
-        created_by: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        nama_pekerja: pekerja?.nama ?? '',
-        nama_model: model?.nama_model ?? 'Model',
-        no_po: selectedPo?.no_po ?? null,
-        detail: it.qtyPerUkuran.map((d, dIdx) => ({
-          id_detail: -1 * (Date.now() + i * 100 + dIdx),
-          id_produksi: -1 * (Date.now() + i),
-          id_ukuran: Number(d.id_ukuran),
-          qty: d.qty,
-          ongkos_kerja_saat_ini: model?.ongkos_kerja ?? 0,
-        })),
+    // Merge into local savedList
+    setSavedList((prev) => {
+      const next = [...prev]
+      for (const it of payloadItems) {
+        const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
+        const existingIdx = next.findIndex(
+          (r) =>
+            r.id_pekerja === idPekerja &&
+            r.tanggal === today &&
+            r.shift === shift &&
+            r.id_sepatu === it.id_sepatu &&
+            ((r.id_po == null && validPoId == null) || r.id_po === validPoId),
+        )
+        if (existingIdx >= 0) {
+          const existing = { ...next[existingIdx] }
+          const detailMap = new Map(existing.detail.map((d) => [d.id_ukuran, { ...d }]))
+          for (const d of it.qtyPerUkuran) {
+            const uId = Number(d.id_ukuran)
+            const current = detailMap.get(uId)
+            if (current) {
+              current.qty += d.qty
+            } else {
+              detailMap.set(uId, {
+                id_detail: -1 * (Date.now() + Math.random()),
+                id_produksi: existing.id_produksi,
+                id_ukuran: uId,
+                qty: d.qty,
+                ongkos_kerja_saat_ini: model?.ongkos_kerja ?? 0,
+              })
+            }
+          }
+          existing.detail = Array.from(detailMap.values())
+          next[existingIdx] = existing
+        } else {
+          next.push({
+            id_produksi: -1 * (Date.now() + Math.random()),
+            tanggal: today,
+            shift,
+            id_pekerja: idPekerja,
+            id_sepatu: it.id_sepatu,
+            id_po: validPoId,
+            catatan: 'offline',
+            created_by: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            nama_pekerja: pekerja?.nama ?? '',
+            nama_model: model?.nama_model ?? 'Model',
+            no_po: selectedPo?.no_po ?? null,
+            detail: it.qtyPerUkuran.map((d, dIdx) => ({
+              id_detail: -1 * (Date.now() + dIdx),
+              id_produksi: -1 * Date.now(),
+              id_ukuran: Number(d.id_ukuran),
+              qty: d.qty,
+              ongkos_kerja_saat_ini: model?.ongkos_kerja ?? 0,
+            })),
+          })
+        }
       }
+      return next
     })
 
-    setSavedList((prev) => [...prev, ...offlineEntries])
-    setTodayAllProd((prev) => [...prev, ...offlineEntries])
+    setTodayAllProd((prev) => {
+      const next = [...prev]
+      for (const it of payloadItems) {
+        const model = modelList.find((m) => m.id_sepatu === it.id_sepatu)
+        const existingIdx = next.findIndex(
+          (r) =>
+            r.id_pekerja === idPekerja &&
+            r.tanggal === today &&
+            r.shift === shift &&
+            r.id_sepatu === it.id_sepatu &&
+            ((r.id_po == null && validPoId == null) || r.id_po === validPoId),
+        )
+        if (existingIdx >= 0) {
+          const existing = { ...next[existingIdx] }
+          const detailMap = new Map(existing.detail.map((d) => [d.id_ukuran, { ...d }]))
+          for (const d of it.qtyPerUkuran) {
+            const uId = Number(d.id_ukuran)
+            const current = detailMap.get(uId)
+            if (current) {
+              current.qty += d.qty
+            } else {
+              detailMap.set(uId, {
+                id_detail: -1 * (Date.now() + Math.random()),
+                id_produksi: existing.id_produksi,
+                id_ukuran: uId,
+                qty: d.qty,
+                ongkos_kerja_saat_ini: model?.ongkos_kerja ?? 0,
+              })
+            }
+          }
+          existing.detail = Array.from(detailMap.values())
+          next[existingIdx] = existing
+        } else {
+          next.push({
+            id_produksi: -1 * (Date.now() + Math.random()),
+            tanggal: today,
+            shift,
+            id_pekerja: idPekerja,
+            id_sepatu: it.id_sepatu,
+            id_po: validPoId,
+            catatan: 'offline',
+            created_by: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            nama_pekerja: pekerja?.nama ?? '',
+            nama_model: model?.nama_model ?? 'Model',
+            no_po: selectedPo?.no_po ?? null,
+            detail: it.qtyPerUkuran.map((d, dIdx) => ({
+              id_detail: -1 * (Date.now() + dIdx),
+              id_produksi: -1 * Date.now(),
+              id_ukuran: Number(d.id_ukuran),
+              qty: d.qty,
+              ongkos_kerja_saat_ini: model?.ongkos_kerja ?? 0,
+            })),
+          })
+        }
+      }
+      return next
+    })
+
     setNewItems([])
     try {
       localStorage.removeItem(`mandor_draft_${today}_${idPekerja}_${shift}`)

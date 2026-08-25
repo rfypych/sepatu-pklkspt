@@ -221,22 +221,53 @@ router.post('/', async (req, res) => {
     }
 
     await client.query('BEGIN')
-    const { rows: hdr } = await client.query(
-      `INSERT INTO produksi_harian (tanggal, shift, id_pekerja, id_sepatu, id_po, catatan, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id_produksi`,
-      [resolvedTgl, resolvedShift, resolvedPekerja, resolvedSepatu, resolvedPo, catatan || null, req.user.id],
+
+    let idProduksi
+    const { rows: existingRows } = await client.query(
+      `SELECT id_produksi 
+       FROM produksi_harian 
+       WHERE tanggal = $1 
+         AND shift = $2 
+         AND id_pekerja = $3 
+         AND id_sepatu = $4 
+         AND (($5::int IS NULL AND id_po IS NULL) OR (id_po = $5::int))
+       ORDER BY id_produksi ASC 
+       LIMIT 1`,
+      [resolvedTgl, resolvedShift, resolvedPekerja, resolvedSepatu, resolvedPo],
     )
-    const idProduksi = Number(hdr[0].id_produksi)
+
+    if (existingRows.length > 0) {
+      idProduksi = Number(existingRows[0].id_produksi)
+    } else {
+      const { rows: hdr } = await client.query(
+        `INSERT INTO produksi_harian (tanggal, shift, id_pekerja, id_sepatu, id_po, catatan, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id_produksi`,
+        [resolvedTgl, resolvedShift, resolvedPekerja, resolvedSepatu, resolvedPo, catatan || null, req.user.id],
+      )
+      idProduksi = Number(hdr[0].id_produksi)
+    }
 
     if (Array.isArray(itemsDetail)) {
       for (const d of itemsDetail) {
         const qty = Number(d.qty) || 0
         if (qty <= 0) continue
-        await client.query(
-          'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
-          [idProduksi, Number(d.id_ukuran), qty, ongkos],
+        const idUkuran = Number(d.id_ukuran)
+        const { rows: existingDetail } = await client.query(
+          'SELECT id_detail FROM produksi_detail WHERE id_produksi = $1 AND id_ukuran = $2',
+          [idProduksi, idUkuran],
         )
+        if (existingDetail.length > 0) {
+          await client.query(
+            'UPDATE produksi_detail SET qty = qty + $1, ongkos_kerja_saat_ini = $2 WHERE id_detail = $3',
+            [qty, ongkos, existingDetail[0].id_detail],
+          )
+        } else {
+          await client.query(
+            'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
+            [idProduksi, idUkuran, qty, ongkos],
+          )
+        }
       }
     }
     await client.query('COMMIT')
@@ -279,14 +310,32 @@ router.post('/batch', async (req, res) => {
       const ongkos = Number(sepatu[0]?.ongkos_kerja ?? 0)
       const namaModel = sepatu[0]?.nama_model ?? ''
 
-      const { rows: hdr } = await client.query(
-        `INSERT INTO produksi_harian (tanggal, shift, id_pekerja, id_sepatu, id_po, catatan, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id_produksi`,
-        [resolvedTgl, resolvedShift, resolvedPekerja, idSepatu, resolvedPo, catatan || null, req.user.id],
+      let idProduksi
+      const { rows: existingRows } = await client.query(
+        `SELECT id_produksi 
+         FROM produksi_harian 
+         WHERE tanggal = $1 
+           AND shift = $2 
+           AND id_pekerja = $3 
+           AND id_sepatu = $4 
+           AND (($5::int IS NULL AND id_po IS NULL) OR (id_po = $5::int))
+         ORDER BY id_produksi ASC 
+         LIMIT 1`,
+        [resolvedTgl, resolvedShift, resolvedPekerja, idSepatu, resolvedPo],
       )
-      const id = Number(hdr[0].id_produksi)
-      idProduksiList.push(id)
+
+      if (existingRows.length > 0) {
+        idProduksi = Number(existingRows[0].id_produksi)
+      } else {
+        const { rows: hdr } = await client.query(
+          `INSERT INTO produksi_harian (tanggal, shift, id_pekerja, id_sepatu, id_po, catatan, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id_produksi`,
+          [resolvedTgl, resolvedShift, resolvedPekerja, idSepatu, resolvedPo, catatan || null, req.user.id],
+        );
+        idProduksi = Number(hdr[0].id_produksi)
+      }
+      idProduksiList.push(idProduksi)
 
       let detailList = it.qtyPerUkuran
       if (!Array.isArray(detailList) && it.sizes && typeof it.sizes === 'object') {
@@ -302,16 +351,28 @@ router.post('/batch', async (req, res) => {
           const qty = Number(d.qty) || 0
           if (qty <= 0) continue
           itemTotalPasang += qty
-          await client.query(
-            'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
-            [id, Number(d.id_ukuran), qty, ongkos],
+          const idUkuran = Number(d.id_ukuran)
+          const { rows: existingDetail } = await client.query(
+            'SELECT id_detail FROM produksi_detail WHERE id_produksi = $1 AND id_ukuran = $2',
+            [idProduksi, idUkuran],
           )
+          if (existingDetail.length > 0) {
+            await client.query(
+              'UPDATE produksi_detail SET qty = qty + $1, ongkos_kerja_saat_ini = $2 WHERE id_detail = $3',
+              [qty, ongkos, existingDetail[0].id_detail],
+            )
+          } else {
+            await client.query(
+              'INSERT INTO produksi_detail (id_produksi, id_ukuran, qty, ongkos_kerja_saat_ini) VALUES ($1, $2, $3, $4)',
+              [idProduksi, idUkuran, qty, ongkos],
+            )
+          }
         }
       }
 
       createdEntries.push({
-        id: String(id),
-        id_produksi: id,
+        id: String(idProduksi),
+        id_produksi: idProduksi,
         pekerja_id: String(resolvedPekerja),
         model_id: String(idSepatu),
         nama_model: namaModel,

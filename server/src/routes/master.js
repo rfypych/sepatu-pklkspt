@@ -71,17 +71,20 @@ router.patch('/pekerja/:id', adminOnly, updatePekerjaHandler)
 router.put('/pekerja/:id', adminOnly, updatePekerjaHandler)
 
 router.delete('/pekerja/:id', adminOnly, async (req, res) => {
+  const client = await pool.connect()
   try {
     const id = Number(req.params.id)
-    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_harian WHERE id_pekerja = $1', [id])
-    if (Number(rows[0]?.c || 0) > 0) {
-      await pool.query('UPDATE pekerja SET status_aktif = 0 WHERE id_pekerja = $1', [id])
-      return res.json({ ok: true, softDeleted: true, message: 'Pekerja dinonaktifkan karena memiliki riwayat produksi' })
-    }
-    await pool.query('DELETE FROM pekerja WHERE id_pekerja = $1', [id])
-    res.json({ ok: true, hardDeleted: true, message: 'Pekerja berhasil dihapus permanen' })
+    await client.query('BEGIN')
+    await client.query('DELETE FROM produksi_detail WHERE id_produksi IN (SELECT id_produksi FROM produksi_harian WHERE id_pekerja = $1)', [id])
+    await client.query('DELETE FROM produksi_harian WHERE id_pekerja = $1', [id])
+    await client.query('DELETE FROM pekerja WHERE id_pekerja = $1', [id])
+    await client.query('COMMIT')
+    res.json({ ok: true, success: true, message: 'Pekerja berhasil dihapus' })
   } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
     res.status(500).json({ error: e.message })
+  } finally {
+    client.release()
   }
 })
 
@@ -164,17 +167,20 @@ router.patch('/model/:id', adminOnly, updateModelHandler)
 router.put('/model/:id', adminOnly, updateModelHandler)
 
 const deleteModelHandler = async (req, res) => {
+  const client = await pool.connect()
   try {
     const id = Number(req.params.id)
-    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_harian WHERE id_sepatu = $1', [id])
-    if (Number(rows[0]?.c || 0) > 0) {
-      await pool.query('UPDATE tipe_sepatu SET status_aktif = 0 WHERE id_sepatu = $1', [id])
-      return res.json({ ok: true, softDeleted: true, message: 'Model dinonaktifkan karena memiliki riwayat produksi' })
-    }
-    await pool.query('DELETE FROM tipe_sepatu WHERE id_sepatu = $1', [id])
-    res.json({ ok: true, hardDeleted: true, message: 'Model berhasil dihapus permanen' })
+    await client.query('BEGIN')
+    await client.query('DELETE FROM produksi_detail WHERE id_produksi IN (SELECT id_produksi FROM produksi_harian WHERE id_sepatu = $1)', [id])
+    await client.query('DELETE FROM produksi_harian WHERE id_sepatu = $1', [id])
+    await client.query('DELETE FROM tipe_sepatu WHERE id_sepatu = $1', [id])
+    await client.query('COMMIT')
+    res.json({ ok: true, success: true, message: 'Model berhasil dihapus' })
   } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
     res.status(500).json({ error: e.message })
+  } finally {
+    client.release()
   }
 }
 router.delete('/tipe-sepatu/:id', adminOnly, deleteModelHandler)
@@ -224,17 +230,20 @@ router.patch('/ukuran/:id', adminOnly, updateUkuranHandler)
 router.put('/ukuran/:id', adminOnly, updateUkuranHandler)
 
 router.delete('/ukuran/:id', adminOnly, async (req, res) => {
+  const client = await pool.connect()
   try {
     const id = Number(req.params.id)
-    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_detail WHERE id_ukuran = $1', [id])
-    if (Number(rows[0]?.c || 0) > 0) {
-      await pool.query('UPDATE master_ukuran SET status_aktif = 0 WHERE id_ukuran = $1', [id])
-      return res.json({ ok: true, softDeleted: true, message: 'Ukuran dinonaktifkan karena memiliki riwayat produksi' })
-    }
-    await pool.query('DELETE FROM master_ukuran WHERE id_ukuran = $1', [id])
-    res.json({ ok: true, hardDeleted: true, message: 'Ukuran berhasil dihapus permanen' })
+    await client.query('BEGIN')
+    await client.query('DELETE FROM produksi_detail WHERE id_ukuran = $1', [id])
+    await client.query('DELETE FROM produksi_harian WHERE id_produksi NOT IN (SELECT DISTINCT id_produksi FROM produksi_detail)')
+    await client.query('DELETE FROM master_ukuran WHERE id_ukuran = $1', [id])
+    await client.query('COMMIT')
+    res.json({ ok: true, success: true, message: 'Ukuran berhasil dihapus' })
   } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
     res.status(500).json({ error: e.message })
+  } finally {
+    client.release()
   }
 })
 
@@ -321,17 +330,19 @@ router.patch('/po/:id', adminOnly, updatePoHandler)
 router.put('/po/:id', adminOnly, updatePoHandler)
 
 router.delete('/po/:id', adminOnly, async (req, res) => {
+  const client = await pool.connect()
   try {
     const id = Number(req.params.id)
-    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_harian WHERE id_po = $1', [id])
-    if (Number(rows[0]?.c || 0) > 0) {
-      await pool.query('UPDATE master_po SET status_aktif = 0 WHERE id_po = $1', [id])
-      return res.json({ ok: true, softDeleted: true, message: 'PO dinonaktifkan karena memiliki riwayat produksi' })
-    }
-    await pool.query('DELETE FROM master_po WHERE id_po = $1', [id])
-    res.json({ ok: true, hardDeleted: true, message: 'PO berhasil dihapus permanen' })
+    await client.query('BEGIN')
+    await client.query('UPDATE produksi_harian SET id_po = NULL WHERE id_po = $1', [id])
+    await client.query('DELETE FROM master_po WHERE id_po = $1', [id])
+    await client.query('COMMIT')
+    res.json({ ok: true, success: true, message: 'PO berhasil dihapus' })
   } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
     res.status(500).json({ error: e.message })
+  } finally {
+    client.release()
   }
 })
 
