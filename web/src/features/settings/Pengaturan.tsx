@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { BigButton, ConfirmModal, ErrorBox, PillBadge } from '../../components/ui'
-import { ArrowLeft, HardHat, LogOut, ShieldCheck } from 'lucide-react'
+import { ErrorBox, PillBadge } from '../../components/ui'
+import { ArrowLeft, HardHat, ShieldCheck } from 'lucide-react'
 
 export default function Pengaturan() {
-  const { user, switchRole, signOut } = useAuth()
+  const { user, switchRole } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [konfirmasiKeluar, setKonfirmasiKeluar] = useState(false)
 
   async function ganti(role: 'admin' | 'mandor') {
     if (role === user?.role) return
@@ -22,12 +21,6 @@ export default function Pengaturan() {
       return
     }
     navigate(role === 'admin' ? '/admin' : '/mandor')
-  }
-
-  async function keluar() {
-    setKonfirmasiKeluar(false)
-    await signOut()
-    navigate('/login')
   }
 
   const tombol = (
@@ -116,29 +109,7 @@ export default function Pengaturan() {
         </div>
 
         {error && <ErrorBox message={error} />}
-
-        <BigButton
-          variant="ghost"
-          size="lg"
-          className="w-full border-rose-400 text-rose-700"
-          onClick={() => setKonfirmasiKeluar(true)}
-          disabled={loading}
-        >
-          <LogOut className="h-6 w-6" />
-          Keluar dari Aplikasi
-        </BigButton>
       </div>
-
-      <ConfirmModal
-        isOpen={konfirmasiKeluar}
-        title="Keluar dari aplikasi?"
-        message="Anda harus mengetik username dan password lagi untuk masuk kembali."
-        confirmLabel="Ya, Keluar"
-        cancelLabel="Tidak, Tetap di Sini"
-        isDestructive
-        onConfirm={keluar}
-        onCancel={() => setKonfirmasiKeluar(false)}
-      />
     </div>
   )
 }
