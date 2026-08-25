@@ -73,8 +73,13 @@ router.put('/pekerja/:id', adminOnly, updatePekerjaHandler)
 router.delete('/pekerja/:id', adminOnly, async (req, res) => {
   try {
     const id = Number(req.params.id)
-    await pool.query('UPDATE pekerja SET status_aktif = 0 WHERE id_pekerja = $1', [id])
-    res.json({ ok: true, success: true })
+    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_harian WHERE id_pekerja = $1', [id])
+    if (Number(rows[0]?.c || 0) > 0) {
+      await pool.query('UPDATE pekerja SET status_aktif = 0 WHERE id_pekerja = $1', [id])
+      return res.json({ ok: true, softDeleted: true, message: 'Pekerja dinonaktifkan karena memiliki riwayat produksi' })
+    }
+    await pool.query('DELETE FROM pekerja WHERE id_pekerja = $1', [id])
+    res.json({ ok: true, hardDeleted: true, message: 'Pekerja berhasil dihapus permanen' })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -161,8 +166,13 @@ router.put('/model/:id', adminOnly, updateModelHandler)
 const deleteModelHandler = async (req, res) => {
   try {
     const id = Number(req.params.id)
-    await pool.query('UPDATE tipe_sepatu SET status_aktif = 0 WHERE id_sepatu = $1', [id])
-    res.json({ ok: true, success: true })
+    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_harian WHERE id_sepatu = $1', [id])
+    if (Number(rows[0]?.c || 0) > 0) {
+      await pool.query('UPDATE tipe_sepatu SET status_aktif = 0 WHERE id_sepatu = $1', [id])
+      return res.json({ ok: true, softDeleted: true, message: 'Model dinonaktifkan karena memiliki riwayat produksi' })
+    }
+    await pool.query('DELETE FROM tipe_sepatu WHERE id_sepatu = $1', [id])
+    res.json({ ok: true, hardDeleted: true, message: 'Model berhasil dihapus permanen' })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -195,11 +205,34 @@ router.post('/ukuran', adminOnly, async (req, res) => {
   }
 })
 
-router.patch('/ukuran/:id', adminOnly, async (req, res) => {
+const updateUkuranHandler = async (req, res) => {
   try {
-    const { status_aktif } = req.body ?? {}
-    await pool.query('UPDATE master_ukuran SET status_aktif = $1 WHERE id_ukuran = $2', [status_aktif ? 1 : 0, Number(req.params.id)])
+    const { label_ukuran, status_aktif } = req.body ?? {}
+    const id = Number(req.params.id)
+    if (label_ukuran !== undefined) {
+      await pool.query('UPDATE master_ukuran SET label_ukuran = $1 WHERE id_ukuran = $2', [String(label_ukuran).trim(), id])
+    }
+    if (status_aktif !== undefined) {
+      await pool.query('UPDATE master_ukuran SET status_aktif = $1 WHERE id_ukuran = $2', [status_aktif ? 1 : 0, id])
+    }
     res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+router.patch('/ukuran/:id', adminOnly, updateUkuranHandler)
+router.put('/ukuran/:id', adminOnly, updateUkuranHandler)
+
+router.delete('/ukuran/:id', adminOnly, async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_detail WHERE id_ukuran = $1', [id])
+    if (Number(rows[0]?.c || 0) > 0) {
+      await pool.query('UPDATE master_ukuran SET status_aktif = 0 WHERE id_ukuran = $1', [id])
+      return res.json({ ok: true, softDeleted: true, message: 'Ukuran dinonaktifkan karena memiliki riwayat produksi' })
+    }
+    await pool.query('DELETE FROM master_ukuran WHERE id_ukuran = $1', [id])
+    res.json({ ok: true, hardDeleted: true, message: 'Ukuran berhasil dihapus permanen' })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -290,8 +323,13 @@ router.put('/po/:id', adminOnly, updatePoHandler)
 router.delete('/po/:id', adminOnly, async (req, res) => {
   try {
     const id = Number(req.params.id)
-    await pool.query('UPDATE master_po SET status_aktif = 0 WHERE id_po = $1', [id])
-    res.json({ ok: true, success: true })
+    const { rows } = await pool.query('SELECT COUNT(*) AS c FROM produksi_harian WHERE id_po = $1', [id])
+    if (Number(rows[0]?.c || 0) > 0) {
+      await pool.query('UPDATE master_po SET status_aktif = 0 WHERE id_po = $1', [id])
+      return res.json({ ok: true, softDeleted: true, message: 'PO dinonaktifkan karena memiliki riwayat produksi' })
+    }
+    await pool.query('DELETE FROM master_po WHERE id_po = $1', [id])
+    res.json({ ok: true, hardDeleted: true, message: 'PO berhasil dihapus permanen' })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

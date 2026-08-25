@@ -7,10 +7,13 @@ import {
   getPoSemua,
   tambahPekerja,
   ubahPekerja,
+  hapusPekerja,
   tambahModel,
   ubahTipeSepatu,
+  hapusModel,
   tambahUkuran,
   ubahUkuran,
+  hapusUkuran,
   tambahPo,
   ubahPo,
   hapusPo,
@@ -72,7 +75,7 @@ export default function Master() {
       {error && <ErrorBox message={error} />}
       {info && <SuccessBox message={info} />}
 
-      {/* Tab besar berlabel — ikon saja sulit dipahami pengguna baru */}
+      {/* Tab navigasi */}
       <div
         className="grid grid-cols-2 gap-2 sm:grid-cols-4"
         role="tablist"
@@ -105,9 +108,9 @@ export default function Master() {
       </div>
 
       {/* Tab Content */}
-      {tab === 'pekerja' && <TabPekerja setError={setError} />}
+      {tab === 'pekerja' && <TabPekerja setError={setError} setInfo={setInfo} />}
       {tab === 'model' && <TabModel setError={setError} setInfo={setInfo} />}
-      {tab === 'ukuran' && <TabUkuran setError={setError} />}
+      {tab === 'ukuran' && <TabUkuran setError={setError} setInfo={setInfo} />}
       {tab === 'po' && <TabPo setError={setError} setInfo={setInfo} />}
     </div>
   )
@@ -135,9 +138,20 @@ function useList<T>(load: () => Promise<T[]>, setError: (m: string | null) => vo
   return { list, setList, loading, reload }
 }
 
-function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
+// ---------------- TAB PEKERJA ----------------
+function TabPekerja({
+  setError,
+  setInfo,
+}: {
+  setError: (m: string | null) => void
+  setInfo: (m: string | null) => void
+}) {
   const { list, setList, loading, reload } = useList(getPekerjaSemua, setError, 'pekerja_semua')
   const [nama, setNama] = useState('')
+  const [editingPekerja, setEditingPekerja] = useState<Pekerja | null>(null)
+  const [editNama, setEditNama] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [hapusTarget, setHapusTarget] = useState<Pekerja | null>(null)
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
@@ -145,11 +159,13 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
     try {
       await tambahPekerja(nama.trim())
       setNama('')
+      setInfo(`Pekerja "${nama.trim()}" berhasil ditambahkan.`)
       await reload()
     } catch (err) {
       setError((err as Error).message)
     }
   }
+
   async function toggle(p: Pekerja) {
     const nextVal = !p.status_aktif
     setList((prev) =>
@@ -161,6 +177,43 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
       setList((prev) =>
         prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: p.status_aktif } : x)),
       )
+      setError((err as Error).message)
+    }
+  }
+
+  function mulaiEdit(p: Pekerja) {
+    setEditingPekerja(p)
+    setEditNama(p.nama)
+  }
+
+  async function simpanEdit(e: FormEvent) {
+    e.preventDefault()
+    if (!editingPekerja || !editNama.trim()) return
+    setSavingEdit(true)
+    try {
+      await ubahPekerja(editingPekerja.id_pekerja, { nama: editNama.trim() })
+      setList((prev) =>
+        prev.map((x) => (x.id_pekerja === editingPekerja.id_pekerja ? { ...x, nama: editNama.trim() } : x)),
+      )
+      setInfo(`Nama pekerja berhasil diubah menjadi "${editNama.trim()}".`)
+      setEditingPekerja(null)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function onHapusPekerja(p: Pekerja) {
+    setHapusTarget(null)
+    const prevList = [...list]
+    setList((prev) => prev.filter((x) => x.id_pekerja !== p.id_pekerja))
+    try {
+      await hapusPekerja(p.id_pekerja)
+      setInfo(`Pekerja "${p.nama}" berhasil dihapus.`)
+      await reload()
+    } catch (err) {
+      setList(prevList)
       setError((err as Error).message)
     }
   }
@@ -184,8 +237,7 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
       </Card>
 
       <HintBox>
-        Pekerja yang <b>Nonaktif</b> tidak akan muncul di daftar mandor, tapi catatan kerja lamanya
-        tetap tersimpan.
+        Data pekerja bisa diubah, dinonaktifkan, atau <b>dihapus</b>. Jika pekerja sudah memiliki catatan produksi lama, sistem otomatis mengarsipkan data agar histori laporan upah tetap aman.
       </HintBox>
 
       {loading && list.length === 0 ? (
@@ -221,22 +273,92 @@ function TabPekerja({ setError }: { setError: (m: string | null) => void }) {
                     </PillBadge>
                   </div>
                 </div>
-                <BigButton
-                  size="sm"
-                  variant={p.status_aktif ? 'ghost' : 'primary'}
-                  onClick={() => toggle(p)}
-                >
-                  {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                </BigButton>
+                <div className="flex flex-wrap items-center gap-2">
+                  <BigButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => mulaiEdit(p)}
+                    className="px-3"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span>Edit</span>
+                  </BigButton>
+                  <BigButton
+                    size="sm"
+                    variant={p.status_aktif ? 'ghost' : 'primary'}
+                    onClick={() => toggle(p)}
+                  >
+                    {p.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                  </BigButton>
+                  <button
+                    onClick={() => setHapusTarget(p)}
+                    aria-label={`Hapus pekerja ${p.nama}`}
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-rose-400 bg-rose-50 text-rose-700 active:bg-rose-200"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Modal Edit Pekerja */}
+      <Modal
+        isOpen={editingPekerja !== null}
+        onClose={() => setEditingPekerja(null)}
+        title="Edit Nama Pekerja"
+      >
+        {editingPekerja && (
+          <form onSubmit={simpanEdit} className="space-y-4">
+            <div>
+              <FieldLabel htmlFor="edit-pekerja-nama">Nama Pekerja</FieldLabel>
+              <TextInput
+                id="edit-pekerja-nama"
+                placeholder="Nama pekerja"
+                value={editNama}
+                onChange={(e) => setEditNama(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t-2 border-slate-100">
+              <BigButton
+                type="button"
+                variant="ghost"
+                onClick={() => setEditingPekerja(null)}
+                disabled={savingEdit}
+              >
+                Batal
+              </BigButton>
+              <BigButton
+                type="submit"
+                variant="primary"
+                disabled={savingEdit || !editNama.trim()}
+              >
+                {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </BigButton>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus Pekerja */}
+      <ConfirmModal
+        isOpen={hapusTarget !== null}
+        title={`Hapus Pekerja "${hapusTarget?.nama ?? ''}"?`}
+        message="Pekerja ini akan dihapus dari daftar master. Jika pekerja memiliki catatan kerja masa lalu, data historis tetap aman."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Tidak, Batal"
+        isDestructive
+        onConfirm={() => hapusTarget && onHapusPekerja(hapusTarget)}
+        onCancel={() => setHapusTarget(null)}
+      />
     </div>
   )
 }
 
+// ---------------- TAB MODEL ----------------
 function TabModel({
   setError,
   setInfo,
@@ -247,6 +369,11 @@ function TabModel({
   const { list, setList, loading, reload } = useList(getTipeSepatuSemua, setError, 'tipe_sepatu_semua')
   const [nama, setNama] = useState('')
   const [ongkos, setOngkos] = useState('')
+  const [editingModel, setEditingModel] = useState<TipeSepatu | null>(null)
+  const [editNamaModel, setEditNamaModel] = useState('')
+  const [editOngkosModel, setEditOngkosModel] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [hapusTarget, setHapusTarget] = useState<TipeSepatu | null>(null)
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
@@ -255,22 +382,25 @@ function TabModel({
       await tambahModel(nama.trim(), Number(ongkos) || 0)
       setNama('')
       setOngkos('')
+      setInfo(`Model "${nama.trim()}" berhasil ditambahkan.`)
       await reload()
     } catch (err) {
       setError((err as Error).message)
     }
   }
+
   async function simpanHarga(m: TipeSepatu) {
     try {
       await ubahTipeSepatu(m.id_sepatu, { ongkos_kerja: m.ongkos_kerja })
       setError(null)
       setInfo(
-        `Upah model ${m.nama_model} disimpan. Berlaku untuk catatan baru; gaji periode lalu tidak berubah.`,
+        `Upah model "${m.nama_model}" berhasil disimpan (${formatRupiah(m.ongkos_kerja)}). Berlaku untuk catatan baru.`,
       )
     } catch (err) {
       setError((err as Error).message)
     }
   }
+
   async function toggle(m: TipeSepatu) {
     const nextVal = !m.status_aktif
     setList((prev) =>
@@ -282,6 +412,52 @@ function TabModel({
       setList((prev) =>
         prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: m.status_aktif } : x)),
       )
+      setError((err as Error).message)
+    }
+  }
+
+  function mulaiEdit(m: TipeSepatu) {
+    setEditingModel(m)
+    setEditNamaModel(m.nama_model)
+    setEditOngkosModel(String(m.ongkos_kerja || 0))
+  }
+
+  async function simpanEdit(e: FormEvent) {
+    e.preventDefault()
+    if (!editingModel || !editNamaModel.trim()) return
+    setSavingEdit(true)
+    const ongkosNum = Number(editOngkosModel) || 0
+    try {
+      await ubahTipeSepatu(editingModel.id_sepatu, {
+        nama_model: editNamaModel.trim(),
+        ongkos_kerja: ongkosNum,
+      })
+      setList((prev) =>
+        prev.map((x) =>
+          x.id_sepatu === editingModel.id_sepatu
+            ? { ...x, nama_model: editNamaModel.trim(), ongkos_kerja: ongkosNum }
+            : x,
+        ),
+      )
+      setInfo(`Model "${editNamaModel.trim()}" berhasil diperbarui.`)
+      setEditingModel(null)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function onHapusModel(m: TipeSepatu) {
+    setHapusTarget(null)
+    const prevList = [...list]
+    setList((prev) => prev.filter((x) => x.id_sepatu !== m.id_sepatu))
+    try {
+      await hapusModel(m.id_sepatu)
+      setInfo(`Model "${m.nama_model}" berhasil dihapus.`)
+      await reload()
+    } catch (err) {
+      setList(prevList)
       setError((err as Error).message)
     }
   }
@@ -315,8 +491,7 @@ function TabModel({
       </Card>
 
       <HintBox>
-        Mengubah upah hanya berlaku untuk catatan <b>baru</b>. Gaji periode yang sudah lewat tidak
-        akan berubah.
+        Mengubah upah hanya berlaku untuk catatan <b>baru</b>. Gaji periode lalu tidak akan berubah. Model yang dihapus akan otomatis diarsipkan jika memiliki catatan riwayat produksi.
       </HintBox>
 
       {loading && list.length === 0 ? (
@@ -352,13 +527,31 @@ function TabModel({
                     </PillBadge>
                   </div>
                 </div>
-                <BigButton
-                  size="sm"
-                  variant={m.status_aktif ? 'ghost' : 'primary'}
-                  onClick={() => toggle(m)}
-                >
-                  {m.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                </BigButton>
+                <div className="flex flex-wrap items-center gap-2">
+                  <BigButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => mulaiEdit(m)}
+                    className="px-3"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span>Edit</span>
+                  </BigButton>
+                  <BigButton
+                    size="sm"
+                    variant={m.status_aktif ? 'ghost' : 'primary'}
+                    onClick={() => toggle(m)}
+                  >
+                    {m.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                  </BigButton>
+                  <button
+                    onClick={() => setHapusTarget(m)}
+                    aria-label={`Hapus model ${m.nama_model}`}
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-rose-400 bg-rose-50 text-rose-700 active:bg-rose-200"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
               <div className="mt-3 space-y-2">
@@ -392,13 +585,85 @@ function TabModel({
           ))}
         </div>
       )}
+
+      {/* Modal Edit Model */}
+      <Modal
+        isOpen={editingModel !== null}
+        onClose={() => setEditingModel(null)}
+        title="Edit Model Sepatu"
+      >
+        {editingModel && (
+          <form onSubmit={simpanEdit} className="space-y-4">
+            <div>
+              <FieldLabel htmlFor="edit-model-nama">Nama Model</FieldLabel>
+              <TextInput
+                id="edit-model-nama"
+                placeholder="Nama model"
+                value={editNamaModel}
+                onChange={(e) => setEditNamaModel(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="edit-model-ongkos">Upah per pasang (Rp)</FieldLabel>
+              <TextInput
+                id="edit-model-ongkos"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                placeholder="contoh: 1200"
+                value={editOngkosModel}
+                onChange={(e) => setEditOngkosModel(e.target.value.replace(/[^\d]/g, ''))}
+                required
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t-2 border-slate-100">
+              <BigButton
+                type="button"
+                variant="ghost"
+                onClick={() => setEditingModel(null)}
+                disabled={savingEdit}
+              >
+                Batal
+              </BigButton>
+              <BigButton
+                type="submit"
+                variant="primary"
+                disabled={savingEdit || !editNamaModel.trim()}
+              >
+                {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </BigButton>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus Model */}
+      <ConfirmModal
+        isOpen={hapusTarget !== null}
+        title={`Hapus Model "${hapusTarget?.nama_model ?? ''}"?`}
+        message="Model ini akan dihapus dari daftar master. Jika model ini memiliki catatan produksi lama, data historis tetap aman tersimpan."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Tidak, Batal"
+        isDestructive
+        onConfirm={() => hapusTarget && onHapusModel(hapusTarget)}
+        onCancel={() => setHapusTarget(null)}
+      />
     </div>
   )
 }
 
-function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
+// ---------------- TAB UKURAN ----------------
+function TabUkuran({
+  setError,
+  setInfo,
+}: {
+  setError: (m: string | null) => void
+  setInfo: (m: string | null) => void
+}) {
   const { list, setList, loading, reload } = useList(getUkuranSemua, setError, 'ukuran_semua')
   const [label, setLabel] = useState('')
+  const [hapusTarget, setHapusTarget] = useState<MasterUkuran | null>(null)
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
@@ -406,11 +671,13 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
     try {
       await tambahUkuran(label.trim())
       setLabel('')
+      setInfo(`Ukuran "${label.trim()}" berhasil ditambahkan.`)
       await reload()
     } catch (err) {
       setError((err as Error).message)
     }
   }
+
   async function toggle(u: MasterUkuran) {
     const nextVal = !u.status_aktif
     setList((prev) =>
@@ -422,6 +689,20 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
       setList((prev) =>
         prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: u.status_aktif } : x)),
       )
+      setError((err as Error).message)
+    }
+  }
+
+  async function onHapusUkuran(u: MasterUkuran) {
+    setHapusTarget(null)
+    const prevList = [...list]
+    setList((prev) => prev.filter((x) => x.id_ukuran !== u.id_ukuran))
+    try {
+      await hapusUkuran(u.id_ukuran)
+      setInfo(`Ukuran "${u.label_ukuran}" berhasil dihapus.`)
+      await reload()
+    } catch (err) {
+      setList(prevList)
       setError((err as Error).message)
     }
   }
@@ -446,8 +727,7 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
       </Card>
 
       <HintBox>
-        Nomor berwarna <b>hitam</b> = aktif dan muncul di form mandor. Ketuk nomor untuk
-        mengaktifkan atau menonaktifkan.
+        Nomor berwarna <b>hitam</b> = aktif di form mandor. Ketuk tombol status untuk mengaktifkan/menonaktifkan, atau klik ikon tong sampah untuk <b>menghapus</b> ukuran.
       </HintBox>
 
       {loading && list.length === 0 ? (
@@ -463,28 +743,60 @@ function TabUkuran({ setError }: { setError: (m: string | null) => void }) {
           <h2 className="mb-3 text-lg font-extrabold tracking-tight text-slate-900">
             Daftar Nomor Ukuran
           </h2>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {list.map((u) => (
-              <button
+              <div
                 key={u.id_ukuran}
-                onClick={() => toggle(u)}
-                aria-pressed={Boolean(u.status_aktif)}
-                className={`min-h-14 min-w-16 rounded-2xl border-2 px-4 text-xl font-extrabold transition-colors ${
+                className={`flex flex-col items-center justify-between gap-2 rounded-2xl border-2 p-3 transition-colors ${
                   u.status_aktif
                     ? 'border-slate-950 bg-slate-900 text-white'
-                    : 'border-slate-300 bg-slate-100 text-slate-400 line-through'
+                    : 'border-slate-300 bg-slate-100 text-slate-500'
                 }`}
               >
-                {u.label_ukuran}
-              </button>
+                <div className="text-2xl font-black">{u.label_ukuran}</div>
+                <div className="flex w-full items-center justify-center gap-1.5 pt-1 border-t border-slate-700/40">
+                  <button
+                    type="button"
+                    onClick={() => toggle(u)}
+                    className={`rounded-lg px-2 py-1 text-xs font-bold transition-colors ${
+                      u.status_aktif
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                        : 'bg-slate-300 text-slate-800 hover:bg-slate-400'
+                    }`}
+                  >
+                    {u.status_aktif ? 'Aktif' : 'Off'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHapusTarget(u)}
+                    aria-label={`Hapus ukuran ${u.label_ukuran}`}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-600/20 text-rose-300 hover:bg-rose-600 hover:text-white"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         </Card>
       )}
+
+      {/* Modal Konfirmasi Hapus Ukuran */}
+      <ConfirmModal
+        isOpen={hapusTarget !== null}
+        title={`Hapus Ukuran "${hapusTarget?.label_ukuran ?? ''}"?`}
+        message="Nomor ukuran ini akan dihapus dari daftar master. Jika nomor ukuran ini memiliki catatan produksi lama, data historis tetap aman."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Tidak, Batal"
+        isDestructive
+        onConfirm={() => hapusTarget && onHapusUkuran(hapusTarget)}
+        onCancel={() => setHapusTarget(null)}
+      />
     </div>
   )
 }
 
+// ---------------- TAB PO ----------------
 function TabPo({
   setError,
   setInfo,
@@ -580,7 +892,8 @@ function TabPo({
     setList((prev) => prev.filter((x) => x.id_po !== p.id_po))
     try {
       await hapusPo(p.id_po)
-      setInfo(`PO "${p.no_po}" sudah dihapus.`)
+      setInfo(`PO "${p.no_po}" berhasil dihapus.`)
+      await reload()
     } catch (err) {
       setList(prevList)
       setError((err as Error).message)
@@ -841,10 +1154,11 @@ function TabPo({
         )}
       </Modal>
 
+      {/* Modal Konfirmasi Hapus PO */}
       <ConfirmModal
         isOpen={hapusTarget !== null}
-        title={`Hapus PO ${hapusTarget?.no_po ?? ''}?`}
-        message="Nomor PO ini akan dihapus dari daftar. Catatan hasil kerja yang sudah tersimpan tidak hilang."
+        title={`Hapus PO "${hapusTarget?.no_po ?? ''}"?`}
+        message="Nomor PO ini akan dihapus dari daftar master. Catatan hasil kerja yang sudah tersimpan tidak akan hilang."
         confirmLabel="Ya, Hapus"
         cancelLabel="Tidak, Batal"
         isDestructive

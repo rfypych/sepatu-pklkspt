@@ -82,6 +82,11 @@ export const ubahPekerja = async (id: number, body: { nama?: string; status_akti
   invalidateCache('pekerja', 'mandor_init', 'dashboard')
   return res
 }
+export const hapusPekerja = async (id: number) => {
+  const res = await del<{ ok: boolean }>(`/pekerja/${id}`)
+  invalidateCache('pekerja', 'mandor_init', 'dashboard')
+  return res
+}
 
 // ---------------- TIPE SEPATU ----------------
 const normTipe = (m: TipeSepatu): TipeSepatu => ({ ...m, ongkos_kerja: toNum(m.ongkos_kerja) })
@@ -105,6 +110,11 @@ export const ubahTipeSepatu = async (id: number, body: { nama_model?: string; on
   invalidateCache('tipe_sepatu', 'mandor_init', 'dashboard')
   return res
 }
+export const hapusModel = async (id: number) => {
+  const res = await del<{ ok: boolean }>(`/tipe-sepatu/${id}`)
+  invalidateCache('tipe_sepatu', 'mandor_init', 'dashboard')
+  return res
+}
 
 // ---------------- UKURAN ----------------
 export const getUkuranAktif = async () => {
@@ -124,6 +134,11 @@ export const tambahUkuran = async (label_ukuran: string) => {
 }
 export const ubahUkuran = async (id: number, status_aktif: boolean) => {
   const res = await patch<{ ok: boolean }>(`/ukuran/${id}`, { status_aktif })
+  invalidateCache('ukuran', 'mandor_init')
+  return res
+}
+export const hapusUkuran = async (id: number) => {
+  const res = await del<{ ok: boolean }>(`/ukuran/${id}`)
   invalidateCache('ukuran', 'mandor_init')
   return res
 }
