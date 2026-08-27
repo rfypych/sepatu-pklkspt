@@ -229,6 +229,7 @@ fun WebContainer(url: String) {
                     setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
+                    clearCache(true) // Bersihkan HTTP cache agar update web selalu ter-update di HP mandor
 
                     settings.apply {
                         javaScriptEnabled = true
@@ -279,33 +280,33 @@ fun WebContainer(url: String) {
                             val autoLoginScript = """
                                 (async function() {
                                     try {
-                                        // Jika sudah ada token di localStorage, tidak perlu auto-login
-                                        var token = localStorage.getItem('sp_token');
                                         var currentPath = window.location.pathname;
                                         var onLoginPage = currentPath === '/login' || currentPath === '/' || currentPath === '';
 
-                                        if (token && !onLoginPage) {
-                                            // Sudah login dan bukan di halaman login, biarkan
-                                            return;
-                                        }
-
-                                        if (!token) {
-                                            // Belum ada token, coba auto-login
-                                            var res = await fetch('""" + loginApi + """', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ username: 'mandor', password: 'mandor123' })
-                                            });
-                                            var data = await res.json();
-                                            if (data.token) {
-                                                localStorage.setItem('sp_token', data.token);
+                                        // Selalu refresh token setiap buka app (clearCache menghapus HTTP cache
+                                        // tapi bukan localStorage, jadi token lama bisa expired — refresh otomatis)
+                                        var res = await fetch('""" + loginApi + """', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ username: 'mandor', password: 'mandor123' })
+                                        });
+                                        var data = await res.json();
+                                        if (data.token) {
+                                            localStorage.setItem('sp_token', data.token);
+                                            // Hanya redirect kalau sedang di halaman login
+                                            if (onLoginPage) {
                                                 window.location.replace('/mandor');
                                             }
-                                        } else if (onLoginPage) {
-                                            // Ada token tapi di halaman login, redirect langsung
-                                            window.location.replace('/mandor');
+                                            // Kalau sudah di halaman lain (misal /mandor), biarkan — tidak perlu reload
                                         }
                                     } catch (e) {
+                                        // Offline atau server error — coba pakai token lama kalau ada
+                                        var token = localStorage.getItem('sp_token');
+                                        var currentPath = window.location.pathname;
+                                        var onLoginPage = currentPath === '/login' || currentPath === '/' || currentPath === '';
+                                        if (token && onLoginPage) {
+                                            window.location.replace('/mandor');
+                                        }
                                         console.error('Auto login failed', e);
                                     }
                                 })();
