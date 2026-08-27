@@ -37,7 +37,6 @@ export default function Login() {
           <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-900">
             Catatan Produksi & Upah
           </h1>
-          <p className="mt-1 text-base font-semibold text-slate-600">Pabrik Sepatu</p>
         </div>
 
         {/* ---------- Form masuk ---------- */}
@@ -133,9 +132,6 @@ export default function Login() {
           </HintBox>
         )}
 
-        <p className="text-center text-sm font-medium text-slate-500">
-          Lupa kata sandi? Hubungi admin pabrik.
-        </p>
       </div>
     </div>
   )
