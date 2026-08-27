@@ -64,6 +64,36 @@ export function tahunHariIni(): string {
   return String(new Date().getFullYear())
 }
 
+/** Tanggal kemarin (YYYY-MM-DD), dipakai untuk membandingkan hasil hari ini. */
+export function tanggalKemarin(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+/** Sapaan sesuai jam di HP pengguna: pagi / siang / sore / malam. */
+export function sapaanWaktu(): string {
+  const jam = new Date().getHours()
+  if (jam < 11) return 'Selamat pagi'
+  if (jam < 15) return 'Selamat siang'
+  if (jam < 18) return 'Selamat sore'
+  return 'Selamat malam'
+}
+
+/** Nama hari + tanggal lengkap, mis. "Rabu, 26 Agustus 2026". */
+export function formatHariTanggal(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(d)
+}
+
 export function rentangBulan(bulanStr: string): { dari: string; sampai: string } {
   if (!bulanStr) {
     const d = new Date()

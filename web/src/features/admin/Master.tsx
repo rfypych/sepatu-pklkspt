@@ -39,6 +39,7 @@ import {
 import { downloadExcelWorkbook } from '../../lib/laporan'
 import PoProgress from '../../components/PoProgress'
 import {
+  ArrowUpDown,
   Download,
   Layers,
   Package,
@@ -152,6 +153,19 @@ function TabPekerja({
   const [editNama, setEditNama] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [hapusTarget, setHapusTarget] = useState<Pekerja | null>(null)
+  const [sortBy, setSortBy] = useState<'nama_asc' | 'nama_desc' | 'status' | 'terbaru'>('nama_asc')
+
+  const sortedList = [...list].sort((a, b) => {
+    if (sortBy === 'nama_asc') return a.nama.localeCompare(b.nama)
+    if (sortBy === 'nama_desc') return b.nama.localeCompare(a.nama)
+    if (sortBy === 'status') {
+      const aktifA = a.status_aktif === 1 || a.status_aktif === true ? 1 : 0
+      const aktifB = b.status_aktif === 1 || b.status_aktif === true ? 1 : 0
+      if (aktifA !== aktifB) return aktifB - aktifA
+      return a.nama.localeCompare(b.nama)
+    }
+    return b.id_pekerja - a.id_pekerja
+  })
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
@@ -167,12 +181,13 @@ function TabPekerja({
   }
 
   async function toggle(p: Pekerja) {
-    const nextVal = !p.status_aktif
+    const nextVal = p.status_aktif === 1 || p.status_aktif === true ? false : true
     setList((prev) =>
       prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: nextVal } : x)),
     )
     try {
       await ubahPekerja(p.id_pekerja, { status_aktif: nextVal })
+      await reload()
     } catch (err) {
       setList((prev) =>
         prev.map((x) => (x.id_pekerja === p.id_pekerja ? { ...x, status_aktif: p.status_aktif } : x)),
@@ -253,7 +268,29 @@ function TabPekerja({
         />
       ) : (
         <div className="space-y-2.5">
-          {list.map((p) => (
+          {/* Bar Urutkan */}
+          <div className="flex items-center justify-between gap-2 px-1">
+            <span className="text-xs font-bold text-slate-500">
+              Total {list.length} Pekerja
+            </span>
+            <div className="flex items-center gap-1.5 text-xs">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
+              <label htmlFor="sort-pekerja" className="font-semibold text-slate-600">Urutkan:</label>
+              <select
+                id="sort-pekerja"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="rounded-xl border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-slate-900 focus:outline-none"
+              >
+                <option value="nama_asc">Nama (A - Z)</option>
+                <option value="nama_desc">Nama (Z - A)</option>
+                <option value="status">Status (Aktif Dulu)</option>
+                <option value="terbaru">Terbaru Ditambahkan</option>
+              </select>
+            </div>
+          </div>
+
+          {sortedList.map((p) => (
             <Card key={p.id_pekerja}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -374,6 +411,21 @@ function TabModel({
   const [editOngkosModel, setEditOngkosModel] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [hapusTarget, setHapusTarget] = useState<TipeSepatu | null>(null)
+  const [sortBy, setSortBy] = useState<'nama_asc' | 'nama_desc' | 'upah_desc' | 'upah_asc' | 'status'>('nama_asc')
+
+  const sortedList = [...list].sort((a, b) => {
+    if (sortBy === 'nama_asc') return a.nama_model.localeCompare(b.nama_model)
+    if (sortBy === 'nama_desc') return b.nama_model.localeCompare(a.nama_model)
+    if (sortBy === 'upah_desc') return (Number(b.ongkos_kerja) || 0) - (Number(a.ongkos_kerja) || 0)
+    if (sortBy === 'upah_asc') return (Number(a.ongkos_kerja) || 0) - (Number(b.ongkos_kerja) || 0)
+    if (sortBy === 'status') {
+      const aktifA = a.status_aktif === 1 || a.status_aktif === true ? 1 : 0
+      const aktifB = b.status_aktif === 1 || b.status_aktif === true ? 1 : 0
+      if (aktifA !== aktifB) return aktifB - aktifA
+      return a.nama_model.localeCompare(b.nama_model)
+    }
+    return a.nama_model.localeCompare(b.nama_model)
+  })
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
@@ -402,12 +454,13 @@ function TabModel({
   }
 
   async function toggle(m: TipeSepatu) {
-    const nextVal = !m.status_aktif
+    const nextVal = m.status_aktif === 1 || m.status_aktif === true ? false : true
     setList((prev) =>
       prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: nextVal } : x)),
     )
     try {
       await ubahTipeSepatu(m.id_sepatu, { status_aktif: nextVal })
+      await reload()
     } catch (err) {
       setList((prev) =>
         prev.map((x) => (x.id_sepatu === m.id_sepatu ? { ...x, status_aktif: m.status_aktif } : x)),
@@ -507,7 +560,30 @@ function TabModel({
         />
       ) : (
         <div className="space-y-2.5">
-          {list.map((m) => (
+          {/* Bar Urutkan */}
+          <div className="flex items-center justify-between gap-2 px-1">
+            <span className="text-xs font-bold text-slate-500">
+              Total {list.length} Model
+            </span>
+            <div className="flex items-center gap-1.5 text-xs">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
+              <label htmlFor="sort-model" className="font-semibold text-slate-600">Urutkan:</label>
+              <select
+                id="sort-model"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="rounded-xl border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-slate-900 focus:outline-none"
+              >
+                <option value="nama_asc">Nama Model (A - Z)</option>
+                <option value="nama_desc">Nama Model (Z - A)</option>
+                <option value="upah_desc">Upah Tertinggi</option>
+                <option value="upah_asc">Upah Terendah</option>
+                <option value="status">Status (Aktif Dulu)</option>
+              </select>
+            </div>
+          </div>
+
+          {sortedList.map((m) => (
             <Card key={m.id_sepatu}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-slate-100 pb-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -664,6 +740,31 @@ function TabUkuran({
   const { list, setList, loading, reload } = useList(getUkuranSemua, setError, 'ukuran_semua')
   const [label, setLabel] = useState('')
   const [hapusTarget, setHapusTarget] = useState<MasterUkuran | null>(null)
+  const [sortBy, setSortBy] = useState<'nomor_asc' | 'nomor_desc' | 'status' | 'default'>('nomor_asc')
+
+  const sortedList = [...list].sort((a, b) => {
+    const numA = Number(a.label_ukuran)
+    const numB = Number(b.label_ukuran)
+    const isNumA = !isNaN(numA)
+    const isNumB = !isNaN(numB)
+
+    if (sortBy === 'nomor_asc') {
+      if (isNumA && isNumB) return numA - numB
+      return String(a.label_ukuran).localeCompare(String(b.label_ukuran))
+    }
+    if (sortBy === 'nomor_desc') {
+      if (isNumA && isNumB) return numB - numA
+      return String(b.label_ukuran).localeCompare(String(a.label_ukuran))
+    }
+    if (sortBy === 'status') {
+      const aktifA = a.status_aktif === 1 || a.status_aktif === true ? 1 : 0
+      const aktifB = b.status_aktif === 1 || b.status_aktif === true ? 1 : 0
+      if (aktifA !== aktifB) return aktifB - aktifA
+      if (isNumA && isNumB) return numA - numB
+      return String(a.label_ukuran).localeCompare(String(b.label_ukuran))
+    }
+    return Number(a.urutan || 0) - Number(b.urutan || 0)
+  })
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
@@ -679,12 +780,13 @@ function TabUkuran({
   }
 
   async function toggle(u: MasterUkuran) {
-    const nextVal = !u.status_aktif
+    const nextVal = u.status_aktif === 1 || u.status_aktif === true ? false : true
     setList((prev) =>
       prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: nextVal } : x)),
     )
     try {
       await ubahUkuran(u.id_ukuran, nextVal)
+      await reload()
     } catch (err) {
       setList((prev) =>
         prev.map((x) => (x.id_ukuran === u.id_ukuran ? { ...x, status_aktif: u.status_aktif } : x)),
@@ -740,11 +842,30 @@ function TabUkuran({
         />
       ) : (
         <Card>
-          <h2 className="mb-3 text-lg font-extrabold tracking-tight text-slate-900">
-            Daftar Nomor Ukuran
-          </h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+              Daftar Nomor Ukuran ({list.length})
+            </h2>
+
+            <div className="flex items-center gap-1.5 text-xs">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
+              <label htmlFor="sort-ukuran" className="font-semibold text-slate-600">Urutkan:</label>
+              <select
+                id="sort-ukuran"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="rounded-xl border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-slate-900 focus:outline-none"
+              >
+                <option value="nomor_asc">Kecil ke Besar</option>
+                <option value="nomor_desc">Besar ke Kecil</option>
+                <option value="status">Aktif Dulu</option>
+                <option value="default">Urutan Input</option>
+              </select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {list.map((u) => (
+            {sortedList.map((u) => (
               <div
                 key={u.id_ukuran}
                 className={`flex flex-col items-center justify-between gap-2 rounded-2xl border-2 p-3 transition-colors ${
@@ -816,6 +937,21 @@ function TabPo({
 
   // State untuk Hapus PO
   const [hapusTarget, setHapusTarget] = useState<MasterPo | null>(null)
+  const [sortBy, setSortBy] = useState<'po_asc' | 'po_desc' | 'target_desc' | 'progress_desc' | 'status'>('po_asc')
+
+  const sortedList = [...list].sort((a, b) => {
+    if (sortBy === 'po_asc') return a.no_po.localeCompare(b.no_po)
+    if (sortBy === 'po_desc') return b.no_po.localeCompare(a.no_po)
+    if (sortBy === 'target_desc') return (b.target_qty || 0) - (a.target_qty || 0)
+    if (sortBy === 'progress_desc') return (b.achieved_qty || 0) - (a.achieved_qty || 0)
+    if (sortBy === 'status') {
+      const aktifA = a.status_aktif === 1 || a.status_aktif === true ? 1 : 0
+      const aktifB = b.status_aktif === 1 || b.status_aktif === true ? 1 : 0
+      if (aktifA !== aktifB) return aktifB - aktifA
+      return a.no_po.localeCompare(b.no_po)
+    }
+    return a.no_po.localeCompare(b.no_po)
+  })
 
   async function tambah(e: FormEvent) {
     e.preventDefault()
@@ -872,12 +1008,13 @@ function TabPo({
   }
 
   async function toggle(p: MasterPo) {
-    const nextVal = !p.status_aktif
+    const nextVal = p.status_aktif === 1 || p.status_aktif === true ? false : true
     setList((prev) =>
       prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: nextVal } : x)),
     )
     try {
       await ubahPo(p.id_po, { status_aktif: nextVal })
+      await reload()
     } catch (err) {
       setList((prev) =>
         prev.map((x) => (x.id_po === p.id_po ? { ...x, status_aktif: p.status_aktif } : x)),
@@ -1012,7 +1149,30 @@ function TabPo({
         />
       ) : (
         <div className="space-y-2.5">
-          {list.map((p) => {
+          {/* Bar Urutkan */}
+          <div className="flex items-center justify-between gap-2 px-1">
+            <span className="text-xs font-bold text-slate-500">
+              Total {list.length} PO
+            </span>
+            <div className="flex items-center gap-1.5 text-xs">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
+              <label htmlFor="sort-po" className="font-semibold text-slate-600">Urutkan:</label>
+              <select
+                id="sort-po"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="rounded-xl border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-sm focus:border-slate-900 focus:outline-none"
+              >
+                <option value="po_asc">Nomor PO (A - Z)</option>
+                <option value="po_desc">Nomor PO (Z - A)</option>
+                <option value="target_desc">Target Terbesar</option>
+                <option value="progress_desc">Paling Banyak Selesai</option>
+                <option value="status">Status (Aktif Dulu)</option>
+              </select>
+            </div>
+          </div>
+
+          {sortedList.map((p) => {
             const sisa = Math.max(0, p.target_qty - p.achieved_qty)
             const lunas = p.target_qty > 0 && sisa === 0
             return (

@@ -323,6 +323,16 @@ export function prefetchCoreData(role?: string) {
   if (typeof window === 'undefined') return
   setTimeout(() => {
     if (role === 'admin') {
+      // Beranda admin butuh produksi hari ini + kemarin (pembanding) dan pekerja aktif
+      // (untuk daftar "belum setor"), jadi keduanya ikut diprefetch.
+      const d = new Date()
+      const iso = (x: Date) =>
+        `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+      const kemarin = new Date(d)
+      kemarin.setDate(kemarin.getDate() - 1)
+      getProduksi(iso(d)).catch(() => {})
+      getProduksi(iso(kemarin)).catch(() => {})
+      getPekerjaAktif().catch(() => {})
       getDashboardToday().catch(() => {})
       getPekerjaSemua().catch(() => {})
       getTipeSepatuSemua().catch(() => {})

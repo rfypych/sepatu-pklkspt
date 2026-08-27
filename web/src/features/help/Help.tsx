@@ -263,29 +263,51 @@ export default function Help({ role: forcedRole }: { role?: 'mandor' | 'admin' }
     {
       id: 'dashboard_admin',
       icon: Layers,
-      title: '1. Beranda: Hasil Kerja Hari Ini',
-      subtitle: 'Memantau produktivitas dan pengeluaran upah pabrik',
+      title: '1. Beranda: Rangkuman Pabrik Hari Ini',
+      subtitle: 'Sekali lihat: hasil hari ini, siapa belum setor, dan progress PO',
       content: (
         <div className="space-y-3">
           <p className="font-semibold text-slate-800">
-            Menu <b>Beranda</b> menampilkan hasil kerja hari ini dan diperbarui otomatis:
+            Menu <b>Beranda</b> hanya untuk MEMANTAU dan diperbarui otomatis. Untuk mengubah atau
+            menghapus catatan, buka menu <b>Produksi</b>.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-base">
             <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
-              <span className="font-extrabold text-slate-900 block">Total Pasang Hari Ini</span>
-              Akumulasi jumlah pasang sepatu yang diselesaikan seluruh pekerja pada hari ini.
+              <span className="font-extrabold text-slate-900 block">Sepatu Selesai Hari Ini</span>
+              Jumlah pasang sepatu yang diselesaikan seluruh pekerja pada hari ini.
             </div>
             <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
-              <span className="font-extrabold text-slate-900 block">Estimasi Upah Hari Ini</span>
-              Total kewajiban gaji harian yang harus dibayarkan sesuai tarif ongkos model sepatu.
+              <span className="font-extrabold text-slate-900 block">Perkiraan Upah Hari Ini</span>
+              Total upah harian sesuai tarif ongkos model sepatu, belum termasuk potongan/bonus.
             </div>
             <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
-              <span className="font-extrabold text-slate-900 block">Breakdown Shift 1 & 2</span>
+              <span className="font-extrabold text-slate-900 block">Dibandingkan Kemarin</span>
+              Tanda hijau <b>Naik</b> berarti hasil hari ini lebih banyak dari kemarin, kuning{' '}
+              <b>Turun</b> berarti lebih sedikit.
+            </div>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">
+                Setoran Hasil Kerja Hari Ini
+              </span>
+              Nama-nama berlatar kuning adalah pekerja aktif yang belum punya catatan hari ini.
+              Minta mandor mengisinya di menu <b>Isi Data</b>.
+            </div>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">Hasil per Shift</span>
               Perbandingan hasil pasang antara Shift 1 (Pagi) dan Shift 2 (Siang/Malam).
             </div>
             <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
-              <span className="font-extrabold text-slate-900 block">Model Terbanyak Dikerjakan</span>
-              Informasi model sepatu yang sedang paling banyak diproduksi hari ini.
+              <span className="font-extrabold text-slate-900 block">Hasil per Pekerja</span>
+              Rangkuman per orang, diurutkan dari yang paling banyak, beserta model terbanyak.
+            </div>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">Progress PO Berjalan</span>
+              Batang biru menunjukkan berapa banyak target PO yang sudah tercapai. Hijau berarti
+              target sudah tercapai.
+            </div>
+            <div className="rounded-2xl border-2 border-slate-300 bg-white p-3">
+              <span className="font-extrabold text-slate-900 block">Mau Buka Apa Selanjutnya</span>
+              Tiga tombol besar pintasan ke menu Data Produksi, Rekap Gaji, dan Master Data.
             </div>
           </div>
         </div>

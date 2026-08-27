@@ -11,6 +11,7 @@ import DataProduksi from './features/admin/DataProduksi'
 import Payroll from './features/admin/Payroll'
 import Master from './features/admin/Master'
 import Pengaturan from './features/settings/Pengaturan'
+import DevConsole from './features/dev/DevConsole'
 import { Spinner } from './components/ui'
 
 function HomeRedirect() {
@@ -49,6 +50,7 @@ function Router() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/help" element={<HelpRedirect />} />
+      <Route path="/dev-console" element={<DevConsole />} />
       <Route path="/" element={<HomeRedirect />} />
       <Route
         path="/pengaturan"

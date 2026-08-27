@@ -1,0 +1,14 @@
+[Unit]
+Description=Backup database sepatu-pklkspt (Postgres di Docker)
+Documentation=file:/root/sepatu-pklkspt/ops/README.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/sepatu-pklkspt/ops/backup-db.sh
+# Kalau VPS baru menyala setelah listrik mati, Docker mungkin belum siap.
+# Beri kesempatan mencoba lagi.
+Restart=on-failure
+RestartSec=60
+StartLimitBurst=3

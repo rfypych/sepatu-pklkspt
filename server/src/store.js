@@ -46,7 +46,10 @@ export async function listTipeSepatu(aktifOnly = false) {
 export async function listUkuran(aktifOnly = false) {
   let sql = 'SELECT * FROM master_ukuran'
   if (aktifOnly) sql += ' WHERE status_aktif = 1'
-  sql += ' ORDER BY urutan'
+  sql += ` ORDER BY 
+    CASE WHEN label_ukuran ~ '^[0-9]+$' THEN label_ukuran::int ELSE 99999 END ASC,
+    urutan ASC,
+    label_ukuran ASC`
   const { rows } = await pool.query(sql)
   return rows
 }

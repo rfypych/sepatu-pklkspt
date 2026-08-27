@@ -1,0 +1,19 @@
+[Unit]
+Description=Jadwal backup database sepatu-pklkspt
+
+[Timer]
+# Dua kali sehari: 12:30 dan 21:30 WIB (VPS pakai UTC -> 05:30 & 14:30 UTC).
+# 21:30 WIB dipilih karena shift 2 sudah selesai mencatat.
+OnCalendar=*-*-* 05:30:00
+OnCalendar=*-*-* 14:30:00
+
+# INI KUNCINYA untuk masalah listrik mati:
+# kalau jadwal terlewat karena VPS mati, backup dijalankan segera
+# setelah VPS hidup kembali. Cron tidak punya kemampuan ini.
+Persistent=true
+
+# Jangan menumpuk beban tepat di detik yang sama.
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

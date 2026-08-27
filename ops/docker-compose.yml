@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sepatu_postgres
+    restart: always
+    env_file: .env
+    environment:
+      POSTGRES_DB: sepatu_db
+      POSTGRES_USER: sepatu_user
+      # password kini dari .env (POSTGRES_PASSWORD), tidak lagi hardcode di file ini
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sepatu_user -d sepatu_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: sepatu_api
+    restart: always
+    env_file: .env
+    environment:
+      PORT: 3000
+      PGSSL: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
