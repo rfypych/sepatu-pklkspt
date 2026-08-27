@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val TARGET_URL = "https://web-phi-two-51.vercel.app/"
-        const val API_LOGIN_URL = "https://integer-trackback-similar-characteristic.trycloudflare.com/api/auth/login"
+        const val API_LOGIN_URL = "https://server-eta-six-49.vercel.app/api/auth/login"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -229,7 +229,6 @@ fun WebContainer(url: String) {
                     setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    clearCache(true)
 
                     settings.apply {
                         javaScriptEnabled = true
@@ -280,8 +279,18 @@ fun WebContainer(url: String) {
                             val autoLoginScript = """
                                 (async function() {
                                     try {
+                                        // Jika sudah ada token di localStorage, tidak perlu auto-login
                                         var token = localStorage.getItem('sp_token');
+                                        var currentPath = window.location.pathname;
+                                        var onLoginPage = currentPath === '/login' || currentPath === '/' || currentPath === '';
+
+                                        if (token && !onLoginPage) {
+                                            // Sudah login dan bukan di halaman login, biarkan
+                                            return;
+                                        }
+
                                         if (!token) {
+                                            // Belum ada token, coba auto-login
                                             var res = await fetch('""" + loginApi + """', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
@@ -290,12 +299,11 @@ fun WebContainer(url: String) {
                                             var data = await res.json();
                                             if (data.token) {
                                                 localStorage.setItem('sp_token', data.token);
-                                                if (window.location.pathname === '/login' || window.location.pathname === '/' || window.location.pathname === '') {
-                                                    window.location.replace('/mandor');
-                                                } else {
-                                                    window.location.reload();
-                                                }
+                                                window.location.replace('/mandor');
                                             }
+                                        } else if (onLoginPage) {
+                                            // Ada token tapi di halaman login, redirect langsung
+                                            window.location.replace('/mandor');
                                         }
                                     } catch (e) {
                                         console.error('Auto login failed', e);
