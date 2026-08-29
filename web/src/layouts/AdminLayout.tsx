@@ -1,7 +1,4 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { ConfirmModal } from '../components/ui'
+import { NavLink, Outlet } from 'react-router-dom'
 import OfflineBanner from '../components/OfflineBanner'
 import {
   LayoutDashboard,
@@ -10,7 +7,6 @@ import {
   SlidersHorizontal,
   HelpCircle,
   Settings,
-  LogOut,
 } from 'lucide-react'
 
 const navItems = [
@@ -22,16 +18,6 @@ const navItems = [
 ]
 
 export default function AdminLayout() {
-  const { signOut } = useAuth()
-  const navigate = useNavigate()
-  const [konfirmasiKeluar, setKonfirmasiKeluar] = useState(false)
-
-  async function keluar() {
-    setKonfirmasiKeluar(false)
-    await signOut()
-    navigate('/login')
-  }
-
   return (
     <div className="flex h-full flex-col bg-slate-100">
       {/* ---------- Header ---------- */}
@@ -56,13 +42,6 @@ export default function AdminLayout() {
             >
               <Settings className="h-6 w-6" />
             </NavLink>
-            <button
-              onClick={() => setKonfirmasiKeluar(true)}
-              aria-label="Keluar dari aplikasi"
-              className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-rose-800 bg-rose-700 text-white active:bg-rose-900"
-            >
-              <LogOut className="h-6 w-6" />
-            </button>
           </div>
         </div>
       </header>
@@ -109,17 +88,6 @@ export default function AdminLayout() {
           })}
         </div>
       </nav>
-
-      <ConfirmModal
-        isOpen={konfirmasiKeluar}
-        title="Keluar dari aplikasi?"
-        message="Anda harus mengetik username dan password lagi untuk masuk kembali."
-        confirmLabel="Ya, Keluar"
-        cancelLabel="Tidak, Tetap di Sini"
-        isDestructive
-        onConfirm={keluar}
-        onCancel={() => setKonfirmasiKeluar(false)}
-      />
     </div>
   )
 }

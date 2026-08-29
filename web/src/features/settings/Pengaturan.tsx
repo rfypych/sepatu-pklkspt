@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { ErrorBox, PillBadge } from '../../components/ui'
-import { ArrowLeft, HardHat, ShieldCheck, Shield } from 'lucide-react'
+import { ConfirmModal, ErrorBox, PillBadge } from '../../components/ui'
+import { ArrowLeft, HardHat, LogOut, ShieldCheck, Shield } from 'lucide-react'
 
 interface SystemStatus {
   client_name: string
@@ -13,10 +13,11 @@ interface SystemStatus {
 }
 
 export default function Pengaturan() {
-  const { user, switchRole } = useAuth()
+  const { user, switchRole, signOut } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [konfirmasiKeluar, setKonfirmasiKeluar] = useState(false)
 
   // Secret Developer tap counter
   const [tapCount, setTapCount] = useState(0)
@@ -256,7 +257,37 @@ export default function Pengaturan() {
           </div>
         )}
 
+        {/* ---------- Tombol Keluar / Logout Akun ---------- */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setKonfirmasiKeluar(true)}
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl border-2 border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-bold text-rose-700 transition-colors hover:bg-rose-100 active:bg-rose-200"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Keluar dari Akun (Logout)</span>
+          </button>
+          <p className="mt-2 text-center text-xs font-medium text-slate-400">
+            * Gunakan tombol ini hanya jika Anda ingin beralih akun atau keluar dari sistem.
+          </p>
+        </div>
+
         {error && <ErrorBox message={error} />}
+
+        <ConfirmModal
+          isOpen={konfirmasiKeluar}
+          title="Keluar dari akun?"
+          message="Anda akan keluar dari sesi akun ini dan kembali ke halaman login."
+          confirmLabel="Ya, Keluar Akun"
+          cancelLabel="Batal"
+          isDestructive
+          onConfirm={async () => {
+            setKonfirmasiKeluar(false)
+            await signOut()
+            navigate('/login')
+          }}
+          onCancel={() => setKonfirmasiKeluar(false)}
+        />
       </div>
     </div>
   )
